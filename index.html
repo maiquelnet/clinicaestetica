@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Thais Schneider Estética | Esteticista, Micropigmentadora e Maquiadora</title>
+    <meta
+      name="description"
+      content="Atendimentos de estética, micropigmentação e maquiagem em Porto Alegre com foco em beleza natural, cuidado e acolhimento."
+    >
+    <meta property="og:title" content="Thais Schneider Estética">
+    <meta
+      property="og:description"
+      content="Esteticista, micropigmentadora e maquiadora em Porto Alegre."
+    >
+    <meta property="og:image" content="assets/hero-estetica.png">
+    <meta property="og:type" content="website">
+    <link rel="preload" href="assets/hero-estetica.avif" as="image" type="image/avif">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header" data-header>
+      <a class="brand" href="#inicio" aria-label="Thais Schneider Estética">
+        <span class="brand-mark">TS</span>
+        <span>
+          <strong>Thais Schneider</strong>
+          <small>Estética</small>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" data-nav-toggle>
+        <i data-lucide="menu"></i>
+      </button>
+
+      <nav class="site-nav" data-nav>
+        <a href="#servicos">Serviços</a>
+        <a href="#experiencia">Experiência</a>
+        <a href="#resultado">Resultado</a>
+        <a href="#contato">Contato</a>
+      </nav>
+    </header>
+
+    <main id="inicio">
+      <section class="hero" aria-labelledby="hero-title">
+        <picture>
+          <source srcset="assets/hero-estetica.avif" type="image/avif">
+          <source srcset="assets/hero-estetica.webp" type="image/webp">
+          <img class="hero-image" src="assets/hero-estetica.png" alt="Sala elegante de estética com maca, produtos de beleza e luz natural">
+        </picture>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <p class="eyebrow">Esteticista | Micropigmentadora | Maquiadora</p>
+          <h1 id="hero-title">Thais Schneider Estética</h1>
+          <p class="hero-copy">
+            Beleza natural com técnica, cuidado e uma experiência acolhedora em Porto Alegre.
+          </p>
+          <div class="hero-actions" aria-label="Ações principais">
+            <a class="button primary" href="https://www.instagram.com/thaisschneider_estetica_/" target="_blank" rel="noreferrer">
+              <i data-lucide="calendar-check"></i>
+              Agendar pelo Instagram
+            </a>
+            <a class="button secondary" href="#servicos">
+              <i data-lucide="sparkles"></i>
+              Ver serviços
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="quick-strip" aria-label="Destaques">
+        <div>
+          <strong>Porto Alegre</strong>
+          <span>Atendimento com hora marcada</span>
+        </div>
+        <div>
+          <strong>Naturalidade</strong>
+          <span>Procedimentos pensados para realçar seus traços</span>
+        </div>
+        <div>
+          <strong>Cuidado completo</strong>
+          <span>Estética, micropigmentação e maquiagem</span>
+        </div>
+      </section>
+
+      <section class="section service-section" id="servicos" aria-labelledby="services-title">
+        <div class="section-heading">
+          <p class="eyebrow">Serviços</p>
+          <h2 id="services-title">Serviços para beleza, pele e autocuidado</h2>
+          <p>
+            Atendimentos com hora marcada para depilação, procedimentos estéticos, micropigmentação e maquiagem.
+          </p>
+        </div>
+
+        <div class="service-grid">
+          <article class="service-card">
+            <span class="icon-badge"><i data-lucide="sparkles"></i></span>
+            <h3>Depilação</h3>
+            <p>Sobrancelha, buço/nariz, rosto completo, axila, virilha, pernas e pacote completo.</p>
+          </article>
+          <article class="service-card">
+            <span class="icon-badge"><i data-lucide="wand-sparkles"></i></span>
+            <h3>Procedimentos estéticos</h3>
+            <p>Peeling diamante, plasma lifting, jato de plasma, radiofrequência, endermoterapia, vacuoterapia e pump up.</p>
+          </article>
+          <article class="service-card">
+            <span class="icon-badge"><i data-lucide="brush"></i></span>
+            <h3>Micropigmentação</h3>
+            <p>Micropigmentação de sobrancelhas para valorizar o desenho com acabamento delicado.</p>
+          </article>
+          <article class="service-card">
+            <span class="icon-badge"><i data-lucide="palette"></i></span>
+            <h3>Maquiagem</h3>
+            <p>Produção para eventos e ocasiões especiais, com ou sem aplicação de cílios.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section experience-section" id="experiencia" aria-labelledby="experience-title">
+        <div class="experience-copy">
+          <p class="eyebrow">Experiência</p>
+          <h2 id="experience-title">Um atendimento pensado para você se sentir segura</h2>
+          <p>
+            Da primeira mensagem ao pós-atendimento, a proposta é unir técnica, escuta e delicadeza.
+            Cada detalhe foi organizado para comunicar confiança sem perder a leveza da marca.
+          </p>
+          <ul class="check-list">
+            <li><i data-lucide="check"></i> Orientação antes e depois do procedimento</li>
+            <li><i data-lucide="check"></i> Ambiente limpo, calmo e acolhedor</li>
+            <li><i data-lucide="check"></i> Resultado alinhado ao seu estilo pessoal</li>
+          </ul>
+        </div>
+        <div class="process-list" aria-label="Etapas do atendimento">
+          <article>
+            <span>01</span>
+            <h3>Escuta</h3>
+            <p>Entendimento das expectativas, histórico e rotina de cuidados.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Planejamento</h3>
+            <p>Escolha do procedimento, formato, acabamento e orientações.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Finalização</h3>
+            <p>Entrega do resultado e combinados para manutenção.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section result-section" id="resultado" aria-labelledby="result-title">
+        <div class="section-heading narrow">
+          <p class="eyebrow">Resultado</p>
+          <h2 id="result-title">Beleza com acabamento leve, preciso e duradouro</h2>
+        </div>
+        <div class="result-layout">
+          <div class="result-panel">
+            <i data-lucide="quote"></i>
+            <p>
+              Um site com visual limpo e premium ajuda o cliente a entender rapidamente o que você faz,
+              sentir confiança e chamar para agendar.
+            </p>
+          </div>
+          <div class="stats">
+            <div>
+              <strong>3</strong>
+              <span>frentes de atendimento</span>
+            </div>
+            <div>
+              <strong>1:1</strong>
+              <span>experiência personalizada</span>
+            </div>
+            <div>
+              <strong>POA</strong>
+              <span>atendimento em Porto Alegre</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section contact-section" id="contato" aria-labelledby="contact-title">
+        <div>
+          <p class="eyebrow">Contato</p>
+          <h2 id="contact-title">Pronta para marcar seu horário?</h2>
+          <p>
+            Envie uma mensagem pelo Instagram para consultar disponibilidade, valores e escolher o melhor atendimento.
+          </p>
+        </div>
+        <div class="contact-actions">
+          <a class="button primary" href="https://www.instagram.com/thaisschneider_estetica_/" target="_blank" rel="noreferrer">
+            <i data-lucide="send"></i>
+            Abrir Instagram
+          </a>
+          <a class="button ghost" href="https://www.instagram.com/thaisschneider_estetica_/" target="_blank" rel="noreferrer">
+            @thaisschneider_estetica_
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Thais Schneider Estética</p>
+      <span>Porto Alegre | <span data-year></span></span>
+      <a class="footer-admin-link" href="admin.html">Painel administrativo</a>
+    </footer>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+app/dist/
+
+# Local environment
+.env
+.env.*
+!.env.example
+!app/.env.example
+
+# Local logs and runtime noise
+*.log
+.static-preview.*.log
+app/.vite.*.log
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Supabase local runtime/cache
+supabase/.branches/
+supabase/.temp/

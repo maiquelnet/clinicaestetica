@@ -1,0 +1,152 @@
+import {
+  CalendarDays,
+  ChevronDown,
+  CircleDollarSign,
+  ClipboardPlus,
+  CreditCard,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  MessageCircle,
+  Package,
+  Settings,
+  Settings2,
+  Sparkles,
+  Star,
+  Target,
+  Users,
+  Bell,
+} from 'lucide-react'
+import type { ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
+import { useAuth } from '../contexts/useAuth'
+import { useClinic } from '../contexts/useClinic'
+
+const navGroups = [
+  {
+    label: 'Visão geral',
+    items: [{ to: '/', label: 'Início', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Atendimento',
+    items: [
+      { to: '/agenda', label: 'Agenda', icon: CalendarDays },
+      { to: '/agenda/fila-espera', label: 'Encaixes', icon: ClipboardPlus },
+      { to: '/clientes', label: 'Clientes', icon: Users },
+      { to: '/servicos', label: 'Serviços', icon: Sparkles },
+      { to: '/planos-tratamento', label: 'Tratamentos', icon: FileText },
+    ],
+  },
+  {
+    label: 'Gestão',
+    items: [
+      { to: '/financeiro/fluxo-caixa', label: 'Financeiro', icon: CircleDollarSign },
+      { to: '/estoque/itens', label: 'Estoque', icon: Package },
+      { to: '/equipamentos', label: 'Equipamentos', icon: Settings2 },
+      { to: '/mensagens', label: 'Mensagens', icon: MessageCircle },
+    ],
+  },
+  {
+    label: 'Relacionamento',
+    items: [
+      { to: '/marketing/campanhas', label: 'Campanhas', icon: Target },
+      { to: '/marketing/satisfacao', label: 'Satisfação', icon: Star },
+      { to: '/configuracoes/parametros', label: 'Configurações', icon: Settings },
+    ],
+  },
+]
+
+const mobileNav = [
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays },
+  { to: '/clientes', label: 'Clientes', icon: Users },
+  { to: '/financeiro/fluxo-caixa', label: 'Financeiro', icon: CreditCard },
+  { to: '/configuracoes/parametros', label: 'Ajustes', icon: Settings },
+]
+
+export function AppLayout({ children }: { children: ReactNode }) {
+  const { signOut, user } = useAuth()
+  const { activeClinic, memberships, activeClinicId, setActiveClinicId, profile } = useClinic()
+  const displayName = profile?.nome?.split(' ')[0] || 'Thais'
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <NavLink className="brand-lockup" to="/">
+          <span className="brand-mark">TS</span>
+          <span className="brand-copy">
+            <strong>Thais Schneider</strong>
+            <small>Estética & bem-estar</small>
+          </span>
+        </NavLink>
+
+        <div className="clinic-switcher">
+          <span>Espaço de trabalho</span>
+          {memberships.length > 1 ? (
+            <label>
+              <select value={activeClinicId ?? ''} onChange={(event) => setActiveClinicId(event.target.value)}>
+                {memberships.map((membership) => (
+                  <option key={membership.clinica_id} value={membership.clinica_id}>
+                    {membership.clinica.nome_publico || membership.clinica.nome}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} />
+            </label>
+          ) : (
+            <strong>{activeClinic?.nome_publico || activeClinic?.nome}</strong>
+          )}
+        </div>
+
+        <nav className="sidebar-nav" aria-label="Navegação administrativa">
+          {navGroups.map((group) => (
+            <section className="nav-section" key={group.label}>
+              <span className="nav-section-label">{group.label}</span>
+              {group.items.map((item) => (
+                <NavLink key={`${group.label}-${item.label}`} to={item.to} end={item.to === '/'}>
+                  <item.icon size={18} strokeWidth={1.7} />
+                  {item.label}
+                </NavLink>
+              ))}
+            </section>
+          ))}
+        </nav>
+
+        <button className="logout-button" type="button" onClick={() => void signOut()}>
+          <LogOut size={17} />
+          <span>Sair da conta</span>
+        </button>
+      </aside>
+
+      <div className="main-shell">
+        <header className="topbar">
+          <NavLink className="mobile-brand" to="/">
+            <span className="brand-mark">TS</span>
+          </NavLink>
+          <div className="topbar-welcome">
+            <span>Olá, {displayName}</span>
+            <strong>{activeClinic?.nome_publico || activeClinic?.nome}</strong>
+          </div>
+          <div className="topbar-actions">
+            <button className="icon-button notification-button" type="button" aria-label="Notificações">
+              <Bell size={18} />
+              <span />
+            </button>
+            <span className="profile-avatar" aria-label={profile?.nome || user?.email || 'Perfil'}>
+              {(profile?.nome || user?.email || 'TS').slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+        </header>
+        {children}
+      </div>
+
+      <nav className="bottom-nav" aria-label="Navegação principal">
+        {mobileNav.map((item) => (
+          <NavLink key={item.to} to={item.to}>
+            <item.icon size={21} strokeWidth={1.8} />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+  )
+}

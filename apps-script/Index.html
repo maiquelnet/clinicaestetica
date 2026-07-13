@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">TS</span>
+          <div>
+            <strong>Thais Schneider</strong>
+            <small>Painel administrativo</small>
+          </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="Navegação do painel">
+          <button class="tab-button primary-tab is-active" type="button" data-view-target="dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            Painel
+          </button>
+          <button class="tab-button primary-tab" type="button" data-view-target="services">
+            <i data-lucide="sparkles"></i>
+            Serviços
+          </button>
+          <button class="tab-button primary-tab" type="button" data-view-target="clients">
+            <i data-lucide="users"></i>
+            Clientes
+          </button>
+          <button class="tab-button primary-tab" type="button" data-view-target="appointments">
+            <i data-lucide="calendar-days"></i>
+            Agenda
+          </button>
+          <button class="tab-button mobile-more-toggle" type="button" id="mobile-more-button" aria-expanded="false" aria-controls="mobile-more-menu">
+            <i data-lucide="ellipsis"></i>
+            Mais
+          </button>
+          <div class="mobile-more-menu" id="mobile-more-menu">
+            <button class="tab-button secondary-tab" type="button" data-view-target="messages">
+              <i data-lucide="message-circle"></i>
+              Mensagens
+            </button>
+            <button class="tab-button secondary-tab" type="button" data-view-target="campaigns">
+              <i data-lucide="megaphone"></i>
+              Campanha
+            </button>
+            <button class="tab-button secondary-tab" type="button" data-view-target="finance">
+              <i data-lucide="wallet"></i>
+              Financeiro
+            </button>
+            <button class="tab-button secondary-tab" type="button" data-view-target="settings">
+              <i data-lucide="settings"></i>
+              Ajustes
+            </button>
+          </div>
+          <button class="tab-button desktop-secondary-tab" type="button" data-view-target="messages">
+            <i data-lucide="message-circle"></i>
+            Mensagens
+          </button>
+          <button class="tab-button desktop-secondary-tab" type="button" data-view-target="campaigns">
+            <i data-lucide="megaphone"></i>
+            Campanha
+          </button>
+          <button class="tab-button desktop-secondary-tab" type="button" data-view-target="finance">
+            <i data-lucide="wallet"></i>
+            Financeiro
+          </button>
+          <button class="tab-button desktop-secondary-tab" type="button" data-view-target="settings">
+            <i data-lucide="settings"></i>
+            Ajustes
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="clinic-name">Thais Schneider Estética</p>
+            <h1 id="view-title">Painel</h1>
+          </div>
+          <button class="icon-button" type="button" id="refresh-button" aria-label="Atualizar painel" title="Atualizar painel">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </header>
+
+        <div class="loading-state" id="loading-state">
+          <span class="loader"></span>
+          Carregando painel...
+        </div>
+
+        <section class="view is-active" id="view-dashboard" aria-labelledby="dashboard-title">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2>Calendário de hoje</h2>
+                <p class="muted">Linha do tempo dos atendimentos do dia.</p>
+              </div>
+            </div>
+            <div id="dashboard-calendar" class="timeline-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 id="dashboard-title">Mensagens pendentes</h2>
+                <p class="muted">Alertas gerados pelas regras de atendimento.</p>
+              </div>
+            </div>
+            <div id="alerts-list" class="stack-list"></div>
+          </section>
+
+          <div class="metric-grid">
+            <article class="metric">
+              <span>Clientes ativos</span>
+              <strong id="metric-clients">0</strong>
+            </article>
+            <article class="metric">
+              <span>Serviços ativos</span>
+              <strong id="metric-services">0</strong>
+            </article>
+            <article class="metric urgent">
+              <span>Mensagens pendentes</span>
+              <strong id="metric-alerts">0</strong>
+            </article>
+          </div>
+
+          <div class="two-column">
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Horários de hoje</h2>
+              </div>
+              <div id="today-list" class="compact-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Horários de amanhã</h2>
+              </div>
+              <div id="tomorrow-list" class="compact-list"></div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Aniversariantes do dia</h2>
+            </div>
+            <div id="birthday-list" class="compact-list"></div>
+          </section>
+        </section>
+
+        <section class="view" id="view-services" aria-labelledby="services-title">
+          <div class="stacked-layout">
+            <form class="panel form-panel" id="service-form">
+              <div class="panel-header">
+                <h2 id="services-title">Serviço</h2>
+                <button class="ghost-button" type="button" data-reset-form="service-form">
+                  <i data-lucide="eraser"></i>
+                  Limpar
+                </button>
+              </div>
+              <input type="hidden" name="id">
+              <label>
+                Nome
+                <input name="nome" type="text" required>
+              </label>
+              <label>
+                Categoria
+                <select name="categoria">
+                  <option value="">Selecione</option>
+                  <option value="Depilação">Depilação</option>
+                  <option value="Procedimentos">Procedimentos</option>
+                  <option value="Micropigmentação">Micropigmentação</option>
+                  <option value="Maquiagem">Maquiagem</option>
+                </select>
+              </label>
+              <label>
+                Descrição
+                <textarea name="descricao" rows="3"></textarea>
+              </label>
+              <div class="form-grid">
+                <label>
+                  Duração
+                  <input name="duracao_minutos" type="number" min="1" step="1" value="60" required>
+                </label>
+                <label>
+                  Valor
+                  <input name="valor" type="text" inputmode="decimal" placeholder="150,00">
+                </label>
+              </div>
+              <label class="check-row">
+                <input name="preco_sob_consulta" type="checkbox">
+                Preço sob avaliação
+              </label>
+              <label>
+                Observação do preço
+                <input name="observacao_preco" type="text" placeholder="ex.: ou 2x R$ 300,00 / 3x R$ 210,00">
+              </label>
+              <label>
+                Início do valor
+                <input name="inicio_validade" type="date">
+              </label>
+              <label class="check-row edit-only-field">
+                <input name="ativo" type="checkbox" checked>
+                Serviço ativo
+              </label>
+              <button class="primary-button" type="submit">
+                <i data-lucide="save"></i>
+                Salvar serviço
+              </button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Serviços cadastrados</h2>
+              </div>
+              <div id="services-list" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-clients" aria-labelledby="clients-title">
+          <div class="stacked-layout">
+            <form class="panel form-panel" id="client-form">
+              <div class="panel-header">
+                <h2 id="clients-title">Cliente</h2>
+                <button class="ghost-button" type="button" data-reset-form="client-form">
+                  <i data-lucide="eraser"></i>
+                  Limpar
+                </button>
+              </div>
+              <input type="hidden" name="id">
+              <label>
+                Nome
+                <input name="nome" type="text" required>
+              </label>
+              <label>
+                Telefone
+                <input name="telefone" type="tel" required>
+              </label>
+              <label>
+                Email
+                <input name="email" type="email">
+              </label>
+              <label>
+                Data de nascimento
+                <input name="data_nascimento" type="date">
+              </label>
+              <label>
+                Observações
+                <textarea name="observacoes" rows="3"></textarea>
+              </label>
+              <label class="check-row edit-only-field">
+                <input name="ativo" type="checkbox" checked>
+                Cliente ativo
+              </label>
+              <button class="primary-button" type="submit">
+                <i data-lucide="save"></i>
+                Salvar cliente
+              </button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Clientes cadastrados</h2>
+              </div>
+              <div id="clients-list" class="stack-list"></div>
+              <div id="clients-summary" class="summary-footer"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-appointments" aria-labelledby="appointments-title">
+          <div class="stacked-layout">
+            <div class="mobile-date-strip" id="appointments-mobile-dates" aria-label="Dias da semana"></div>
+            <form class="panel form-panel" id="appointment-form">
+              <div class="panel-header">
+                <h2 id="appointments-title">Agendamento</h2>
+                <button class="ghost-button" type="button" data-reset-form="appointment-form">
+                  <i data-lucide="eraser"></i>
+                  Limpar
+                </button>
+              </div>
+              <input type="hidden" name="id">
+              <label>
+                Cliente
+                <select name="cliente_id" required></select>
+              </label>
+              <label>
+                Serviço
+                <select name="servico_id" required></select>
+              </label>
+              <label>
+                Início
+                <input name="data_inicio" type="datetime-local" required>
+              </label>
+              <label>
+                Fim
+                <input name="data_fim" type="datetime-local">
+              </label>
+              <div class="form-grid">
+                <label>
+                  Valor aplicado
+                  <input name="valor_aplicado" type="text" inputmode="decimal">
+                </label>
+                <label class="edit-only-field">
+                  Status
+                  <select name="status">
+                    <option value="agendado">Agendado</option>
+                    <option value="concluido">Concluído</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Observações
+                <textarea name="observacoes" rows="3"></textarea>
+              </label>
+              <button class="primary-button" type="submit">
+                <i data-lucide="calendar-plus"></i>
+                Salvar agendamento
+              </button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Agendamentos</h2>
+              </div>
+              <div id="appointments-list" class="stack-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Calendário visual do dia</h2>
+              </div>
+              <div id="appointments-day-calendar" class="timeline-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-messages" aria-labelledby="messages-title">
+          <div class="stacked-layout">
+            <form class="panel form-panel" id="message-form">
+              <div class="panel-header">
+                <h2 id="messages-title">Modelo de mensagem</h2>
+                <button class="ghost-button" type="button" data-reset-form="message-form">
+                  <i data-lucide="eraser"></i>
+                  Limpar
+                </button>
+              </div>
+              <input type="hidden" name="id">
+              <div class="form-grid">
+                <label>
+                  Nome
+                  <input name="nome" type="text" required>
+                </label>
+                <label>
+                  Tipo
+                  <input name="tipo" type="text" required placeholder="ex.: lembrete_agendamento">
+                </label>
+              </div>
+              <label>
+                Texto da mensagem
+                <textarea name="texto" rows="6" required></textarea>
+              </label>
+              <div class="form-grid four">
+                <label>
+                  Regra
+                  <select name="regra_tipo">
+                    <option value="manual">Manual</option>
+                    <option value="agendamento_criado">Agendamento criado</option>
+                    <option value="inicio_agendamento">Início do agendamento</option>
+                    <option value="aniversario">Aniversário</option>
+                    <option value="ultimo_agendamento">Último agendamento</option>
+                  </select>
+                </label>
+                <label>
+                  Tempo
+                  <input name="regra_quantidade" type="number" min="0" step="1">
+                </label>
+                <label>
+                  Unidade
+                  <select name="regra_unidade">
+                    <option value="">Sem tempo</option>
+                    <option value="horas">Horas</option>
+                    <option value="dias">Dias</option>
+                  </select>
+                </label>
+                <label>
+                  Direção
+                  <select name="regra_direcao">
+                    <option value="">Sem direção</option>
+                    <option value="antes">Antes</option>
+                    <option value="depois">Depois</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-grid">
+                <label>
+                  Prioridade
+                  <input name="prioridade" type="number" min="1" step="1" value="9">
+                </label>
+                <label class="check-row edit-only-field">
+                  <input name="ativo" type="checkbox" checked>
+                  Modelo ativo
+                </label>
+              </div>
+              <button class="primary-button" type="submit">
+                <i data-lucide="save"></i>
+                Salvar modelo
+              </button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Modelos cadastrados</h2>
+              </div>
+              <div id="messages-list" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-campaigns" aria-labelledby="campaigns-title">
+          <div class="stacked-layout">
+            <form class="panel form-panel" id="campaign-form">
+              <div class="panel-header">
+                <h2 id="campaigns-title">Campanha / promoção</h2>
+                <button class="ghost-button" type="button" data-reset-form="campaign-form">
+                  <i data-lucide="eraser"></i>
+                  Limpar
+                </button>
+              </div>
+              <label>
+                Título
+                <input name="titulo" type="text" placeholder="ex.: Promoção de limpeza de pele">
+              </label>
+              <label>
+                Mensagem
+                <textarea name="mensagem" rows="5" required placeholder="Olá, {nome}! Tenho uma condição especial disponível para {campanha}."></textarea>
+              </label>
+              <label>
+                Clientes
+                <select name="cliente_ids" multiple size="8"></select>
+              </label>
+              <button class="primary-button" type="submit">
+                <i data-lucide="megaphone"></i>
+                Criar lista de envio
+              </button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Listas de envio</h2>
+              </div>
+              <div id="campaigns-list" class="stack-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-finance" aria-labelledby="finance-title">
+          <div class="metric-grid">
+            <article class="metric">
+              <span>Total atendido</span>
+              <strong id="finance-total">R$ 0,00</strong>
+            </article>
+            <article class="metric">
+              <span>Ticket médio</span>
+              <strong id="finance-ticket">R$ 0,00</strong>
+            </article>
+            <article class="metric">
+              <span>Valor previsto</span>
+              <strong id="finance-future">R$ 0,00</strong>
+            </article>
+          </div>
+
+          <div class="two-column">
+            <section class="panel">
+              <div class="panel-header">
+                <h2 id="finance-title">Faturamento por mês</h2>
+              </div>
+              <div id="finance-months" class="compact-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>Faturamento por dia</h2>
+              </div>
+              <div id="finance-days" class="compact-list"></div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Atendimentos por serviço</h2>
+            </div>
+            <div id="finance-services" class="compact-list"></div>
+          </section>
+        </section>
+
+        <section class="view" id="view-settings" aria-labelledby="settings-title">
+          <form class="panel form-panel wide" id="settings-form">
+            <div class="panel-header">
+              <h2 id="settings-title">Ajustes</h2>
+            </div>
+            <label>
+              Nome da clínica
+              <input name="nome_clinica" type="text">
+            </label>
+            <label>
+              Link de avaliação Google
+              <input name="link_avaliacao_google" type="url">
+            </label>
+            <label>
+              ID do calendário Google
+              <input name="calendario_padrao_id" type="text">
+            </label>
+            <label>
+              Emails administradores
+              <input name="admin_emails" type="text">
+            </label>
+            <button class="primary-button" type="submit">
+              <i data-lucide="save"></i>
+              Salvar ajustes
+            </button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <?!= include('Client'); ?>
+  </body>
+</html>

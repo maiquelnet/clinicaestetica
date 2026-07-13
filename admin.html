@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Painel Administrativo | Thais Schneider Estética</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta
+      name="description"
+      content="Acesso ao painel administrativo da Thais Schneider Estética."
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="admin-page">
+    <header class="admin-header">
+      <a class="brand" href="index.html" aria-label="Voltar para Thais Schneider Estética">
+        <span class="brand-mark">TS</span>
+        <span>
+          <strong>Thais Schneider</strong>
+          <small>Estética</small>
+        </span>
+      </a>
+
+      <a class="button primary" href="http://localhost:5173/" target="_blank" rel="noreferrer">
+        <i data-lucide="external-link"></i>
+        Abrir novo painel
+      </a>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-intro" aria-labelledby="admin-title">
+        <div>
+          <p class="eyebrow">Área restrita</p>
+          <h1 id="admin-title">Painel administrativo</h1>
+          <p>
+            O novo painel usa Supabase Auth e roda localmente pelo app React. Para abrir,
+            execute <strong>npm run dev</strong> dentro da pasta <strong>app</strong>.
+          </p>
+        </div>
+        <a class="button secondary" href="index.html">
+          <i data-lucide="arrow-left"></i>
+          Voltar para a vitrine
+        </a>
+      </section>
+
+      <section class="admin-link-grid" aria-label="Opções de acesso">
+        <article>
+          <span class="icon-badge"><i data-lucide="shield-check"></i></span>
+          <h2>Novo painel Supabase</h2>
+          <p>Login por e-mail e senha, contexto da clínica, clientes, serviços e agenda.</p>
+          <a class="button primary" href="http://localhost:5173/" target="_blank" rel="noreferrer">
+            Abrir em localhost
+          </a>
+        </article>
+        <article>
+          <span class="icon-badge"><i data-lucide="history"></i></span>
+          <h2>Painel legado</h2>
+          <p>Fallback temporário em Google Apps Script enquanto a migração é validada.</p>
+          <a
+            class="button secondary"
+            href="https://script.google.com/macros/s/AKfycbx3s1gFxYEBpqNagFKY2BU0QmZ2UUCGUJRn-4nfq11AtbXhsqyu4X4imei1iT5ecvzo/exec"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Abrir legado
+          </a>
+        </article>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

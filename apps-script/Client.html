@@ -1,0 +1,990 @@
+<script>
+  const app = {
+    state: null,
+    currentView: 'dashboard',
+    preparedMessage: null,
+    busy: false,
+  };
+
+  const viewTitles = {
+    dashboard: 'Painel',
+    services: 'Serviços',
+    clients: 'Clientes',
+    appointments: 'Agenda',
+    messages: 'Mensagens',
+    campaigns: 'Campanha',
+    finance: 'Financeiro',
+    settings: 'Ajustes',
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    loadState();
+    refreshIcons();
+  });
+
+  function bindEvents() {
+    document.querySelectorAll('[data-view-target]').forEach((button) => {
+      button.addEventListener('click', () => switchView(button.dataset.viewTarget));
+    });
+
+    document.getElementById('mobile-more-button').addEventListener('click', toggleMobileMoreMenu);
+    document.getElementById('refresh-button').addEventListener('click', loadState);
+    document.getElementById('service-form').addEventListener('submit', handleServiceSubmit);
+    document.getElementById('client-form').addEventListener('submit', handleClientSubmit);
+    document.getElementById('appointment-form').addEventListener('submit', handleAppointmentSubmit);
+    document.getElementById('settings-form').addEventListener('submit', handleSettingsSubmit);
+    document.getElementById('message-form').addEventListener('submit', handleMessageTemplateSubmit);
+    document.getElementById('campaign-form').addEventListener('submit', handleCampaignSubmit);
+
+    document.querySelectorAll('[data-reset-form]').forEach((button) => {
+      button.addEventListener('click', () => resetForm(button.dataset.resetForm));
+    });
+
+    document.body.addEventListener('click', handleActionClick);
+  }
+
+  function callServer(method, ...args) {
+    return new Promise((resolve, reject) => {
+      const runner = google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject);
+      runner[method](...args);
+    });
+  }
+
+  async function loadState() {
+    setLoading(true);
+    try {
+      app.state = await callServer('getInitialData');
+      renderAll();
+      showToast('Painel atualizado.');
+    } catch (error) {
+      showToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleServiceSubmit(event) {
+    event.preventDefault();
+    await saveWithState('saveService', formToObject(event.currentTarget), 'Serviço salvo.');
+    resetForm('service-form');
+  }
+
+  async function handleClientSubmit(event) {
+    event.preventDefault();
+    await saveWithState('saveClient', formToObject(event.currentTarget), 'Cliente salvo.');
+    resetForm('client-form');
+  }
+
+  async function handleAppointmentSubmit(event) {
+    event.preventDefault();
+    await saveWithState('saveAppointment', formToObject(event.currentTarget), 'Agendamento salvo e sincronizado.');
+    resetForm('appointment-form');
+  }
+
+  async function handleSettingsSubmit(event) {
+    event.preventDefault();
+    await saveWithState('saveConfig', formToObject(event.currentTarget), 'Ajustes salvos.');
+  }
+
+  async function handleMessageTemplateSubmit(event) {
+    event.preventDefault();
+    await saveWithState('saveMessageTemplate', formToObject(event.currentTarget), 'Modelo de mensagem salvo.');
+    resetForm('message-form');
+  }
+
+  async function handleCampaignSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = formToObject(form);
+    payload.cliente_ids = Array.from(form.elements.cliente_ids.selectedOptions).map((option) => option.value);
+    if (!payload.cliente_ids.length) {
+      showToast('Selecione pelo menos uma cliente para a campanha.');
+      return;
+    }
+    await saveWithState('saveCampaign', payload, 'Lista de campanha criada.');
+    resetForm('campaign-form');
+  }
+
+  async function saveWithState(method, payload, message) {
+    setLoading(true);
+    try {
+      app.state = await callServer(method, payload);
+      renderAll();
+      showToast(message);
+    } catch (error) {
+      showToast(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleActionClick(event) {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    if (app.busy && !['edit-service', 'edit-client', 'edit-appointment', 'edit-message-template', 'open-whatsapp'].includes(button.dataset.action)) return;
+
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+
+    if (action === 'edit-service') {
+      fillServiceForm(app.state.services.find((service) => service.id === id));
+      switchView('services');
+      return;
+    }
+
+    if (action === 'edit-client') {
+      fillClientForm(app.state.clients.find((client) => client.id === id));
+      switchView('clients');
+      return;
+    }
+
+    if (action === 'edit-appointment') {
+      fillAppointmentForm(app.state.appointments.find((appointment) => appointment.id === id));
+      switchView('appointments');
+      return;
+    }
+
+    if (action === 'edit-message-template') {
+      fillMessageTemplateForm(app.state.messageTemplates.find((template) => template.id === id));
+      switchView('messages');
+      return;
+    }
+
+    if (action === 'message-client') {
+      switchView('campaigns');
+      renderCampaignClientOptions();
+      const select = document.querySelector('#campaign-form [name="cliente_ids"]');
+      Array.from(select.options).forEach((option) => {
+        option.selected = option.value === id;
+      });
+      return;
+    }
+
+    if (action === 'open-whatsapp') {
+      openWhatsApp(button.dataset.url);
+      return;
+    }
+
+    if (action === 'mark-alert') {
+      const alert = app.state.alerts.find((item) => item.id === id);
+      if (!alert) return;
+      await saveWithState('recordMessageSent', {
+        cliente_id: alert.cliente_id,
+        agendamento_id: alert.agendamento_id,
+        tipo: alert.tipo,
+        ciclo: alert.ciclo,
+        texto: alert.texto,
+      }, 'Mensagem registrada como enviada.');
+      return;
+    }
+
+    if (action === 'dismiss-alert') {
+      const alert = app.state.alerts.find((item) => item.id === id);
+      if (!alert) return;
+      await saveWithState('dismissAlert', {
+        cliente_id: alert.cliente_id,
+        agendamento_id: alert.agendamento_id,
+        tipo: alert.tipo,
+        ciclo: alert.ciclo,
+      }, 'Pendência excluída do painel.');
+      return;
+    }
+
+    if (action === 'archive-service') {
+      if (!confirm('Arquivar este serviço? O histórico será preservado.')) return;
+      await saveWithState('archiveService', id, 'Serviço arquivado.');
+      return;
+    }
+
+    if (action === 'archive-client') {
+      if (!confirm('Arquivar esta cliente? O histórico será preservado.')) return;
+      await saveWithState('archiveClient', id, 'Cliente arquivada.');
+      return;
+    }
+
+    if (action === 'archive-appointment') {
+      if (!confirm('Cancelar este agendamento? O evento vinculado será removido quando possível.')) return;
+      await saveWithState('archiveAppointment', id, 'Agendamento cancelado.');
+      return;
+    }
+
+    if (action === 'archive-message-template') {
+      if (!confirm('Arquivar este modelo de mensagem?')) return;
+      await saveWithState('archiveMessageTemplate', id, 'Modelo arquivado.');
+      return;
+    }
+
+    if (action === 'archive-campaign') {
+      if (!confirm('Arquivar esta campanha?')) return;
+      await saveWithState('archiveCampaign', id, 'Campanha arquivada.');
+      return;
+    }
+
+    if (action === 'mark-campaign-message') {
+      await saveWithState('recordCampaignMessageSent', {
+        campanha_id: button.dataset.campaignId,
+        destinatario_id: button.dataset.recipientId,
+        cliente_id: button.dataset.clientId,
+        texto: button.dataset.text,
+      }, 'Envio de campanha registrado.');
+    }
+  }
+
+  function renderAll() {
+    if (!app.state) return;
+
+    document.getElementById('clinic-name').textContent = app.state.config.nome_clinica || 'Thais Schneider Estética';
+    renderMetrics();
+    renderDashboardCalendar();
+    renderAlerts();
+    renderAppointmentShortLists();
+    renderServices();
+    renderClients();
+    renderAppointments();
+    renderMessages();
+    renderCampaigns();
+    renderFinance();
+    renderAppointmentFormSelects();
+    renderCampaignClientOptions();
+    renderMobileDateStrip();
+    renderSettings();
+    initializeFormModes();
+    refreshIcons();
+  }
+
+  function renderMetrics() {
+    document.getElementById('metric-clients').textContent = app.state.dashboard.total_clientes;
+    document.getElementById('metric-services').textContent = app.state.dashboard.total_servicos;
+    document.getElementById('metric-alerts').textContent = app.state.dashboard.mensagens_pendentes;
+  }
+
+  function initializeFormModes() {
+    ['service-form', 'client-form', 'appointment-form', 'message-form', 'campaign-form'].forEach((formId) => {
+      const form = document.getElementById(formId);
+      if (form && !(form.elements.id && form.elements.id.value)) setFormMode(form, false);
+    });
+  }
+
+  function renderAlerts() {
+    const container = document.getElementById('alerts-list');
+    if (!app.state.alerts.length) {
+      container.innerHTML = emptyState('Nenhuma mensagem pendente.');
+      return;
+    }
+
+    const groups = groupAlertsByClient(app.state.alerts);
+    container.innerHTML = groups.map((group) => `
+      <section class="client-alert-group">
+        <div class="group-header">
+          <h3>${escapeHtml(group.cliente_nome)}</h3>
+          <span>Última mensagem: ${formatLastMessage(group.ultima_mensagem)}</span>
+        </div>
+        ${group.alerts.map((alert) => `
+          <article class="record alert-record">
+            <div class="record-header">
+              <div>
+                <h4 class="record-title">${escapeHtml(alert.tipo_label)}</h4>
+                <div class="record-meta">
+                  <span class="badge danger">Não enviada</span>
+                  <span>Venceu em ${formatDateTime(alert.data_vencimento)}</span>
+                  ${alert.servico_nome ? `<span>${escapeHtml(alert.servico_nome)}</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <p class="message-preview">${escapeHtml(alert.texto)}</p>
+            <div class="record-actions">
+              <button class="primary-button" type="button" data-action="open-whatsapp" data-url="${escapeAttr(alert.whatsapp_url)}">
+                <i data-lucide="send"></i>
+                WhatsApp
+              </button>
+              <button class="success-button" type="button" data-action="mark-alert" data-id="${escapeAttr(alert.id)}">
+                <i data-lucide="check"></i>
+                Marcar enviada
+              </button>
+              <button class="danger-button" type="button" data-action="dismiss-alert" data-id="${escapeAttr(alert.id)}">
+                <i data-lucide="trash-2"></i>
+                Excluir pendência
+              </button>
+            </div>
+          </article>
+        `).join('')}
+      </section>
+    `).join('');
+  }
+
+  function renderDashboardCalendar() {
+    renderTimeline('dashboard-calendar', app.state.dashboard.agenda_visual || []);
+  }
+
+  function renderMobileDateStrip() {
+    const container = document.getElementById('appointments-mobile-dates');
+    if (!container) return;
+
+    const labels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 2);
+
+    container.innerHTML = Array.from({ length: 7 }).map((_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const isToday = date.toDateString() === today.toDateString();
+      return `
+        <button class="date-pill ${isToday ? 'is-active' : ''}" type="button">
+          <span>${labels[date.getDay()]}</span>
+          <strong>${String(date.getDate()).padStart(2, '0')}</strong>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function renderAppointmentShortLists() {
+    renderCompactAppointments('today-list', app.state.dashboard.hoje);
+    renderCompactAppointments('tomorrow-list', app.state.dashboard.amanha);
+    renderBirthdays();
+  }
+
+  function renderCompactAppointments(targetId, appointments) {
+    const container = document.getElementById(targetId);
+    if (!appointments.length) {
+      container.innerHTML = emptyState('Nenhum horário.');
+      return;
+    }
+
+    container.innerHTML = appointments.map((appointment) => `
+      <article class="record appointment-record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(appointment.cliente_nome)}</h3>
+            <div class="record-meta">
+              <span>${formatDateTime(appointment.data_inicio)}</span>
+              <span>${escapeHtml(appointment.servico_nome)}</span>
+              <span class="badge">${escapeHtml(appointment.status || 'agendado')}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderBirthdays() {
+    const container = document.getElementById('birthday-list');
+    const clients = app.state.dashboard.aniversariantes || [];
+    if (!clients.length) {
+      container.innerHTML = emptyState('Nenhum aniversário hoje.');
+      return;
+    }
+
+    container.innerHTML = clients.map((client) => `
+      <article class="record appointment-record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(client.nome)}</h3>
+            <div class="record-meta">
+              <span>${escapeHtml(client.telefone || '')}</span>
+              <span>Aniversário: ${formatDateOnly(client.data_nascimento)}</span>
+              <span>Última mensagem: ${formatLastMessage(client.ultima_mensagem)}</span>
+            </div>
+          </div>
+          <button class="secondary-button" type="button" data-action="message-client" data-id="${escapeAttr(client.id)}">
+            <i data-lucide="message-circle"></i>
+            Mensagem
+          </button>
+          <button class="danger-button" type="button" data-action="archive-client" data-id="${escapeAttr(client.id)}">
+            <i data-lucide="archive"></i>
+            Excluir
+          </button>
+        </div>
+      </article>
+    `).join('');
+
+    const active = app.state.clients.filter((client) => isTrue(client.ativo)).length;
+    document.getElementById('clients-summary').innerHTML = `
+      <span>Total: ${app.state.clients.length}</span>
+      <span>Ativas: ${active}</span>
+      <span>Arquivadas: ${app.state.clients.length - active}</span>
+    `;
+  }
+
+  function renderServices() {
+    const container = document.getElementById('services-list');
+    if (!app.state.services.length) {
+      container.innerHTML = emptyState('Nenhum serviço cadastrado.');
+      return;
+    }
+
+    container.innerHTML = app.state.services.map((service) => `
+      <article class="record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(service.nome)}</h3>
+            <div class="record-meta">
+              ${service.categoria ? `<span>${escapeHtml(service.categoria)}</span>` : ''}
+              <span>${Number(service.duracao_minutos || 0)} min</span>
+              <span>${formatServicePrice(service)}</span>
+              <span class="badge ${isTrue(service.ativo) ? 'success' : 'warning'}">${isTrue(service.ativo) ? 'Ativo' : 'Inativo'}</span>
+            </div>
+          </div>
+          <div class="record-actions">
+            <button class="ghost-button" type="button" data-action="edit-service" data-id="${escapeAttr(service.id)}">
+              <i data-lucide="pencil"></i>
+              Editar
+            </button>
+            <button class="danger-button" type="button" data-action="archive-service" data-id="${escapeAttr(service.id)}">
+              <i data-lucide="archive"></i>
+              Excluir
+            </button>
+          </div>
+        </div>
+        ${service.descricao ? `<p class="muted">${escapeHtml(service.descricao)}</p>` : ''}
+        ${service.observacao_preco ? `<p class="muted">${escapeHtml(service.observacao_preco)}</p>` : ''}
+        ${renderPriceHistory(service.historico_precos || [])}
+      </article>
+    `).join('');
+  }
+
+  function renderPriceHistory(history) {
+    if (!history.length) return '';
+
+    return `
+      <ul class="price-history">
+        ${history.map((price) => `
+          <li>${formatMoney(price.valor)} · ${formatDateOnly(price.inicio_validade)}${price.fim_validade ? ` até ${formatDateOnly(price.fim_validade)}` : ' · atual'}</li>
+        `).join('')}
+      </ul>
+    `;
+  }
+
+  function renderClients() {
+    const container = document.getElementById('clients-list');
+    if (!app.state.clients.length) {
+      container.innerHTML = emptyState('Nenhum cliente cadastrado.');
+      return;
+    }
+
+    container.innerHTML = app.state.clients.map((client) => `
+      <article class="record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(client.nome)}</h3>
+            <div class="record-meta">
+              <span>${escapeHtml(client.telefone)}</span>
+              ${client.data_nascimento ? `<span>Aniversário: ${formatDateOnly(client.data_nascimento)}</span>` : ''}
+              <span>Última mensagem: ${formatLastMessage(client.ultima_mensagem)}</span>
+              <span class="badge ${isTrue(client.ativo) ? 'success' : 'warning'}">${isTrue(client.ativo) ? 'Ativo' : 'Inativo'}</span>
+            </div>
+          </div>
+        </div>
+        ${client.observacoes ? `<p class="muted">${escapeHtml(client.observacoes)}</p>` : ''}
+        <div class="record-actions">
+          <button class="ghost-button" type="button" data-action="edit-client" data-id="${escapeAttr(client.id)}">
+            <i data-lucide="pencil"></i>
+            Editar
+          </button>
+          <button class="secondary-button" type="button" data-action="message-client" data-id="${escapeAttr(client.id)}">
+            <i data-lucide="message-circle"></i>
+            Mensagem
+          </button>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderAppointments() {
+    const container = document.getElementById('appointments-list');
+    if (!app.state.appointments.length) {
+      container.innerHTML = emptyState('Nenhum agendamento cadastrado.');
+      return;
+    }
+
+    container.innerHTML = app.state.appointments.map((appointment) => `
+      <article class="record appointment-record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(appointment.cliente_nome)}</h3>
+            <div class="record-meta">
+              <span>${formatDateTime(appointment.data_inicio)}</span>
+              <span>${escapeHtml(appointment.servico_nome)}</span>
+              <span>${formatMoney(appointment.valor_aplicado)}</span>
+              <span class="badge">${escapeHtml(appointment.status || 'agendado')}</span>
+            </div>
+          </div>
+          <div class="record-actions">
+            <button class="ghost-button" type="button" data-action="edit-appointment" data-id="${escapeAttr(appointment.id)}">
+              <i data-lucide="pencil"></i>
+              Editar
+            </button>
+            <button class="danger-button" type="button" data-action="archive-appointment" data-id="${escapeAttr(appointment.id)}">
+              <i data-lucide="archive"></i>
+              Excluir
+            </button>
+          </div>
+        </div>
+        ${appointment.observacoes ? `<p class="muted">${escapeHtml(appointment.observacoes)}</p>` : ''}
+      </article>
+    `).join('');
+
+    renderTimeline('appointments-day-calendar', app.state.dashboard.agenda_visual || []);
+  }
+
+  function renderMessages() {
+    const container = document.getElementById('messages-list');
+    if (!app.state.messageTemplates.length) {
+      container.innerHTML = emptyState('Nenhum modelo cadastrado.');
+      return;
+    }
+
+    container.innerHTML = app.state.messageTemplates.map((template) => `
+      <article class="record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(template.nome)}</h3>
+            <div class="record-meta">
+              <span>${escapeHtml(template.tipo)}</span>
+              ${formatRule(template) ? `<span>${formatRule(template)}</span>` : ''}
+              <span>Prioridade ${Number(template.prioridade || 9)}</span>
+              <span class="badge ${isTrue(template.ativo) ? 'success' : 'warning'}">${isTrue(template.ativo) ? 'Ativo' : 'Arquivado'}</span>
+            </div>
+          </div>
+        </div>
+        <p class="message-preview">${escapeHtml(template.texto)}</p>
+        <div class="record-actions">
+          <button class="ghost-button" type="button" data-action="edit-message-template" data-id="${escapeAttr(template.id)}">
+            <i data-lucide="pencil"></i>
+            Editar
+          </button>
+          <button class="danger-button" type="button" data-action="archive-message-template" data-id="${escapeAttr(template.id)}">
+            <i data-lucide="archive"></i>
+            Excluir
+          </button>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderCampaigns() {
+    const container = document.getElementById('campaigns-list');
+    const campaigns = app.state.campaigns || [];
+    if (!campaigns.length) {
+      container.innerHTML = emptyState('Nenhuma campanha criada.');
+      return;
+    }
+
+    container.innerHTML = campaigns.map((campaign) => `
+      <article class="record">
+        <div class="record-header">
+          <div>
+            <h3 class="record-title">${escapeHtml(campaign.titulo)}</h3>
+            <div class="record-meta">
+              <span class="badge ${campaign.status === 'ativa' ? 'success' : 'warning'}">${escapeHtml(campaign.status)}</span>
+              <span>${(campaign.destinatarios || []).length} clientes</span>
+            </div>
+          </div>
+          <button class="danger-button" type="button" data-action="archive-campaign" data-id="${escapeAttr(campaign.id)}">
+            <i data-lucide="archive"></i>
+            Excluir
+          </button>
+        </div>
+        <p class="message-preview">${escapeHtml(campaign.mensagem)}</p>
+        <div class="campaign-recipient-list">
+          ${(campaign.destinatarios || []).map((recipient) => `
+            <div class="campaign-recipient">
+              <div>
+                <strong>${escapeHtml(recipient.cliente_nome)}</strong>
+                <span>${escapeHtml(recipient.status || 'pendente')}</span>
+              </div>
+              <div class="record-actions">
+                <button class="primary-button" type="button" data-action="open-whatsapp" data-url="${escapeAttr(recipient.whatsapp_url)}">
+                  <i data-lucide="send"></i>
+                  WhatsApp
+                </button>
+                <button class="success-button" type="button" data-action="mark-campaign-message" data-campaign-id="${escapeAttr(campaign.id)}" data-recipient-id="${escapeAttr(recipient.id)}" data-client-id="${escapeAttr(recipient.cliente_id)}" data-text="${escapeAttr(recipient.texto)}">
+                  <i data-lucide="check"></i>
+                  Registrar envio
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderFinance() {
+    const finance = app.state.finance || {};
+    document.getElementById('finance-total').textContent = formatMoney(finance.total_atendido);
+    document.getElementById('finance-ticket').textContent = formatMoney(finance.ticket_medio);
+    document.getElementById('finance-future').textContent = formatMoney(finance.total_previsto);
+    renderFinanceRows('finance-months', finance.por_mes || []);
+    renderFinanceRows('finance-days', finance.por_dia || []);
+    renderFinanceRows('finance-services', finance.por_servico || []);
+  }
+
+  function renderAppointmentFormSelects() {
+    fillSelect('#appointment-form [name="cliente_id"]', activeClients().map((client) => [client.id, client.nome]), 'Selecione');
+    fillSelect('#appointment-form [name="servico_id"]', activeServices().map((service) => [service.id, service.nome]), 'Selecione');
+  }
+
+  function renderCampaignClientOptions() {
+    fillSelect('#campaign-form [name="cliente_ids"]', activeClients().map((client) => [client.id, client.nome]), 'Selecione as clientes');
+  }
+
+  function renderSettings() {
+    const form = document.getElementById('settings-form');
+    form.elements.nome_clinica.value = app.state.config.nome_clinica || '';
+    form.elements.link_avaliacao_google.value = app.state.config.link_avaliacao_google || '';
+    form.elements.calendario_padrao_id.value = app.state.config.calendario_padrao_id || '';
+    form.elements.admin_emails.value = app.state.config.admin_emails || '';
+  }
+
+  function fillServiceForm(service) {
+    if (!service) return;
+    const form = document.getElementById('service-form');
+    setFormMode(form, true);
+    form.elements.id.value = service.id || '';
+    form.elements.nome.value = service.nome || '';
+    form.elements.categoria.value = service.categoria || '';
+    form.elements.descricao.value = service.descricao || '';
+    form.elements.duracao_minutos.value = service.duracao_minutos || 60;
+    form.elements.valor.value = isTrue(service.preco_sob_consulta) ? '' : service.valor_atual ? String(service.valor_atual).replace('.', ',') : '';
+    form.elements.preco_sob_consulta.checked = isTrue(service.preco_sob_consulta);
+    form.elements.observacao_preco.value = service.observacao_preco || '';
+    form.elements.inicio_validade.value = todayInputValue();
+    form.elements.ativo.checked = isTrue(service.ativo);
+  }
+
+  function fillClientForm(client) {
+    if (!client) return;
+    const form = document.getElementById('client-form');
+    setFormMode(form, true);
+    form.elements.id.value = client.id || '';
+    form.elements.nome.value = client.nome || '';
+    form.elements.telefone.value = client.telefone || '';
+    form.elements.email.value = client.email || '';
+    form.elements.data_nascimento.value = toDateInput(client.data_nascimento);
+    form.elements.observacoes.value = client.observacoes || '';
+    form.elements.ativo.checked = isTrue(client.ativo);
+  }
+
+  function fillAppointmentForm(appointment) {
+    if (!appointment) return;
+    const form = document.getElementById('appointment-form');
+    setFormMode(form, true);
+    form.elements.id.value = appointment.id || '';
+    form.elements.cliente_id.value = appointment.cliente_id || '';
+    form.elements.servico_id.value = appointment.servico_id || '';
+    form.elements.data_inicio.value = toDateTimeInput(appointment.data_inicio);
+    form.elements.data_fim.value = toDateTimeInput(appointment.data_fim);
+    form.elements.valor_aplicado.value = appointment.valor_aplicado ? String(appointment.valor_aplicado).replace('.', ',') : '';
+    form.elements.status.value = appointment.status || 'agendado';
+    form.elements.observacoes.value = appointment.observacoes || '';
+  }
+
+  function fillMessageTemplateForm(template) {
+    if (!template) return;
+    const form = document.getElementById('message-form');
+    setFormMode(form, true);
+    form.elements.id.value = template.id || '';
+    form.elements.nome.value = template.nome || '';
+    form.elements.tipo.value = template.tipo || '';
+    form.elements.texto.value = template.texto || '';
+    form.elements.regra_tipo.value = template.regra_tipo || 'manual';
+    form.elements.regra_quantidade.value = template.regra_quantidade || '';
+    form.elements.regra_unidade.value = template.regra_unidade || '';
+    form.elements.regra_direcao.value = template.regra_direcao || '';
+    form.elements.prioridade.value = template.prioridade || 9;
+    form.elements.ativo.checked = isTrue(template.ativo);
+  }
+
+  function resetForm(formId) {
+    const form = document.getElementById(formId);
+    form.reset();
+    if (form.elements.id) form.elements.id.value = '';
+    setFormMode(form, false);
+    if (form.elements.ativo) form.elements.ativo.checked = true;
+    if (formId === 'service-form') {
+      form.elements.duracao_minutos.value = 60;
+      form.elements.inicio_validade.value = todayInputValue();
+      form.elements.preco_sob_consulta.checked = false;
+    }
+    if (formId === 'message-form') {
+      form.elements.prioridade.value = 9;
+      form.elements.regra_tipo.value = 'manual';
+      form.elements.ativo.checked = true;
+    }
+  }
+
+  function setFormMode(form, isEditing) {
+    form.classList.toggle('is-editing', Boolean(isEditing));
+    form.classList.toggle('is-creating', !isEditing);
+    const title = form.querySelector('.panel-header h2');
+    if (!title) return;
+    const labels = {
+      'service-form': isEditing ? 'Editar serviço' : 'Novo serviço',
+      'client-form': isEditing ? 'Editar cliente' : 'Nova cliente',
+      'appointment-form': isEditing ? 'Editar agendamento' : 'Novo agendamento',
+      'message-form': isEditing ? 'Editar modelo' : 'Novo modelo',
+      'campaign-form': 'Campanha / promoção',
+    };
+    if (labels[form.id]) title.textContent = labels[form.id];
+  }
+
+  function formToObject(form) {
+    const data = Object.fromEntries(new FormData(form).entries());
+    Array.from(form.elements).forEach((element) => {
+      if (element.type === 'checkbox') data[element.name] = element.checked;
+    });
+    if (!data.id) {
+      if (['service-form', 'client-form', 'message-form'].includes(form.id)) {
+        data.ativo = true;
+      }
+      if (form.id === 'appointment-form') {
+        data.status = 'agendado';
+      }
+    }
+    return data;
+  }
+
+  function fillSelect(selector, options, placeholder) {
+    const select = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    const current = select.value;
+    select.innerHTML = `<option value="">${escapeHtml(placeholder || 'Selecione')}</option>` + options.map(([value, label]) => (
+      `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`
+    )).join('');
+    if (options.some(([value]) => value === current)) select.value = current;
+  }
+
+  function switchView(view) {
+    app.currentView = view;
+    document.querySelectorAll('.view').forEach((element) => {
+      element.classList.toggle('is-active', element.id === 'view-' + view);
+    });
+    document.querySelectorAll('[data-view-target]').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.viewTarget === view);
+    });
+    document.getElementById('view-title').textContent = viewTitles[view] || 'Painel';
+    closeMobileMoreMenu();
+    refreshIcons();
+  }
+
+  function toggleMobileMoreMenu() {
+    const menu = document.getElementById('mobile-more-menu');
+    const button = document.getElementById('mobile-more-button');
+    const isOpen = menu.classList.toggle('is-open');
+    button.setAttribute('aria-expanded', String(isOpen));
+  }
+
+  function closeMobileMoreMenu() {
+    const menu = document.getElementById('mobile-more-menu');
+    const button = document.getElementById('mobile-more-button');
+    if (!menu || !button) return;
+    menu.classList.remove('is-open');
+    button.setAttribute('aria-expanded', 'false');
+  }
+
+  function setLoading(isLoading) {
+    app.busy = isLoading;
+    document.getElementById('loading-state').classList.toggle('is-hidden', !isLoading);
+    document.querySelectorAll('button[type="submit"], button[data-action], #refresh-button').forEach((button) => {
+      button.disabled = isLoading;
+    });
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('is-visible');
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove('is-visible'), 3200);
+  }
+
+  function openWhatsApp(url) {
+    if (!url) {
+      showToast('Telefone não informado para WhatsApp.');
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function refreshIcons() {
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function activeClients() {
+    return (app.state.clients || []).filter((client) => isTrue(client.ativo));
+  }
+
+  function activeServices() {
+    return (app.state.services || []).filter((service) => isTrue(service.ativo));
+  }
+
+  function groupAlertsByClient(alerts) {
+    const map = alerts.reduce((groups, alert) => {
+      if (!groups[alert.cliente_id]) {
+        groups[alert.cliente_id] = {
+          cliente_nome: alert.cliente_nome,
+          ultima_mensagem: alert.ultima_mensagem,
+          nextDue: alert.data_vencimento,
+          alerts: [],
+        };
+      }
+      groups[alert.cliente_id].alerts.push(alert);
+      if (new Date(alert.data_vencimento) < new Date(groups[alert.cliente_id].nextDue)) {
+        groups[alert.cliente_id].nextDue = alert.data_vencimento;
+      }
+      return groups;
+    }, {});
+
+    return Object.values(map)
+      .map((group) => Object.assign(group, {
+        alerts: group.alerts.sort((a, b) => {
+          const due = new Date(a.data_vencimento) - new Date(b.data_vencimento);
+          return due || Number(a.prioridade || 9) - Number(b.prioridade || 9);
+        }),
+      }))
+      .sort((a, b) => new Date(a.nextDue) - new Date(b.nextDue));
+  }
+
+  function renderTimeline(targetId, appointments) {
+    const container = document.getElementById(targetId);
+    if (!container) return;
+    if (!appointments.length) {
+      container.innerHTML = emptyState('Nenhum atendimento no dia.');
+      return;
+    }
+
+    container.innerHTML = appointments.map((appointment) => `
+      <article class="timeline-item">
+        <time>${formatTimeOnly(appointment.data_inicio)}</time>
+        <div>
+          <strong>${escapeHtml(appointment.cliente_nome)}</strong>
+          <span>${escapeHtml(appointment.servico_nome)} · ${formatMoney(appointment.valor_aplicado)}</span>
+        </div>
+        <span class="badge">${escapeHtml(appointment.status || 'agendado')}</span>
+      </article>
+    `).join('');
+  }
+
+  function renderFinanceRows(targetId, rows) {
+    const container = document.getElementById(targetId);
+    if (!rows.length) {
+      container.innerHTML = emptyState('Sem dados para exibir.');
+      return;
+    }
+
+    container.innerHTML = rows.map((row) => `
+      <article class="finance-row">
+        <strong>${escapeHtml(row.label)}</strong>
+        <span>${Number(row.quantidade || 0)} atend.</span>
+        <span>${formatMoney(row.total)}</span>
+      </article>
+    `).join('');
+  }
+
+  function formatRule(template) {
+    if (!template.regra_tipo || template.regra_tipo === 'manual' || !template.regra_unidade) return '';
+    const quantity = template.regra_quantidade === '' || template.regra_quantidade === undefined ? '' : Number(template.regra_quantidade);
+    if (quantity === '') return '';
+    const direction = template.regra_direcao === 'antes' ? 'antes' : 'depois';
+    const base = {
+      agendamento_criado: 'do cadastro',
+      inicio_agendamento: 'do agendamento',
+      aniversario: 'do aniversário',
+      ultimo_agendamento: 'do último agendamento',
+    }[template.regra_tipo] || 'da regra';
+    return `${quantity} ${template.regra_unidade} ${direction} ${base}`;
+  }
+
+  function formatMessageType(type) {
+    const found = app.state.messageTypes.find((item) => item.key === type);
+    return found ? found.label : type;
+  }
+
+  function formatLastMessage(message) {
+    return message ? formatDateTime(message.data_envio) : 'sem registro';
+  }
+
+  function formatServicePrice(service) {
+    return isTrue(service.preco_sob_consulta) ? 'Sob avaliação' : formatMoney(service.valor_atual);
+  }
+
+  function formatMoney(value) {
+    return Number(value || 0).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  }
+
+  function formatDateOnly(value) {
+    if (!value) return '-';
+    const parts = String(value).slice(0, 10).split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return value;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '-';
+    const date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function formatTimeOnly(value) {
+    if (!value) return '--:--';
+    const date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return String(value).slice(11, 16);
+    return date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function toDateInput(value) {
+    return value ? String(value).slice(0, 10) : '';
+  }
+
+  function toDateTimeInput(value) {
+    return value ? String(value).slice(0, 16) : '';
+  }
+
+  function todayInputValue() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
+  function isTrue(value) {
+    return value === true || value === 'true' || value === 'TRUE' || value === 1 || value === '1';
+  }
+
+  function emptyState(text) {
+    return `<div class="empty">${escapeHtml(text)}</div>`;
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#096;');
+  }
+
+  function getErrorMessage(error) {
+    return error && error.message ? error.message : String(error || 'Erro inesperado.');
+  }
+</script>
