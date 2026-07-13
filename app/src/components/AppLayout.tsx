@@ -25,7 +25,7 @@ import { useClinic } from '../contexts/useClinic'
 const navGroups = [
   {
     label: 'Visão geral',
-    items: [{ to: '/', label: 'Início', icon: LayoutDashboard }],
+    items: [{ to: '/dashboard', label: 'Início', icon: LayoutDashboard }],
   },
   {
     label: 'Atendimento',
@@ -71,7 +71,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink className="brand-lockup" to="/">
+        <NavLink className="brand-lockup" to="/dashboard">
           <span className="brand-mark">TS</span>
           <span className="brand-copy">
             <strong>Thais Schneider</strong>
@@ -102,7 +102,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <section className="nav-section" key={group.label}>
               <span className="nav-section-label">{group.label}</span>
               {group.items.map((item) => (
-                <NavLink key={`${group.label}-${item.label}`} to={item.to} end={item.to === '/'}>
+                  <NavLink key={`${group.label}-${item.label}`} to={item.to} end={item.to === '/dashboard'}>
                   <item.icon size={18} strokeWidth={1.7} />
                   {item.label}
                 </NavLink>
@@ -119,7 +119,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       <div className="main-shell">
         <header className="topbar">
-          <NavLink className="mobile-brand" to="/">
+          <NavLink className="mobile-brand" to="/dashboard">
             <span className="brand-mark">TS</span>
           </NavLink>
           <div className="topbar-welcome">

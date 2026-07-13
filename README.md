@@ -6,6 +6,12 @@ Sistema de controle de agendamento e relacionamento com cliente voltado para cli
 
 O repositorio esta configurado para deploy pela Vercel usando o arquivo `vercel.json` na raiz.
 
+Rotas principais:
+
+- `/`: landing page publica.
+- `/login`: acesso ao painel administrativo.
+- `/dashboard`: dashboard protegido por autenticacao.
+
 Configuracao esperada:
 
 - Framework: Vite

@@ -4,6 +4,7 @@ import { ClinicProvider } from './contexts/ClinicContext'
 import { useAuth } from './contexts/useAuth'
 import { useClinic } from './contexts/useClinic'
 import { AppLayout } from './components/AppLayout'
+import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
@@ -67,7 +68,7 @@ function ClinicGate() {
     <AppLayout>
       <Suspense fallback={<FullPageStatus title="Carregando modulo" />}>
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/clientes" element={<ClientsPage />} />
           <Route path="/servicos" element={<ServicesPage />} />
           <Route path="/agenda" element={<SchedulePage />} />
@@ -85,7 +86,7 @@ function ClinicGate() {
           <Route path="/marketing/satisfacao" element={<SatisfactionPage />} />
           <Route path="/configuracoes/parametros" element={<SettingsPage />} />
           <Route path="/configuracoes/usuarios" element={<UsersPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </AppLayout>
@@ -110,9 +111,10 @@ function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route
         path="/login"
-        element={user ? <Navigate to="/" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
       <Route path="/*" element={<ProtectedApp />} />
     </Routes>
