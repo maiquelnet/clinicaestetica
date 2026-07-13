@@ -2,20 +2,22 @@
 
 ## Estado atual do projeto local
 
-O repositorio local ainda nao possui ambiente Node/React, Dockerfile ou `package.json`.
+O repositorio contem:
 
-O que existe hoje:
-
-- Site estatico que pode ser aberto diretamente no navegador.
+- Aplicacao moderna `Vite + React + TypeScript` em `app/`.
+- Site publico estatico na raiz.
 - Painel legado em Google Apps Script.
 - Servidor local de preview do Apps Script em `apps-script/local-preview-server.js`.
 - Banco Supabase remoto ja configurado.
 
 ## Pre-requisitos
 
-Para visualizar o site estatico:
+Para a aplicacao moderna:
 
-- Navegador moderno.
+- Node.js LTS.
+- npm.
+- Conta Supabase.
+- Projeto Supabase com as migrations aplicadas.
 
 Para trabalhar com Apps Script:
 
@@ -23,17 +25,73 @@ Para trabalhar com Apps Script:
 - Acesso ao Google Apps Script.
 - Permissoes para Google Sheets e Google Calendar.
 
-Para trabalhar com Supabase:
+Para manutencao Supabase via MCP/Codex:
 
-- Conta Supabase.
-- Projeto `estetica_schneider`.
-- Variavel `SUPABASE_ACCESS_TOKEN` configurada no ambiente de desenvolvimento para MCP/manutencao.
+- Variavel `SUPABASE_ACCESS_TOKEN` configurada no ambiente de desenvolvimento.
 
-Para futura aplicacao moderna:
+## Rodando o app React local
 
-- Node.js LTS.
-- npm, pnpm ou yarn.
-- Supabase CLI recomendado.
+Crie `app/.env.local` a partir de `app/.env.example`:
+
+```text
+VITE_APP_ENV=development
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publishable
+```
+
+Depois execute:
+
+```bash
+cd app
+npm ci
+npm run dev
+```
+
+Validacao local:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Publicando na Vercel
+
+O arquivo `vercel.json` na raiz define:
+
+```text
+installCommand = cd app && npm ci
+buildCommand = cd app && npm run build
+outputDirectory = app/dist
+```
+
+Configure as variaveis na Vercel separando os ambientes.
+
+Production:
+
+```text
+VITE_APP_ENV=production
+VITE_SUPABASE_URL=https://seu-projeto-producao.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publishable-producao
+```
+
+Preview:
+
+```text
+VITE_APP_ENV=preview
+VITE_SUPABASE_URL=https://seu-projeto-preview-ou-staging.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publishable-preview
+```
+
+Development/local:
+
+```text
+VITE_APP_ENV=development
+VITE_SUPABASE_URL=https://seu-projeto-dev.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publishable-dev
+```
+
+Nao publique `app/.env.local`; ele fica ignorado pelo Git.
 
 ## Rodando o site estatico
 
@@ -45,7 +103,7 @@ index.html
 
 Ou sirva a pasta com qualquer servidor estatico.
 
-Exemplo com Node, quando disponivel:
+Exemplo com Node:
 
 ```bash
 npx serve .
@@ -58,8 +116,6 @@ Existe um servidor local:
 ```text
 apps-script/local-preview-server.js
 ```
-
-Como nao ha `package.json`, a execucao depende de Node instalado globalmente.
 
 Com Node instalado:
 
@@ -80,7 +136,7 @@ Resumo:
 5. Autorize permissoes.
 6. Publique como Web App.
 
-Observacao: esta rota e considerada legado. O alvo e migrar para Supabase.
+Observacao: esta rota e considerada legado. O alvo principal do sistema agora e o app React com Supabase.
 
 ## Configurando Supabase MCP no Codex
 
@@ -113,30 +169,6 @@ Ainda nao existe Dockerfile nem docker-compose no repositorio.
 
 Recomendacao futura:
 
-- Criar app `Vite + React + TypeScript`.
-- Adicionar Dockerfile para build estatico.
+- Adicionar Dockerfile apenas se houver necessidade de empacotar o frontend fora da Vercel.
 - Adicionar docker-compose apenas se houver backend proprio local.
 - Usar Supabase remoto durante desenvolvimento ou Supabase CLI para stack local.
-
-## Proximo setup recomendado
-
-Criar estrutura:
-
-```text
-app/
-  package.json
-  src/
-    main.tsx
-    lib/supabase.ts
-    pages/
-    components/
-```
-
-Dependencias previstas:
-
-```bash
-npm create vite@latest app -- --template react-ts
-cd app
-npm install @supabase/supabase-js
-```
-

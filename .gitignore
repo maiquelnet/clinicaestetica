@@ -10,6 +10,7 @@ app/dist/
 .env.*
 !.env.example
 !app/.env.example
+!app/.env.*.example
 
 # Local logs and runtime noise
 *.log
