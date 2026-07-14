@@ -7,4 +7,9 @@ export const supabase = createClient(appEnv.supabaseUrl, appEnv.supabasePublisha
     persistSession: true,
     detectSessionInUrl: true,
   },
+  global: {
+    headers: {
+      apikey: appEnv.supabasePublishableKey,
+    },
+  },
 })
