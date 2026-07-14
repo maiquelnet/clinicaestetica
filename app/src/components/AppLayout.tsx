@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
   ChevronDown,
@@ -17,10 +18,11 @@ import {
   Users,
   Bell,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import { useClinic } from '../contexts/useClinic'
+import { buildAlerts, messagingQueryOptions } from '../lib/messaging'
 
 const navGroups = [
   {
@@ -60,13 +62,21 @@ const mobileNav = [
   { to: '/agenda', label: 'Agenda', icon: CalendarDays },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/financeiro/fluxo-caixa', label: 'Financeiro', icon: CreditCard },
-  { to: '/configuracoes/parametros', label: 'Ajustes', icon: Settings },
+  { to: '/mensagens', label: 'Mensagens', icon: MessageCircle },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { signOut, user } = useAuth()
   const { activeClinic, memberships, activeClinicId, setActiveClinicId, profile } = useClinic()
   const displayName = profile?.nome?.split(' ')[0] || 'Thais'
+  const messagingQuery = useQuery(messagingQueryOptions(activeClinicId))
+  const pendingMessageCount = useMemo(
+    () => (messagingQuery.data ? buildAlerts(messagingQuery.data).length : 0),
+    [messagingQuery.data],
+  )
+  const notificationLabel = pendingMessageCount
+    ? `${pendingMessageCount} ${pendingMessageCount === 1 ? 'mensagem pendente' : 'mensagens pendentes'}`
+    : 'Abrir controle de mensagens'
 
   return (
     <div className="app-shell">
@@ -127,10 +137,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <strong>{activeClinic?.nome_publico || activeClinic?.nome}</strong>
           </div>
           <div className="topbar-actions">
-            <button className="icon-button notification-button" type="button" aria-label="Notificações">
+            <NavLink className="icon-button notification-button" to="/mensagens" aria-label={notificationLabel}>
               <Bell size={18} />
-              <span />
-            </button>
+              {pendingMessageCount > 0 ? <span aria-hidden="true" /> : null}
+            </NavLink>
             <span className="profile-avatar" aria-label={profile?.nome || user?.email || 'Perfil'}>
               {(profile?.nome || user?.email || 'TS').slice(0, 2).toUpperCase()}
             </span>
