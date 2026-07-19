@@ -175,6 +175,6 @@ flowchart LR
 
 - Supabase Auth.
 - Supabase PostgREST via client JS.
-- Google Calendar opcional.
+- Google Calendar bidirecional por Supabase Edge Function (implementado; requer publicação e secrets OAuth).
 - Formulario publico de lista de espera/agendamento.
 - IA ainda nao definida.

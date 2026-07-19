@@ -37,6 +37,7 @@ import { EmptyState, FieldError, LoadingBlock } from '../components/Ui'
 import { useClinic } from '../contexts/useClinic'
 import { currentPrice, formatMoney, formatTime, parseCurrency, toInputDate, toInputDateTime } from '../lib/format'
 import { saveAppointment as saveAppointmentRpc } from '../lib/rpc'
+import { requestGoogleCalendarSync } from '../lib/google-calendar'
 import { supabase } from '../lib/supabase'
 import type { Appointment, AppointmentStatus, Client, Service, WaitlistEntry } from '../lib/types'
 
@@ -65,7 +66,9 @@ type ScheduleData = {
   services: Service[]
   appointments: Appointment[]
   waitlist: WaitlistEntry[]
+  blocks: CalendarBlock[]
 }
+type CalendarBlock = { id: string; titulo: string; motivo: string | null; inicio_em: string; fim_em: string; origem: string }
 type CalendarView = (typeof viewOptions)[number]['value']
 
 const defaultValues: AppointmentForm = {
@@ -81,7 +84,7 @@ const defaultValues: AppointmentForm = {
 async function fetchSchedule(clinicId: string, fromDate: string, toDate: string): Promise<ScheduleData> {
   const from = startOfDay(new Date(`${fromDate}T00:00:00`)).toISOString()
   const to = endOfDay(new Date(`${toDate}T00:00:00`)).toISOString()
-  const [clients, services, appointments, waitlist] = await Promise.all([
+  const [clients, services, appointments, waitlist, blocks] = await Promise.all([
     supabase.from('clientes').select('*').eq('clinica_id', clinicId).eq('ativo', true).is('arquivado_em', null).order('nome'),
     supabase.from('servicos').select('*,precos_servicos(*)').eq('clinica_id', clinicId).eq('ativo', true).is('arquivado_em', null).order('nome'),
     supabase
@@ -99,16 +102,20 @@ async function fetchSchedule(clinicId: string, fromDate: string, toDate: string)
       .eq('status', 'em_espera')
       .is('arquivado_em', null)
       .order('prioridade'),
+    supabase.from('bloqueios_agenda').select('id,titulo,motivo,inicio_em,fim_em,origem')
+      .eq('clinica_id', clinicId).lt('inicio_em', to).gt('fim_em', from).order('inicio_em'),
   ])
   if (clients.error) throw clients.error
   if (services.error) throw services.error
   if (appointments.error) throw appointments.error
   if (waitlist.error) throw waitlist.error
+  if (blocks.error) throw blocks.error
   return {
     clients: (clients.data || []) as Client[],
     services: (services.data || []) as Service[],
     appointments: (appointments.data || []) as Appointment[],
     waitlist: (waitlist.data || []) as WaitlistEntry[],
+    blocks: (blocks.data || []) as CalendarBlock[],
   }
 }
 
@@ -185,6 +192,10 @@ export function SchedulePage() {
     await queryClient.invalidateQueries({ queryKey: ['dashboard', activeClinicId] })
   }
 
+  const triggerCalendarSync = () => {
+    if (activeClinicId) void requestGoogleCalendarSync(activeClinicId).catch(() => undefined)
+  }
+
   const appointmentsByDayHour = useMemo(() => {
     const groups = new Map<string, Map<number, Appointment[]>>()
     for (const appointment of query.data?.appointments || []) {
@@ -203,8 +214,19 @@ export function SchedulePage() {
     return byHour ? Array.from(byHour.values()).flat() : []
   }
 
+  const blocksForDay = (day: Date) => (query.data?.blocks || []).filter((block) =>
+    new Date(block.inicio_em) < endOfDay(day) && new Date(block.fim_em) > startOfDay(day))
+
   const appointmentsForHour = (day: Date, hour: number) =>
     appointmentsByDayHour.get(format(day, 'yyyy-MM-dd'))?.get(hour) ?? []
+
+  const blocksForHour = (day: Date, hour: number) => (query.data?.blocks || []).filter((block) => {
+    const start = new Date(block.inicio_em)
+    const end = new Date(block.fim_em)
+    const slotStart = new Date(day); slotStart.setHours(hour, 0, 0, 0)
+    const slotEnd = new Date(slotStart.getTime() + 60 * 60_000)
+    return start < slotEnd && end > slotStart
+  })
 
   const saveAppointment = useMutation({
     mutationFn: async (values: AppointmentForm) => {
@@ -216,6 +238,8 @@ export function SchedulePage() {
         item.id !== editing?.id && !['cancelado', 'concluido'].includes(item.status) &&
         start < new Date(item.fim_em) && end > new Date(item.inicio_em))
       if (conflict) throw new Error(`Conflito com ${conflict.clientes?.nome}, às ${formatTime(conflict.inicio_em)}.`)
+      const blocked = (query.data?.blocks || []).find((item) => start < new Date(item.fim_em) && end > new Date(item.inicio_em))
+      if (blocked) throw new Error(`Horário bloqueado por ${blocked.titulo}.`)
       if (!activeClinicId) throw new Error('Clinica ativa nao encontrada.')
       await saveAppointmentRpc({
         p_agendamento_id: editing?.id ?? null,
@@ -232,6 +256,7 @@ export function SchedulePage() {
     },
     onSuccess: async () => {
       await refresh()
+      triggerCalendarSync()
       closeSheet()
     },
   })
@@ -244,6 +269,7 @@ export function SchedulePage() {
     onSuccess: async () => {
       setPreview(null)
       await refresh()
+      triggerCalendarSync()
     },
   })
 
@@ -261,6 +287,7 @@ export function SchedulePage() {
       const newMinutes = (variables.end.getTime() - new Date(variables.appointment.inicio_em).getTime()) / 60_000
       setDurationNotice(newMinutes - oldMinutes)
       await refresh()
+      triggerCalendarSync()
     },
   })
 
@@ -398,6 +425,7 @@ export function SchedulePage() {
             <div className="month-grid">
               {monthDays.map((day) => {
                 const appointments = appointmentsForDay(day)
+                const blocks = blocksForDay(day)
                 const confirmed = appointments.filter((item) => ['confirmado', 'concluido'].includes(item.status)).length
                 const waiting = appointments.filter((item) => item.status === 'agendado').length
                 return (
@@ -417,7 +445,7 @@ export function SchedulePage() {
                       }}>
                         {format(day, 'd')}
                       </button>
-                      {appointments.length ? <span>{appointments.length}</span> : null}
+                      {appointments.length || blocks.length ? <span>{appointments.length + blocks.length}</span> : null}
                     </header>
                     <div className="month-status-line">
                       {confirmed ? <span className="confirmed"><CheckCircle2 size={12} />{confirmed}</span> : null}
@@ -439,8 +467,11 @@ export function SchedulePage() {
                         </button>
                       ))}
                       {appointments.length > 3 ? <small>+{appointments.length - 3} agendamentos</small> : null}
+                      {blocks.slice(0, Math.max(0, 3 - appointments.length)).map((block) => (
+                        <span className="month-chip cancelado" key={`block-${block.id}`}>{formatTime(block.inicio_em)} {block.titulo}</span>
+                      ))}
                     </div>
-                    {!appointments.length ? (
+                    {!appointments.length && !blocks.length ? (
                       <button className="month-empty-action" type="button" onClick={() => openNewAt(9, undefined, day)}>
                         <Plus size={14} /> Agendar
                       </button>
@@ -471,16 +502,26 @@ export function SchedulePage() {
                 <time>{String(hour).padStart(2, '0')}:00</time>
                 {visibleDays.map((day) => {
                   const appointments = appointmentsForHour(day, hour)
+                  const blocks = blocksForHour(day, hour)
                   return (
                     <div className="hour-track" key={day.toISOString()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
                       const entry = query.data?.waitlist.find((item) => item.id === event.dataTransfer.getData('waitlist-id'))
                       if (entry) openNewAt(hour, entry, day)
                     }}>
-                      {!appointments.length ? (
+                      {!appointments.length && !blocks.length ? (
                         <button className="empty-slot-action" type="button" onClick={() => openNewAt(hour, undefined, day)} aria-label={`Agendar às ${hour} horas`}>
                           <Plus size={17} /><span>Adicionar horário</span>
                         </button>
-                      ) : appointments.map((appointment) => (
+                      ) : null}
+                      {blocks.map((block) => (
+                        <article className="focus-appointment cancelado" key={`block-${block.id}`} title={block.motivo || block.titulo}>
+                          <div className="appointment-main">
+                            <span className="appointment-time">{formatTime(block.inicio_em)}<small>{formatTime(block.fim_em)}</small></span>
+                            <span className="appointment-info"><strong>{block.titulo}</strong><span>{block.origem === 'google' ? 'Google Agenda' : 'Bloqueio'}</span></span>
+                          </div>
+                        </article>
+                      ))}
+                      {appointments.map((appointment) => (
                         <AppointmentCard
                           key={appointment.id}
                           appointment={appointment}
