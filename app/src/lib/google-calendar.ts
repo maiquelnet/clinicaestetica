@@ -8,10 +8,24 @@ type CalendarStatus = {
 }
 
 async function invoke<T>(action: string, clinicId: string): Promise<T> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError || !session) {
+    throw new Error('Sua sessao expirou. Entre novamente antes de acessar o Google Agenda.')
+  }
+
   const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
     body: { action, clinicId },
+    headers: { Authorization: `Bearer ${session.access_token}` },
   })
-  if (error) throw error
+  if (error) {
+    let message = error.message
+    const context = 'context' in error ? error.context : null
+    if (context instanceof Response) {
+      const body = await context.clone().json().catch(() => null) as { error?: string } | null
+      if (body?.error) message = body.error
+    }
+    throw new Error(message)
+  }
   return data as T
 }
 
@@ -20,9 +34,12 @@ export const getGoogleCalendarStatus = (clinicId: string) =>
 
 export const connectGoogleCalendar = async (clinicId: string) => {
   const result = await invoke<{ authorizationUrl: string }>('connect', clinicId)
-  window.location.assign(result.authorizationUrl)
+  const authorizationUrl = new URL(result.authorizationUrl)
+  if (authorizationUrl.origin !== 'https://accounts.google.com') {
+    throw new Error('O servidor retornou uma URL de autorizacao invalida.')
+  }
+  window.location.assign(authorizationUrl.toString())
 }
 
 export const requestGoogleCalendarSync = (clinicId: string) =>
   invoke<{ synchronized: boolean }>('sync', clinicId)
-
