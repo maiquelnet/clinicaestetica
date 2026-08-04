@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, RefreshCw, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/PageHeader'
 import { useClinic } from '../../../contexts/useClinic'
 import { supabase } from '../../../lib/supabase'
@@ -9,6 +10,9 @@ import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const googleCalendarResult = searchParams.get('googleCalendar')
+  const googleCalendarMessage = searchParams.get('googleCalendarMessage')
   const calendarStatus = useQuery({
     queryKey: ['google-calendar-status', activeClinicId],
     enabled: Boolean(activeClinicId),
@@ -49,6 +53,12 @@ export function SettingsPage() {
       google_place_id: activeClinic?.google_place_id || '',
     })
   }, [activeClinic])
+  const dismissGoogleCalendarResult = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('googleCalendar')
+    next.delete('googleCalendarMessage')
+    setSearchParams(next, { replace: true })
+  }
   const save = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('clinicas').update({ ...draft, nome_publico: clean(draft.nome_publico), telefone: clean(draft.telefone), email: clean(draft.email), endereco: clean(draft.endereco), complemento: clean(draft.complemento), cep: clean(draft.cep), cidade: clean(draft.cidade), estado: clean(draft.estado), link_google_avaliacao: clean(draft.link_google_avaliacao), google_place_id: clean(draft.google_place_id), atualizado_em: new Date().toISOString() }).eq('id', activeClinicId)
@@ -72,13 +82,23 @@ export function SettingsPage() {
       </form>
       <section className="panel form-panel">
         <PageHeader eyebrow="Integracao" title="Google Agenda" description="Mantenha os agendamentos do sistema e do Google sincronizados nos dois sentidos." />
+        {googleCalendarResult ? (
+          <div className={googleCalendarResult === 'connected' ? 'form-success' : 'form-alert'} role="status">
+            <span>{googleCalendarMessage || (googleCalendarResult === 'connected'
+              ? 'Google Agenda conectado com sucesso.'
+              : googleCalendarResult === 'cancelled'
+                ? 'A autorizacao do Google foi cancelada.'
+                : 'Nao foi possivel conectar o Google Agenda.')}</span>
+            <button className="ghost-button" type="button" onClick={dismissGoogleCalendarResult}>Fechar</button>
+          </div>
+        ) : null}
         <p>{calendarStatus.isLoading ? 'Verificando conexao...' : calendarStatus.data?.connected ? `Conectado a agenda ${calendarStatus.data.calendarId || 'principal'}.` : 'Nenhuma agenda Google conectada.'}</p>
         {calendarStatus.data?.lastSyncAt ? <small>Ultima sincronizacao: {new Date(calendarStatus.data.lastSyncAt).toLocaleString('pt-BR')}</small> : null}
         <div className="form-actions">
-          <button className="primary-button" type="button" disabled={!activeClinicId || connectCalendar.isPending} onClick={() => void connectCalendar.mutateAsync()}>
+          <button className="primary-button" type="button" disabled={!activeClinicId || connectCalendar.isPending} onClick={() => connectCalendar.mutate()}>
             <CalendarDays size={16} /> {calendarStatus.data?.connected ? 'Reconectar Google Agenda' : 'Conectar Google Agenda'}
           </button>
-          {calendarStatus.data?.connected ? <button className="ghost-button" type="button" disabled={syncCalendar.isPending} onClick={() => void syncCalendar.mutateAsync()}><RefreshCw size={16} /> Sincronizar agora</button> : null}
+          {calendarStatus.data?.connected ? <button className="ghost-button" type="button" disabled={syncCalendar.isPending} onClick={() => syncCalendar.mutate()}><RefreshCw size={16} /> Sincronizar agora</button> : null}
         </div>
         {connectCalendar.error || syncCalendar.error || calendarStatus.error ? <div className="form-alert">{(connectCalendar.error || syncCalendar.error || calendarStatus.error)?.message}</div> : null}
       </section>
