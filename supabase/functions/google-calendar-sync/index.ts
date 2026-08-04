@@ -1,10 +1,36 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.0'
-import { createGoogleCalendarHandler } from './core.ts'
+import { createGoogleCalendarHandler, HttpError } from './core.ts'
+
+function getOptionalEnv(...names: string[]) {
+  return names.map((name) => Deno.env.get(name)?.trim()).find(Boolean)
+}
 
 function getRequiredEnv(...names: string[]) {
-  const value = names.map((name) => Deno.env.get(name)?.trim()).find(Boolean)
+  const value = getOptionalEnv(...names)
   if (!value) throw new Error(`Missing ${names.join(' or ')} environment variable`)
   return value
+}
+
+const googleSecrets: Array<{ name: string; envNames: string[] }> = [
+  { name: 'GOOGLE_CLIENT_ID', envNames: ['GOOGLE_CLIENT_ID', 'google_client_id'] },
+  { name: 'GOOGLE_CLIENT_SECRET', envNames: ['GOOGLE_CLIENT_SECRET', 'google_client_secret'] },
+  { name: 'GOOGLE_TOKEN_ENCRYPTION_KEY', envNames: ['GOOGLE_TOKEN_ENCRYPTION_KEY', 'google_token_encryption_key'] },
+]
+
+function getGoogleSecret(name: string, ...envNames: string[]) {
+  const value = getOptionalEnv(...envNames)
+  if (value) return value
+  console.error('google_calendar_configuration_missing', { names: [name] })
+  throw new HttpError(500, `Configuracao ausente em Edge Functions > Secrets: ${name}.`)
+}
+
+function validateGoogleConfiguration() {
+  const missing = googleSecrets
+    .filter((secret) => !getOptionalEnv(...secret.envNames))
+    .map((secret) => secret.name)
+  if (!missing.length) return
+  console.error('google_calendar_configuration_missing', { names: missing })
+  throw new HttpError(500, `Configuracao ausente em Edge Functions > Secrets: ${missing.join(', ')}.`)
 }
 
 function getServiceKey() {
@@ -51,9 +77,10 @@ const db = createClient(supabaseUrl, getServiceKey(), {
 
 const handler = createGoogleCalendarHandler({
   db,
-  googleClientId: () => getRequiredEnv('GOOGLE_CLIENT_ID', 'google_client_id'),
-  googleClientSecret: () => getRequiredEnv('GOOGLE_CLIENT_SECRET', 'google_client_secret'),
-  tokenEncryptionSecret: () => getRequiredEnv('GOOGLE_TOKEN_ENCRYPTION_KEY', 'google_token_encryption_key'),
+  googleClientId: () => getGoogleSecret('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_ID', 'google_client_id'),
+  googleClientSecret: () => getGoogleSecret('GOOGLE_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET', 'google_client_secret'),
+  tokenEncryptionSecret: () => getGoogleSecret('GOOGLE_TOKEN_ENCRYPTION_KEY', 'GOOGLE_TOKEN_ENCRYPTION_KEY', 'google_token_encryption_key'),
+  validateConfiguration: validateGoogleConfiguration,
   siteUrl,
   functionUrl,
   defaultCalendarId: Deno.env.get('GOOGLE_CALENDAR_ID') || Deno.env.get('google_calendar_id') || 'primary',
