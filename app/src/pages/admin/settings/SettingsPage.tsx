@@ -1,13 +1,24 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Save } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CalendarDays, RefreshCw, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageHeader } from '../../../components/PageHeader'
 import { useClinic } from '../../../contexts/useClinic'
 import { supabase } from '../../../lib/supabase'
+import { connectGoogleCalendar, getGoogleCalendarStatus, requestGoogleCalendarSync } from '../../../lib/google-calendar'
 import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
   const queryClient = useQueryClient()
+  const calendarStatus = useQuery({
+    queryKey: ['google-calendar-status', activeClinicId],
+    enabled: Boolean(activeClinicId),
+    queryFn: () => getGoogleCalendarStatus(activeClinicId!),
+  })
+  const connectCalendar = useMutation({ mutationFn: () => connectGoogleCalendar(activeClinicId!) })
+  const syncCalendar = useMutation({
+    mutationFn: () => requestGoogleCalendarSync(activeClinicId!),
+    onSuccess: () => calendarStatus.refetch(),
+  })
   const [draft, setDraft] = useState(() => ({
     nome: activeClinic?.nome || '',
     nome_publico: activeClinic?.nome_publico || '',
@@ -59,6 +70,18 @@ export function SettingsPage() {
         {save.error ? <div className="form-alert">{save.error.message}</div> : null}
         <button className="primary-button" type="submit"><Save size={16} /> Salvar parametros</button>
       </form>
+      <section className="panel form-panel">
+        <PageHeader eyebrow="Integracao" title="Google Agenda" description="Mantenha os agendamentos do sistema e do Google sincronizados nos dois sentidos." />
+        <p>{calendarStatus.isLoading ? 'Verificando conexao...' : calendarStatus.data?.connected ? `Conectado a agenda ${calendarStatus.data.calendarId || 'principal'}.` : 'Nenhuma agenda Google conectada.'}</p>
+        {calendarStatus.data?.lastSyncAt ? <small>Ultima sincronizacao: {new Date(calendarStatus.data.lastSyncAt).toLocaleString('pt-BR')}</small> : null}
+        <div className="form-actions">
+          <button className="primary-button" type="button" disabled={!activeClinicId || connectCalendar.isPending} onClick={() => void connectCalendar.mutateAsync()}>
+            <CalendarDays size={16} /> {calendarStatus.data?.connected ? 'Reconectar Google Agenda' : 'Conectar Google Agenda'}
+          </button>
+          {calendarStatus.data?.connected ? <button className="ghost-button" type="button" disabled={syncCalendar.isPending} onClick={() => void syncCalendar.mutateAsync()}><RefreshCw size={16} /> Sincronizar agora</button> : null}
+        </div>
+        {connectCalendar.error || syncCalendar.error || calendarStatus.error ? <div className="form-alert">{(connectCalendar.error || syncCalendar.error || calendarStatus.error)?.message}</div> : null}
+      </section>
     </main>
   )
 }
