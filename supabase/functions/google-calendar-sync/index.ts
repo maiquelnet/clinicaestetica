@@ -30,7 +30,7 @@ function validUrl(value: string, name: string) {
 
 const supabaseUrl = getRequiredEnv('SUPABASE_URL')
 const siteUrl = validUrl(
-  Deno.env.get('SITE_URL') || 'https://clinicaestetica-softolive.vercel.app',
+  Deno.env.get('SITE_URL') || 'https://www.esteticaschneider.com.br',
   'SITE_URL',
 )
 const functionUrl = validUrl(
@@ -61,6 +61,8 @@ const handler = createGoogleCalendarHandler({
   allowedOrigins: [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://www.esteticaschneider.com.br',
+    'https://esteticaschneider.com.br',
     ...extraOrigins,
   ],
   allowedOriginPatterns: [
