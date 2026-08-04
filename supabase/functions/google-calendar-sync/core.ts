@@ -17,6 +17,7 @@ type Runtime = {
   googleClientId: () => string
   googleClientSecret: () => string
   tokenEncryptionSecret: () => string
+  validateConfiguration: () => void
   siteUrl: string
   functionUrl: string
   defaultCalendarId: string
@@ -705,6 +706,7 @@ export function createGoogleCalendarHandler(runtime: Runtime) {
       if (!clinicId) return json(request, { error: 'clinicId obrigatorio.' }, 400)
       const userId = await authorizeUser(request, clinicId)
       if (action === 'connect') {
+        runtime.validateConfiguration()
         const query = new URLSearchParams({
           client_id: runtime.googleClientId(),
           redirect_uri: runtime.functionUrl,

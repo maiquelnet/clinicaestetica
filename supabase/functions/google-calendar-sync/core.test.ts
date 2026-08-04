@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createGoogleCalendarHandler } from './core.ts'
+import { createGoogleCalendarHandler, HttpError } from './core.ts'
 
 type Store = Record<string, Array<Record<string, any>>>
 
@@ -206,6 +206,7 @@ function createFixture(secretOverrides: Partial<{
   googleClientId: () => string
   googleClientSecret: () => string
   tokenEncryptionSecret: () => string
+  validateConfiguration: () => void
 }> = {}) {
   const database = new FakeDatabase()
   const google = new FakeGoogle()
@@ -215,6 +216,7 @@ function createFixture(secretOverrides: Partial<{
     googleClientId: secretOverrides.googleClientId || (() => 'client-id'),
     googleClientSecret: secretOverrides.googleClientSecret || (() => 'client-secret'),
     tokenEncryptionSecret: secretOverrides.tokenEncryptionSecret || (() => 'test-secret-with-at-least-32-bytes'),
+    validateConfiguration: secretOverrides.validateConfiguration || (() => {}),
     siteUrl: 'https://app.example.com',
     functionUrl: 'https://project.supabase.co/functions/v1/google-calendar-sync',
     defaultCalendarId: 'primary',
@@ -254,6 +256,21 @@ test('OPTIONS e status nao dependem dos secrets Google', async () => {
   assert.equal(statusResponse.status, 200)
   assert.deepEqual(await statusResponse.json(), { connected: false })
   assert.equal(secretReads, 0)
+})
+
+test('connect informa quais Edge Function Secrets estao ausentes', async () => {
+  const fixture = createFixture({
+    validateConfiguration: () => {
+      throw new HttpError(500, 'Configuracao ausente em Edge Functions > Secrets: GOOGLE_CLIENT_ID.')
+    },
+  })
+
+  const response = await fixture.handler(actionRequest('connect'))
+  assert.equal(response.status, 500)
+  assert.deepEqual(await response.json(), {
+    error: 'Configuracao ausente em Edge Functions > Secrets: GOOGLE_CLIENT_ID.',
+  })
+  assert.equal(fixture.database.store.google_calendar_connections.length, 0)
 })
 
 function actionRequest(action: string) {
