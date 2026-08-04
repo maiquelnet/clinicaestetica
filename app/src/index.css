@@ -685,6 +685,19 @@ textarea:focus {
   padding: 10px 12px;
 }
 
+.form-success {
+  align-items: center;
+  background: #f1faf5;
+  border: 1px solid rgba(47, 125, 78, 0.2);
+  border-radius: 8px;
+  color: #27643f;
+  display: flex;
+  font-size: 13px;
+  font-weight: 750;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
 .date-filter {
   min-width: 210px;
 }
