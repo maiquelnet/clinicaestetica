@@ -16,6 +16,8 @@ Esta pasta concentra a documentacao tecnica, funcional, de seguranca e de IA do 
 - [Qualidade e Casos de Teste](./testes.md)
 - [Seguranca e LGPD](./seguranca-lgpd.md)
 - [Manual do Usuario](./manual-usuario.md)
+- [Google Agenda](./google-calendar.md)
+- [WhatsApp Cloud API](./whatsapp-cloud.md)
 - [Historico de Implementacao](./historico-implementacao.md)
 
 ## Estado atual resumido

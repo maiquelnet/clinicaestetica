@@ -16,6 +16,7 @@ import {
 import type { MessageAlert } from '../lib/messaging'
 import { supabase } from '../lib/supabase'
 import type { MessageTemplate } from '../lib/types'
+import { validateWhatsAppTemplate } from '../lib/whatsapp'
 
 type TemplateDraft = {
   id: string
@@ -30,6 +31,10 @@ type TemplateDraft = {
   unidade: string
   direcao: string
   janela_alerta_dias: string
+  canal_padrao: 'whatsapp_manual' | 'whatsapp_business'
+  whatsapp_template_name: string
+  whatsapp_template_language: string
+  automacao_iniciada_em: string
 }
 
 const emptyTemplateDraft: TemplateDraft = {
@@ -45,6 +50,10 @@ const emptyTemplateDraft: TemplateDraft = {
   unidade: '',
   direcao: '',
   janela_alerta_dias: '',
+  canal_padrao: 'whatsapp_manual',
+  whatsapp_template_name: '',
+  whatsapp_template_language: 'pt_BR',
+  automacao_iniciada_em: '',
 }
 
 function draftFromTemplate(template: MessageTemplate): TemplateDraft {
@@ -62,11 +71,16 @@ function draftFromTemplate(template: MessageTemplate): TemplateDraft {
     unidade: rule?.unidade || '',
     direcao: rule?.direcao || '',
     janela_alerta_dias: rule?.janela_alerta_dias === null || rule?.janela_alerta_dias === undefined ? '' : String(rule.janela_alerta_dias),
+    canal_padrao: rule?.canal_padrao === 'whatsapp_business' ? 'whatsapp_business' : 'whatsapp_manual',
+    whatsapp_template_name: template.whatsapp_template_name || '',
+    whatsapp_template_language: template.whatsapp_template_language || 'pt_BR',
+    automacao_iniciada_em: rule?.automacao_iniciada_em || '',
   }
 }
 
 export function MessagesPage() {
-  const { activeClinicId } = useClinic()
+  const { activeClinicId, activeMembership } = useClinic()
+  const canConfigureAutomation = ['proprietario', 'administrador'].includes(activeMembership?.papel || '')
   const queryClient = useQueryClient()
   const templateFormRef = useRef<HTMLElement>(null)
   const [templateDraft, setTemplateDraft] = useState<TemplateDraft>(emptyTemplateDraft)
@@ -150,45 +164,57 @@ export function MessagesPage() {
 
   const saveTemplate = useMutation({
     mutationFn: async (draft: TemplateDraft) => {
-      const templatePayload = {
-        clinica_id: activeClinicId,
-        tipo: draft.tipo.trim(),
-        nome: draft.nome.trim(),
-        texto: draft.texto.trim(),
-        ativo: draft.ativo,
-        prioridade: Number(draft.prioridade || 9),
-        atualizado_em: new Date().toISOString(),
-      }
+      const tipo = draft.tipo.trim()
+      const isAutomatic = draft.canal_padrao === 'whatsapp_business'
+      const eligibleForAutomation = ['confirmacao_agendamento', 'lembrete_agendamento'].includes(tipo)
+      const templateName = draft.whatsapp_template_name.trim()
+      const templateLanguage = draft.whatsapp_template_language.trim() || 'pt_BR'
 
-      if (!templatePayload.tipo || !templatePayload.nome || !templatePayload.texto) {
+      if (!tipo || !draft.nome.trim() || !draft.texto.trim()) {
         throw new Error('Informe tipo, nome e texto da mensagem.')
       }
-
-      const templateRequest = draft.id
-        ? supabase.from('modelos_mensagens').update(templatePayload).eq('id', draft.id).select('*').single()
-        : supabase.from('modelos_mensagens').insert(templatePayload).select('*').single()
-      const { data: savedTemplate, error } = await templateRequest
-      if (error) throw error
-      if (!savedTemplate) throw new Error('Modelo de mensagem nao retornado.')
-
-      const rulePayload = {
-        clinica_id: activeClinicId,
-        modelo_mensagem_id: savedTemplate.id,
-        gatilho: draft.gatilho,
-        quantidade: draft.quantidade === '' ? null : Number(draft.quantidade),
-        unidade: draft.unidade || null,
-        direcao: draft.direcao || null,
-        janela_alerta_dias: draft.janela_alerta_dias === '' ? null : Number(draft.janela_alerta_dias),
-        canal_padrao: 'whatsapp_manual',
-        ativo: true,
-        atualizado_em: new Date().toISOString(),
+      if (isAutomatic && !eligibleForAutomation) {
+        throw new Error('Nesta primeira versao, apenas confirmacao e lembrete de agendamento podem ser automaticos.')
+      }
+      if (isAutomatic && !/^[a-z0-9_]+$/.test(templateName)) {
+        throw new Error('Informe o nome exato do modelo aprovado pela Meta, usando letras minusculas, numeros e sublinhado.')
+      }
+      if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) {
+        throw new Error('Informe um idioma valido, por exemplo pt_BR.')
+      }
+      if (isAutomatic && tipo === 'confirmacao_agendamento' && draft.gatilho !== 'agendamento_criado') {
+        throw new Error('A confirmacao automatica deve usar a regra Agendamento criado.')
+      }
+      if (isAutomatic && tipo === 'lembrete_agendamento' && draft.gatilho !== 'inicio_agendamento') {
+        throw new Error('O lembrete automatico deve usar a regra Inicio do agendamento.')
       }
 
-      const ruleRequest = draft.ruleId
-        ? supabase.from('regras_mensagens').update(rulePayload).eq('id', draft.ruleId)
-        : supabase.from('regras_mensagens').insert(rulePayload)
-      const { error: ruleError } = await ruleRequest
-      if (ruleError) throw ruleError
+      const automationStartedAt = isAutomatic
+        ? draft.automacao_iniciada_em || new Date().toISOString()
+        : null
+      if (isAutomatic) {
+        await validateWhatsAppTemplate(activeClinicId!, templateName, templateLanguage)
+      }
+      const { error } = await supabase.rpc('salvar_modelo_mensagem_e_regra', {
+        p_clinica_id: activeClinicId,
+        p_modelo_id: draft.id || null,
+        p_regra_id: draft.ruleId || null,
+        p_tipo: tipo,
+        p_nome: draft.nome.trim(),
+        p_texto: draft.texto.trim(),
+        p_modelo_ativo: draft.ativo,
+        p_prioridade: Number(draft.prioridade || 9),
+        p_whatsapp_template_name: templateName || null,
+        p_whatsapp_template_language: templateLanguage,
+        p_gatilho: draft.gatilho,
+        p_quantidade: draft.quantidade === '' ? null : Number(draft.quantidade),
+        p_unidade: draft.unidade || null,
+        p_direcao: draft.direcao || null,
+        p_janela_alerta_dias: draft.janela_alerta_dias === '' ? null : Number(draft.janela_alerta_dias),
+        p_canal_padrao: draft.canal_padrao,
+        p_automacao_iniciada_em: automationStartedAt,
+      })
+      if (error) throw error
     },
     onSuccess: async () => {
       setTemplateDraft(emptyTemplateDraft)
@@ -242,6 +268,11 @@ export function MessagesPage() {
         description="Acompanhe pendencias por cliente, abra WhatsApp e registre envios ou dispensas."
       />
 
+      {query.error ? <div className="form-alert">{query.error.message}</div> : null}
+      {registerMessage.error || dismissAlert.error
+        ? <div className="form-alert">{(registerMessage.error || dismissAlert.error)?.message}</div>
+        : null}
+
       {query.isLoading ? (
         <LoadingBlock />
       ) : (
@@ -260,7 +291,7 @@ export function MessagesPage() {
             <article className="metric-card">
               <Check size={20} />
               <span>Enviadas registradas</span>
-              <strong>{data?.logs.filter((log) => log.status === 'enviado').length ?? 0}</strong>
+              <strong>{data?.logs.filter((log) => ['enviado', 'entregue', 'lido'].includes(log.status)).length ?? 0}</strong>
             </article>
             <article className="metric-card">
               <Trash2 size={20} />
@@ -307,11 +338,11 @@ export function MessagesPage() {
                                 <Send size={16} />
                                 WhatsApp
                               </button>
-                              <button className="ghost-button" type="button" onClick={() => void registerAlert(alert)}>
+                              <button className="ghost-button" type="button" disabled={registerMessage.isPending} onClick={() => void registerAlert(alert)}>
                                 <Check size={16} />
                                 Marcar enviada
                               </button>
-                              <button className="danger-button" type="button" onClick={() => void dismissAlert.mutateAsync(alert)}>
+                              <button className="danger-button" type="button" disabled={dismissAlert.isPending} onClick={() => void dismissAlert.mutateAsync(alert)}>
                                 <Trash2 size={16} />
                                 Dispensar
                               </button>
@@ -335,7 +366,10 @@ export function MessagesPage() {
                 <div className="manual-fields">
                   <label>
                     Cliente
-                    <select value={manualClientId} onChange={(event) => setManualClientId(event.target.value)}>
+                    <select value={manualClientId} onChange={(event) => {
+                      setManualClientId(event.target.value)
+                      setManualAppointmentId('')
+                    }}>
                       <option value="">Selecione</option>
                       {(data?.clients || []).map((client) => (
                         <option key={client.id} value={client.id}>{client.nome}</option>
@@ -346,9 +380,11 @@ export function MessagesPage() {
                     Modelo
                     <select value={manualTemplateId} onChange={(event) => setManualTemplateId(event.target.value)}>
                       <option value="">Selecione</option>
-                      {(data?.templates || []).filter((template) => template.ativo).map((template) => (
+                      {(data?.templates || [])
+                        .filter((template) => template.ativo && activeRule(template)?.canal_padrao !== 'whatsapp_business')
+                        .map((template) => (
                         <option key={template.id} value={template.id}>{template.nome}</option>
-                      ))}
+                        ))}
                     </select>
                   </label>
                   <label>
@@ -370,7 +406,7 @@ export function MessagesPage() {
                     <Send size={16} />
                     WhatsApp
                   </button>
-                  <button className="ghost-button" type="button" disabled={!manualText} onClick={() => void registerManualMessage()}>
+                  <button className="ghost-button" type="button" disabled={!manualText || registerMessage.isPending} onClick={() => void registerManualMessage()}>
                     <Check size={16} />
                     Registrar envio
                   </button>
@@ -394,6 +430,9 @@ export function MessagesPage() {
                             <span>{rule?.gatilho || 'manual'}</span>
                             {rule?.quantidade !== null && rule?.quantidade !== undefined ? <span>{rule.quantidade} {rule.unidade}</span> : null}
                             {rule?.janela_alerta_dias ? <span>Janela {rule.janela_alerta_dias} dias</span> : null}
+                            <span className={`badge ${rule?.canal_padrao === 'whatsapp_business' ? 'success' : ''}`}>
+                              {rule?.canal_padrao === 'whatsapp_business' ? 'Automatico' : 'Manual'}
+                            </span>
                             <span className={`badge ${template.ativo ? 'success' : 'warning'}`}>{template.ativo ? 'Ativo' : 'Inativo'}</span>
                           </div>
                           <p className="message-preview">{template.texto}</p>
@@ -476,12 +515,63 @@ export function MessagesPage() {
                     <input type="number" min={1} value={templateDraft.prioridade} onChange={(event) => setTemplateDraft({ ...templateDraft, prioridade: event.target.value })} />
                   </label>
                 </div>
+                <div className="form-grid">
+                  <label>
+                    Modo de envio
+                    <select
+                      value={templateDraft.canal_padrao}
+                      disabled={!canConfigureAutomation}
+                      onChange={(event) => setTemplateDraft({
+                        ...templateDraft,
+                        canal_padrao: event.target.value as TemplateDraft['canal_padrao'],
+                      })}
+                    >
+                      <option value="whatsapp_manual">Manual pelo aplicativo</option>
+                      <option value="whatsapp_business">Automatico pela Meta Cloud API</option>
+                    </select>
+                  </label>
+                </div>
+                {templateDraft.canal_padrao === 'whatsapp_business' ? (
+                  <>
+                    <div className="form-grid">
+                      <label>
+                        Nome do modelo aprovado na Meta
+                        <input
+                          placeholder="lembrete_agendamento_v1"
+                          disabled={!canConfigureAutomation}
+                          value={templateDraft.whatsapp_template_name}
+                          onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_name: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        Idioma do modelo
+                        <input
+                          placeholder="pt_BR"
+                          disabled={!canConfigureAutomation}
+                          value={templateDraft.whatsapp_template_language}
+                          onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_language: event.target.value })}
+                        />
+                      </label>
+                    </div>
+                    <div className="form-alert">
+                      A automacao comeca ao salvar. Confirmacoes antigas nao serao enviadas; lembretes valem apenas para agendamentos futuros e clientes com consentimento.
+                    </div>
+                  </>
+                ) : null}
                 <label className="check-row">
                   <input type="checkbox" checked={templateDraft.ativo} onChange={(event) => setTemplateDraft({ ...templateDraft, ativo: event.target.checked })} />
                   Modelo ativo
                 </label>
                 {saveTemplate.error ? <div className="form-alert">{saveTemplate.error.message}</div> : null}
-                <button className="primary-button" type="button" disabled={saveTemplate.isPending} onClick={() => void saveTemplate.mutateAsync(templateDraft)}>
+                {!canConfigureAutomation && templateDraft.canal_padrao === 'whatsapp_business'
+                  ? <div className="form-alert">Apenas proprietarios e administradores podem alterar um modelo automatico.</div>
+                  : null}
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={saveTemplate.isPending || (!canConfigureAutomation && templateDraft.canal_padrao === 'whatsapp_business')}
+                  onClick={() => void saveTemplate.mutateAsync(templateDraft)}
+                >
                   <Save size={18} />
                   {saveTemplate.isPending ? 'Salvando...' : 'Salvar modelo'}
                 </button>

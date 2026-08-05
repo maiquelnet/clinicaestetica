@@ -17,6 +17,7 @@ export const messagingQueryOptions = (clinicId: string | null) => ({
   enabled: Boolean(clinicId),
   queryFn: () => fetchMessagingData(clinicId!),
   staleTime: 60_000,
+  refetchInterval: 60_000,
 })
 
 export type MessagingData = {
@@ -108,7 +109,7 @@ export function renderMessageText(
     data: appointmentDate ? format(appointmentDate, 'dd/MM/yyyy') : '',
     hora: appointmentDate ? format(appointmentDate, 'HH:mm') : '',
     servico: service?.nome || 'atendimento',
-    link_avaliacao_google: '[link de avaliacao]',
+    link_avaliacao_google: 'https://g.page/r/CSiUvwdJBI2MEAE/review',
     campanha: 'esta campanha',
   }
 
@@ -118,9 +119,19 @@ export function renderMessageText(
   )
 }
 
+const positiveMessageStatuses = new Set([
+  'enviado',
+  'entregue',
+  'lido',
+])
+
+function hasPositiveMessageStatus(log: MessageLog) {
+  return positiveMessageStatuses.has(log.status.toLowerCase())
+}
+
 function latestLogForClient(logs: MessageLog[], clientId: string) {
   return logs
-    .filter((log) => log.cliente_id === clientId && log.status === 'enviado')
+    .filter((log) => log.cliente_id === clientId && hasPositiveMessageStatus(log))
     .sort((a, b) => (b.enviado_em || b.criado_em).localeCompare(a.enviado_em || a.criado_em))[0] || null
 }
 
@@ -128,10 +139,15 @@ export function buildAlerts(data: MessagingData) {
   const now = new Date()
   const clientMap = new Map(data.clients.map((client) => [client.id, client]))
   const serviceMap = new Map(data.services.map((service) => [service.id, service]))
-  const sentCycles = new Set(data.logs.map((log) => log.ciclo).filter(Boolean))
+  const sentCycles = new Set(
+    data.logs
+      .filter(hasPositiveMessageStatus)
+      .map((log) => log.ciclo)
+      .filter((cycle): cycle is string => Boolean(cycle)),
+  )
   const dismissedCycles = new Set(data.dismissed.map((dismissed) => dismissed.ciclo))
   const activeTemplates = data.templates
-    .filter((template) => template.ativo)
+    .filter((template) => template.ativo && activeRule(template)?.canal_padrao !== 'whatsapp_business')
     .sort((a, b) => Number(a.prioridade || 9) - Number(b.prioridade || 9))
   const activeAppointments = data.appointments.filter((appointment) => appointment.status !== 'cancelado')
   const alerts: MessageAlert[] = []
