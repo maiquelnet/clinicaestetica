@@ -26,3 +26,5 @@ Thumbs.db
 # Supabase local runtime/cache
 supabase/.branches/
 supabase/.temp/
+.vercel
+.env*

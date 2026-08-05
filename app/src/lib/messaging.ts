@@ -109,7 +109,7 @@ export function renderMessageText(
     data: appointmentDate ? format(appointmentDate, 'dd/MM/yyyy') : '',
     hora: appointmentDate ? format(appointmentDate, 'HH:mm') : '',
     servico: service?.nome || 'atendimento',
-    link_avaliacao_google: '[link de avaliacao]',
+    link_avaliacao_google: 'https://g.page/r/CSiUvwdJBI2MEAE/review',
     campanha: 'esta campanha',
   }
 
