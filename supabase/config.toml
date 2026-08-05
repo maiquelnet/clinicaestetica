@@ -1,2 +1,5 @@
 [functions.google-calendar-sync]
 verify_jwt = false
+
+[functions.whatsapp-messages]
+verify_jwt = false

@@ -32,6 +32,8 @@ export type ClinicMembership = {
   clinica: Clinic
 }
 
+export type WhatsAppOptInStatus = 'pendente' | 'aceito' | 'recusado' | 'revogado'
+
 export type Client = {
   id: string
   clinica_id: string
@@ -45,6 +47,11 @@ export type Client = {
   intervalo_retorno_dias: number | null
   parceira: boolean
   aceita_marketing: boolean
+  whatsapp_opt_in_status: WhatsAppOptInStatus
+  whatsapp_opt_in_em: string | null
+  whatsapp_opt_in_origem: string | null
+  whatsapp_opt_in_versao: string | null
+  whatsapp_opt_out_em: string | null
   ativo: boolean
   criado_em: string
   atualizado_em: string
@@ -238,6 +245,7 @@ export type MessageRule = {
   direcao: 'antes' | 'depois' | string | null
   janela_alerta_dias: number | null
   canal_padrao: string
+  automacao_iniciada_em: string | null
   ativo: boolean
   criado_em: string
   atualizado_em: string
@@ -251,11 +259,15 @@ export type MessageTemplate = {
   texto: string
   ativo: boolean
   prioridade: number
+  whatsapp_template_name: string | null
+  whatsapp_template_language: string
   criado_em: string
   atualizado_em: string
   arquivado_em: string | null
   regras_mensagens?: MessageRule[]
 }
+
+export type MessageDeliveryStatus = 'pendente' | 'enviado' | 'entregue' | 'lido' | 'dispensado' | 'erro' | 'cancelado'
 
 export type MessageLog = {
   id: string
@@ -267,10 +279,18 @@ export type MessageLog = {
   canal: string
   texto: string
   ciclo: string | null
-  status: string
+  status: MessageDeliveryStatus
+  provider_message_id: string | null
+  provider_status: string | null
+  provider_status_em: string | null
+  erro_codigo: string | null
+  erro_detalhes: string | null
+  entregue_em: string | null
+  lido_em: string | null
   enviado_em: string | null
   observacao: string | null
   criado_em: string
+  atualizado_em: string
 }
 
 export type Campaign = {

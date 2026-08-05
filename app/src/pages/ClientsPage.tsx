@@ -11,9 +11,20 @@ import { formatDate } from '../lib/format'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../lib/types'
 
+function phoneDigits(value: string) {
+  return value.replace(/\D/g, '')
+}
+
+function validBrazilianPhone(value: string) {
+  const digits = phoneDigits(value)
+  return digits.length === 10
+    || digits.length === 11
+    || ((digits.length === 12 || digits.length === 13) && digits.startsWith('55'))
+}
+
 const clientSchema = z.object({
   nome: z.string().min(2, 'Informe o nome.'),
-  telefone: z.string().min(8, 'Informe o telefone.'),
+  telefone: z.string().refine(validBrazilianPhone, 'Informe DDD e numero validos.'),
   email: z.string().email('E-mail inválido.').or(z.literal('')).optional(),
   data_nascimento: z.string().optional(),
   cpf: z.string().optional(),
@@ -22,6 +33,7 @@ const clientSchema = z.object({
   intervalo_retorno_dias: z.coerce.number().min(0).optional().or(z.literal('')),
   parceira: z.boolean(),
   aceita_marketing: z.boolean(),
+  whatsapp_opt_in: z.boolean(),
   ativo: z.boolean(),
 })
 
@@ -38,8 +50,25 @@ const defaultValues: ClientFormInput = {
   observacoes: '',
   intervalo_retorno_dias: '',
   parceira: false,
-  aceita_marketing: true,
+  aceita_marketing: false,
+  whatsapp_opt_in: false,
   ativo: true,
+}
+
+const WHATSAPP_OPT_IN_ORIGIN = 'cadastro_painel'
+const WHATSAPP_OPT_IN_VERSION = 'appointment_updates_v1'
+
+const whatsappConsentLabels: Record<Client['whatsapp_opt_in_status'], string> = {
+  pendente: 'Pendente',
+  aceito: 'Autorizado',
+  recusado: 'Recusado',
+  revogado: 'Revogado',
+}
+
+function whatsappConsentBadge(status: Client['whatsapp_opt_in_status']) {
+  if (status === 'aceito') return 'success'
+  if (status === 'pendente') return 'warning'
+  return 'cancelado'
 }
 
 async function fetchClients(clinicId: string) {
@@ -74,6 +103,38 @@ export function ClientsPage() {
 
   const saveClient = useMutation({
     mutationFn: async (values: ClientForm) => {
+      const now = new Date().toISOString()
+      const phoneChanged = Boolean(editing && phoneDigits(values.telefone) !== phoneDigits(editing.telefone))
+      const hadWhatsAppOptIn = editing?.whatsapp_opt_in_status === 'aceito' && !phoneChanged
+      const grantedWhatsAppOptIn = values.whatsapp_opt_in && !hadWhatsAppOptIn
+      const revokedWhatsAppOptIn = !values.whatsapp_opt_in && hadWhatsAppOptIn
+      const whatsappConsent = editing
+        ? {
+            whatsapp_opt_in_status: grantedWhatsAppOptIn
+              ? 'aceito' as const
+              : revokedWhatsAppOptIn
+                ? 'revogado' as const
+                : editing.whatsapp_opt_in_status,
+            whatsapp_opt_in_em: grantedWhatsAppOptIn ? now : editing.whatsapp_opt_in_em,
+            whatsapp_opt_in_origem: grantedWhatsAppOptIn
+              ? WHATSAPP_OPT_IN_ORIGIN
+              : editing.whatsapp_opt_in_origem,
+            whatsapp_opt_in_versao: grantedWhatsAppOptIn
+              ? WHATSAPP_OPT_IN_VERSION
+              : editing.whatsapp_opt_in_versao,
+            whatsapp_opt_out_em: grantedWhatsAppOptIn
+              ? null
+              : revokedWhatsAppOptIn
+                ? now
+                : editing.whatsapp_opt_out_em,
+          }
+        : {
+            whatsapp_opt_in_status: values.whatsapp_opt_in ? 'aceito' as const : 'pendente' as const,
+            whatsapp_opt_in_em: values.whatsapp_opt_in ? now : null,
+            whatsapp_opt_in_origem: values.whatsapp_opt_in ? WHATSAPP_OPT_IN_ORIGIN : null,
+            whatsapp_opt_in_versao: values.whatsapp_opt_in ? WHATSAPP_OPT_IN_VERSION : null,
+            whatsapp_opt_out_em: null,
+          }
       const payload = {
         clinica_id: activeClinicId,
         nome: values.nome.trim(),
@@ -86,8 +147,9 @@ export function ClientsPage() {
         intervalo_retorno_dias: values.intervalo_retorno_dias === '' ? null : Number(values.intervalo_retorno_dias),
         parceira: values.parceira,
         aceita_marketing: values.aceita_marketing,
+        ...whatsappConsent,
         ativo: values.ativo,
-        atualizado_em: new Date().toISOString(),
+        atualizado_em: now,
       }
 
       const request = editing
@@ -138,6 +200,7 @@ export function ClientsPage() {
       intervalo_retorno_dias: client.intervalo_retorno_dias ?? '',
       parceira: client.parceira,
       aceita_marketing: client.aceita_marketing,
+      whatsapp_opt_in: client.whatsapp_opt_in_status === 'aceito',
       ativo: client.ativo,
     })
   }
@@ -151,6 +214,8 @@ export function ClientsPage() {
     resetForm()
     setFormOpen(true)
   }
+
+  const phoneRegistration = form.register('telefone')
 
   return (
     <main className="content-page">
@@ -193,6 +258,7 @@ export function ClientsPage() {
                     <th>Nascimento</th>
                     <th>Retorno</th>
                     <th>Parceria</th>
+                    <th>WhatsApp</th>
                     <th>Status</th>
                     <th>Ações</th>
                   </tr>
@@ -211,6 +277,11 @@ export function ClientsPage() {
                       <td>
                         <span className={`badge ${client.parceira ? 'success' : ''}`}>
                           {client.parceira ? 'Parceira' : 'Nao'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${whatsappConsentBadge(client.whatsapp_opt_in_status)}`}>
+                          {whatsappConsentLabels[client.whatsapp_opt_in_status]}
                         </span>
                       </td>
                       <td>
@@ -263,7 +334,17 @@ export function ClientsPage() {
             </label>
             <label>
               Telefone
-              <input type="tel" {...form.register('telefone')} />
+              <input
+                type="tel"
+                {...phoneRegistration}
+                onChange={(event) => {
+                  void phoneRegistration.onChange(event)
+                  if (editing?.whatsapp_opt_in_status === 'aceito'
+                    && phoneDigits(event.target.value) !== phoneDigits(editing.telefone)) {
+                    form.setValue('whatsapp_opt_in', false, { shouldDirty: true })
+                  }
+                }}
+              />
               <FieldError message={form.formState.errors.telefone?.message} />
             </label>
             <div className="form-grid">
@@ -298,6 +379,10 @@ export function ClientsPage() {
             <label className="check-row">
               <input type="checkbox" {...form.register('aceita_marketing')} />
               Aceita comunicações de marketing
+            </label>
+            <label className="check-row">
+              <input type="checkbox" {...form.register('whatsapp_opt_in')} />
+              Confirmo que a cliente autorizou confirmacoes e lembretes de agendamento pelo WhatsApp
             </label>
             <label className="check-row">
               <input type="checkbox" {...form.register('parceira')} />

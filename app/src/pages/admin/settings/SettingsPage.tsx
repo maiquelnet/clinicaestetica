@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, RefreshCw, Save } from 'lucide-react'
+import { CalendarDays, MessageCircle, RefreshCw, Save, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/PageHeader'
 import { useClinic } from '../../../contexts/useClinic'
 import { supabase } from '../../../lib/supabase'
 import { connectGoogleCalendar, getGoogleCalendarStatus, requestGoogleCalendarSync } from '../../../lib/google-calendar'
+import { getWhatsAppStatus, sendWhatsAppTest } from '../../../lib/whatsapp'
 import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
@@ -22,6 +23,16 @@ export function SettingsPage() {
   const syncCalendar = useMutation({
     mutationFn: () => requestGoogleCalendarSync(activeClinicId!),
     onSuccess: () => calendarStatus.refetch(),
+  })
+  const whatsappStatus = useQuery({
+    queryKey: ['whatsapp-status', activeClinicId],
+    enabled: Boolean(activeClinicId),
+    queryFn: () => getWhatsAppStatus(activeClinicId!),
+    refetchInterval: 60_000,
+  })
+  const [whatsappTestRecipient, setWhatsAppTestRecipient] = useState('')
+  const testWhatsApp = useMutation({
+    mutationFn: () => sendWhatsAppTest(activeClinicId!, whatsappTestRecipient),
   })
   const [draft, setDraft] = useState(() => ({
     nome: activeClinic?.nome || '',
@@ -101,6 +112,91 @@ export function SettingsPage() {
           {calendarStatus.data?.connected ? <button className="ghost-button" type="button" disabled={syncCalendar.isPending} onClick={() => syncCalendar.mutate()}><RefreshCw size={16} /> Sincronizar agora</button> : null}
         </div>
         {connectCalendar.error || syncCalendar.error || calendarStatus.error ? <div className="form-alert">{(connectCalendar.error || syncCalendar.error || calendarStatus.error)?.message}</div> : null}
+      </section>
+      <section className="panel form-panel">
+        <PageHeader
+          eyebrow="Integracao"
+          title="WhatsApp Cloud API"
+          description="Envie confirmacoes e lembretes automaticos por modelos aprovados pela Meta."
+        />
+        <p>
+          {whatsappStatus.isLoading
+            ? 'Verificando configuracao...'
+            : whatsappStatus.data?.configured
+              ? 'Secrets obrigatorios cadastrados no servidor.'
+              : 'Integracao ainda nao configurada no servidor.'}
+        </p>
+        {whatsappStatus.data ? (
+          <div className="record-meta">
+            <span className={`badge ${whatsappStatus.data.configured ? 'success' : 'warning'}`}>
+              {whatsappStatus.data.configured ? 'Configurado' : 'Pendente'}
+            </span>
+            <span>{whatsappStatus.data.automaticRules} automacao(oes) ativa(s)</span>
+            <span>{whatsappStatus.data.pendingMessages} mensagem(ns) na fila</span>
+            <span>{whatsappStatus.data.failedMessages} falha(s) para revisar</span>
+            <span className={`badge ${whatsappStatus.data.scheduler.cronActive && whatsappStatus.data.scheduler.vaultConfigured ? 'success' : 'warning'}`}>
+              {whatsappStatus.data.scheduler.cronActive && whatsappStatus.data.scheduler.vaultConfigured ? 'Agendador ativo' : 'Agendador pendente'}
+            </span>
+          </div>
+        ) : null}
+        {whatsappStatus.data?.scheduler.lastRunAt ? (
+          <small>
+            Ultima execucao do agendador: {new Date(whatsappStatus.data.scheduler.lastRunAt).toLocaleString('pt-BR')}
+            {whatsappStatus.data.scheduler.lastRunStatus ? ` (${whatsappStatus.data.scheduler.lastRunStatus})` : ''}.
+          </small>
+        ) : null}
+        {whatsappStatus.data?.missingSecrets.length ? (
+          <div className="form-alert">
+            Configure em Supabase &gt; Edge Functions &gt; Secrets: {whatsappStatus.data.missingSecrets.join(', ')}.
+          </div>
+        ) : null}
+        {whatsappStatus.data && (!whatsappStatus.data.scheduler.cronActive || !whatsappStatus.data.scheduler.vaultConfigured) ? (
+          <div className="form-alert">
+            O envio automatico ainda nao esta agendado. Configure whatsapp_function_url e whatsapp_cron_secret no Supabase Vault.
+          </div>
+        ) : null}
+        <label>
+          Numero verificado para teste
+          <input
+            type="tel"
+            placeholder="(51) 99999-9999"
+            value={whatsappTestRecipient}
+            onChange={(event) => setWhatsAppTestRecipient(event.target.value)}
+          />
+          <small>Durante a homologacao, informe um dos destinatarios cadastrados no painel da Meta.</small>
+        </label>
+        <div className="form-actions">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={!activeClinicId || !whatsappStatus.data?.sendReady || !whatsappTestRecipient.trim() || testWhatsApp.isPending}
+            onClick={() => testWhatsApp.mutate()}
+          >
+            {testWhatsApp.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
+            {testWhatsApp.isPending ? 'Enviando...' : 'Enviar mensagem de teste'}
+          </button>
+          <button className="ghost-button" type="button" onClick={() => void whatsappStatus.refetch()}>
+            <MessageCircle size={16} /> Atualizar status
+          </button>
+        </div>
+        {testWhatsApp.isSuccess ? <div className="form-success">Mensagem de teste aceita pela Meta.</div> : null}
+        {testWhatsApp.error || whatsappStatus.error ? <div className="form-alert">{(testWhatsApp.error || whatsappStatus.error)?.message}</div> : null}
+        {whatsappStatus.data?.recentFailures.length ? (
+          <div className="record-list">
+            {whatsappStatus.data.recentFailures.map((failure) => (
+              <article className="record-card" key={failure.id}>
+                <div>
+                  <h3>{failure.type}</h3>
+                  <div className="record-meta">
+                    <span>{new Date(failure.scheduledAt).toLocaleString('pt-BR')}</span>
+                    <span>{failure.attempts} tentativa(s)</span>
+                  </div>
+                  <p className="message-preview">{failure.error || 'Falha sem detalhe retornado.'}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </section>
     </main>
   )
