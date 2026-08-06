@@ -7,12 +7,15 @@ import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { FieldError, LoadingBlock } from '../components/Ui'
 import { supabase } from '../lib/supabase'
+import type { Service } from '../lib/types'
 
 type ClinicReference = {
   id: string
   nome_publico: string | null
   link_google_avaliacao: string | null
 }
+
+type SignupService = Pick<Service, 'id' | 'nome' | 'categoria' | 'descricao'>
 
 function phoneDigits(value: string) {
   return value.replace(/\D/g, '')
@@ -28,6 +31,7 @@ const clientSchema = z.object({
   telefone: z.string().min(10, 'Informe o telefone.').refine(validBrazilianPhone, 'Informe DDD e número válidos.'),
   email: z.string().email('E-mail inválido.').or(z.literal('')).optional(),
   data_nascimento: z.string().optional(),
+  servicos_interesse: z.array(z.string()),
 })
 
 type ClientSignupForm = z.infer<typeof clientSchema>
@@ -43,17 +47,53 @@ async function fetchClinic(): Promise<ClinicReference | null> {
   return data as ClinicReference | null
 }
 
+async function fetchServices(clinicId: string): Promise<SignupService[]> {
+  const { data, error } = await supabase.rpc('list_public_signup_services', { p_clinica_id: clinicId })
+
+  if (error) throw error
+  return (data || []) as SignupService[]
+}
+
+function friendlySignupError(error: unknown) {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+  const message = error instanceof Error ? error.message.toLowerCase() : ''
+
+  if (code === '23505' || message.includes('duplicate') || message.includes('unique')) {
+    return 'Já encontramos um cadastro com esses dados. Seus dados não foram duplicados; tente atualizar o telefone ou entre em contato pelo WhatsApp.'
+  }
+  if (code === '42501' || message.includes('permission') || message.includes('row-level security')) {
+    return 'O cadastro está temporariamente indisponível por uma regra de segurança. Tente novamente em alguns minutos ou fale conosco pelo WhatsApp.'
+  }
+  if (code === '23514' || code === '22P02') {
+    return 'Confira os dados preenchidos e tente novamente. Alguma informação está fora do formato esperado.'
+  }
+  if (code === '23503') {
+    return 'Não foi possível associar seu cadastro à clínica. Atualize a página e tente novamente.'
+  }
+  if (message.includes('failed to fetch') || message.includes('network') || message.includes('fetch')) {
+    return 'Não conseguimos conectar ao sistema agora. Verifique sua internet e tente novamente.'
+  }
+  return 'Não foi possível salvar seus dados agora. Confira as informações e tente novamente. Se o problema continuar, fale conosco pelo WhatsApp.'
+}
+
 export function ClientSignupPage() {
   const [savedMessage, setSavedMessage] = useState('')
   const [submitError, setSubmitError] = useState('')
   const form = useForm<ClientSignupForm>({
     resolver: zodResolver(clientSchema),
-    defaultValues: { nome: '', telefone: '', email: '', data_nascimento: '' },
+    defaultValues: { nome: '', telefone: '', email: '', data_nascimento: '', servicos_interesse: [] },
   })
 
   const clinicQuery = useQuery({
     queryKey: ['signup-clinic'],
     queryFn: fetchClinic,
+    staleTime: 60_000,
+  })
+
+  const servicesQuery = useQuery({
+    queryKey: ['signup-services', clinicQuery.data?.id],
+    queryFn: () => fetchServices(clinicQuery.data!.id),
+    enabled: Boolean(clinicQuery.data?.id),
     staleTime: 60_000,
   })
 
@@ -70,6 +110,7 @@ export function ClientSignupPage() {
         telefone: phone,
         email: values.email?.trim() || null,
         data_nascimento: values.data_nascimento || null,
+        servicos_interesse: values.servicos_interesse,
         cpf: null,
         genero: null,
         observacoes: null,
@@ -111,7 +152,7 @@ export function ClientSignupPage() {
       setSubmitError('')
     },
     onError: (error) => {
-      setSubmitError(error instanceof Error ? error.message : 'Não foi possível salvar seus dados.')
+      setSubmitError(friendlySignupError(error))
     },
   })
 
@@ -123,7 +164,7 @@ export function ClientSignupPage() {
     )
   }
 
-  if (clinicQuery.error || !clinicQuery.data) {
+  if (clinicQuery.error || !clinicQuery.data || servicesQuery.error) {
     return (
       <main className="signup-page">
         <div className="signup-layout">
@@ -200,6 +241,22 @@ export function ClientSignupPage() {
                   <input type="email" autoComplete="email" {...form.register('email')} />
                   <FieldError message={form.formState.errors.email?.message} />
                 </label>
+                <fieldset className="signup-services-fieldset">
+                  <legend>Serviços de interesse</legend>
+                  <p className="signup-help">Selecione um ou mais serviços para nos ajudar a preparar seu atendimento.</p>
+                  <div className="signup-services-list">
+                    {(servicesQuery.data || []).map((service) => (
+                      <label className="signup-service-option" key={service.id}>
+                        <input type="checkbox" value={service.id} {...form.register('servicos_interesse')} />
+                        <span>
+                          <strong>{service.nome}</strong>
+                          {service.categoria ? <small>{service.categoria}</small> : null}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {!servicesQuery.data?.length ? <p className="signup-help">Você poderá escolher o procedimento diretamente com a Thais.</p> : null}
+                </fieldset>
               </div>
 
               {submitError ? <div className="form-alert">{submitError}</div> : null}

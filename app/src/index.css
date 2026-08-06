@@ -752,6 +752,58 @@ textarea:focus {
   grid-template-columns: 1fr;
 }
 
+.signup-services-fieldset {
+  border: 0;
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.signup-services-fieldset legend {
+  font-weight: 800;
+  padding: 0;
+}
+
+.signup-help {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 !important;
+}
+
+.signup-services-list {
+  display: grid;
+  gap: 10px;
+}
+
+.signup-service-option {
+  align-items: flex-start;
+  background: #fbfcfa;
+  border: 1px solid rgba(52, 67, 56, 0.14);
+  border-radius: 12px;
+  display: flex;
+  gap: 10px;
+  padding: 13px;
+}
+
+.signup-service-option input {
+  accent-color: var(--sage);
+  flex: 0 0 auto;
+  height: 20px;
+  margin-top: 1px;
+  width: 20px;
+}
+
+.signup-service-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.signup-service-option small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .signup-card label {
   font-weight: 700;
 }

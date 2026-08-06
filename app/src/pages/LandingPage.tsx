@@ -68,6 +68,9 @@ export function LandingPage() {
           <a href="#quem-sou" onClick={closeMenu}>Quem sou eu</a>
           <a href="#avaliacoes" onClick={closeMenu}>Avaliações</a>
           <a href="#faq" onClick={closeMenu}>FAQ</a>
+          <Link className="nav-signup" to="/cadastro-cliente" onClick={closeMenu}>
+            Atualizar meu cadastro
+          </Link>
         </nav>
 
         <a className="header-cta" href={whatsappUrl} target="_blank" rel="noreferrer">

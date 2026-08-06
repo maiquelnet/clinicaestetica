@@ -44,6 +44,7 @@
 .landing-site .site-header nav { display: flex; gap: 20px; font-size: 12px; font-weight: 900; text-transform: uppercase; }
 .landing-site .site-header nav a { border-bottom: 2px solid transparent; padding-block: 8px; transition: border-color 160ms ease, color 160ms ease; }
 .landing-site .site-header nav a:hover, .landing-site .site-header nav a:focus-visible { border-color: var(--landing-rose); color: var(--landing-sage-dark); }
+.landing-site .site-header nav .nav-signup { background: var(--landing-sage-dark); border-radius: 6px; color: #fff; padding: 9px 12px; }
 .landing-site .header-cta, .landing-site .button, .landing-site .choice-grid a { align-items: center; border-radius: 6px; display: inline-flex; font-weight: 900; justify-content: center; min-height: 46px; text-align: center; }
 .landing-site .header-cta { background: var(--landing-sage-dark); color: #fff; padding: 12px 18px; text-transform: uppercase; }
 .landing-site .nav-toggle { align-items: center; background: var(--landing-sage-dark); border: 0; border-radius: 50%; color: #fff; display: none; height: 44px; justify-content: center; padding: 0; width: 44px; }
@@ -150,6 +151,8 @@
   .landing-site .site-header nav a { border: 0; border-radius: 6px; font-size: 13px; padding: 12px; }
   .landing-site .site-header nav a:hover { background: var(--landing-mist); }
   .landing-site .header-cta { display: none; }
+  .landing-site .site-header nav .nav-signup { display: block; color: #fff; text-align: center; }
+  .landing-site .hero-links .header-cta { display: inline-flex; }
   .landing-site .choice-grid, .landing-site .emblem-card, .landing-site .about, .landing-site .result-showcase, .landing-site .reviews { grid-template-columns: 1fr; }
   .landing-site .hero { background: linear-gradient(90deg, rgba(251,250,246,.98) 0%, rgba(251,250,246,.88) 62%, rgba(251,250,246,.48) 100%), linear-gradient(180deg, rgba(251,250,246,.24) 0%, rgba(251,250,246,.92) 100%), var(--hero-image) 62% center / cover no-repeat; }
   .landing-site .contact-actions { grid-template-columns: 1fr; max-width: 520px; }
@@ -174,6 +177,8 @@
   .landing-site .benefits div { border-bottom: 1px solid rgba(255,255,255,.16); border-right: 0; min-height: 118px; }
   .landing-site .benefits div:last-child { border-bottom: 0; }
   .landing-site .header-cta, .landing-site .button, .landing-site .about-cta, .landing-site .result-cta { width: 100%; }
+  .landing-site .hero-links { align-items: stretch; flex-direction: column; }
+  .landing-site .hero-links .header-cta, .landing-site .hero-links .text-link { width: 100%; }
   .landing-site footer { align-items: flex-start; flex-direction: column; }
 }
 
