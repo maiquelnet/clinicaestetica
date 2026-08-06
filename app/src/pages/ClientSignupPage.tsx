@@ -188,14 +188,18 @@ export function ClientSignupPage() {
     <main className="signup-page">
       <div className="signup-layout">
         <div className="signup-card">
-          <div className="signup-header">
-            <p className="tag">Sem login</p>
-            <Link className="ghost-link" to="/">
-              Voltar para a página principal
-            </Link>
-          </div>
-          <h1>Atualize seu cadastro</h1>
-          <p>Preencha seus dados para agilizar seu atendimento na {clinicName}.</p>
+          {!isSubmitted ? (
+            <>
+              <div className="signup-header">
+                <p className="tag">Sem login</p>
+                <Link className="ghost-link" to="/">
+                  Voltar para a página principal
+                </Link>
+              </div>
+              <h1>Atualize seu cadastro</h1>
+              <p>Preencha seus dados para agilizar seu atendimento na {clinicName}.</p>
+            </>
+          ) : null}
 
           {isSubmitted ? (
             <div className="signup-success">
@@ -203,7 +207,6 @@ export function ClientSignupPage() {
                 <CheckCircle size={22} />
                 <strong>{savedMessage}</strong>
               </div>
-              <p>Seu cadastro já está salvo. Caso queira, clique no botão abaixo apenas após o atendimento para avaliar a clínica no Google.</p>
               <div className="signup-actions">
                 <a className="primary-button" href={googleReviewLink} target="_blank" rel="noreferrer">
                   Avaliar no Google
