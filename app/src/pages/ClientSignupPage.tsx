@@ -70,6 +70,9 @@ function friendlySignupError(error: unknown) {
   if (code === '23503') {
     return 'Não foi possível associar seu cadastro à clínica. Atualize a página e tente novamente.'
   }
+  if (code === '42703' || code === 'PGRST204' || message.includes('column') || message.includes('schema cache')) {
+    return 'O formulário está passando por uma atualização no sistema. Tente novamente em alguns minutos ou fale conosco pelo WhatsApp.'
+  }
   if (message.includes('failed to fetch') || message.includes('network') || message.includes('fetch')) {
     return 'Não conseguimos conectar ao sistema agora. Verifique sua internet e tente novamente.'
   }
@@ -117,11 +120,6 @@ export function ClientSignupPage() {
         intervalo_retorno_dias: null,
         parceira: false,
         aceita_marketing: false,
-        whatsapp_opt_in_status: 'pendente' as const,
-        whatsapp_opt_in_em: null,
-        whatsapp_opt_in_origem: 'cadastro_publico',
-        whatsapp_opt_in_versao: 'cadastro_v1',
-        whatsapp_opt_out_em: null,
         ativo: true,
         criado_em: now,
         atualizado_em: now,
