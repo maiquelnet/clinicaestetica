@@ -685,6 +685,97 @@ textarea:focus {
   padding: 10px 12px;
 }
 
+.signup-page {
+  min-height: 100vh;
+  padding: clamp(24px, 6vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #fbfaf6 0%, #f1efe8 100%);
+}
+
+.signup-layout {
+  width: min(680px, 100%);
+  padding: clamp(26px, 4vw, 42px);
+}
+
+.signup-card {
+  background: #fff;
+  border: 1px solid rgba(52, 67, 56, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(31, 34, 32, 0.08);
+  padding: clamp(28px, 4vw, 42px);
+}
+
+.signup-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.signup-card h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  margin: 0 0 14px;
+}
+
+.signup-card p {
+  color: var(--muted);
+  margin: 0 0 24px;
+  max-width: 680px;
+}
+
+.signup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.signup-success {
+  display: grid;
+  gap: 20px;
+}
+
+.signup-success-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.signup-success-head strong {
+  font-size: 20px;
+}
+
+.signup-card .form-grid {
+  grid-template-columns: 1fr;
+}
+
+.signup-card label {
+  font-weight: 700;
+}
+
+@media (max-width: 680px) {
+  .signup-card {
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .signup-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-card,
+  .signup-actions a,
+  .signup-actions button {
+    transition: none !important;
+  }
+}
+
 .form-success {
   align-items: center;
   background: #f1faf5;

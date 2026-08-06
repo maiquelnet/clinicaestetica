@@ -177,6 +177,9 @@
   .landing-site footer { align-items: flex-start; flex-direction: column; }
 }
 
+.landing-site .hero-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.landing-site .hero-links .header-cta { min-width: auto; }
+
 @media (prefers-reduced-motion: reduce) {
   .landing-site *, .landing-site *::before, .landing-site *::after { scroll-behavior: auto !important; transition: none !important; }
 }

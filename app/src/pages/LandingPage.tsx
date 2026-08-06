@@ -105,9 +105,14 @@ export function LandingPage() {
               </a>
             </div>
 
-            <a className="text-link" href="#atendimentos">
-              Escolher atendimento <ArrowRight size={17} />
-            </a>
+            <div className="hero-links">
+              <Link className="header-cta" to="/cadastro-cliente">
+                Atualizar cadastro
+              </Link>
+              <a className="text-link" href="#atendimentos">
+                Escolher atendimento <ArrowRight size={17} />
+              </a>
+            </div>
           </div>
         </section>
 
