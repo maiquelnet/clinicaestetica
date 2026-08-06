@@ -68,9 +68,7 @@ export function LandingPage() {
           <a href="#quem-sou" onClick={closeMenu}>Quem sou eu</a>
           <a href="#avaliacoes" onClick={closeMenu}>Avaliações</a>
           <a href="#faq" onClick={closeMenu}>FAQ</a>
-          <Link className="nav-signup" to="/cadastro-cliente" onClick={closeMenu}>
-            Atualizar meu cadastro
-          </Link>
+          <Link to="/cadastro-cliente" onClick={closeMenu}>Cadastro</Link>
         </nav>
 
         <a className="header-cta" href={whatsappUrl} target="_blank" rel="noreferrer">
@@ -109,9 +107,6 @@ export function LandingPage() {
             </div>
 
             <div className="hero-links">
-              <Link className="header-cta" to="/cadastro-cliente">
-                Atualizar cadastro
-              </Link>
               <a className="text-link" href="#atendimentos">
                 Escolher atendimento <ArrowRight size={17} />
               </a>
