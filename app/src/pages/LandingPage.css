@@ -111,6 +111,11 @@
 .landing-site .reviews-coming-soon .stars { color: var(--landing-gold); display: flex; gap: 5px; }
 .landing-site .reviews-coming-soon strong { font-family: Georgia, "Times New Roman", serif; font-size: clamp(26px, 3vw, 38px); font-weight: 500; }
 .landing-site .reviews-coming-soon span { color: var(--landing-muted); font-weight: 800; }
+.landing-site .reviews-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.landing-site .review-card { background: var(--landing-rose-soft); border-radius: 8px; display: grid; gap: 9px; padding: 22px; }
+.landing-site .review-card .stars { color: var(--landing-gold); display: flex; gap: 3px; }
+.landing-site .review-card strong { font-weight: 800; }
+.landing-site .review-card p { color: var(--landing-muted); line-height: 1.55; margin: 0; }
 
 .landing-site .faq { background: var(--landing-mist); }
 .landing-site .faq-list { display: grid; gap: 10px; margin: 0 auto; max-width: 900px; }
@@ -151,6 +156,7 @@
   .landing-site .site-header nav a:hover { background: var(--landing-mist); }
   .landing-site .header-cta { display: none; }
   .landing-site .choice-grid, .landing-site .emblem-card, .landing-site .about, .landing-site .result-showcase, .landing-site .reviews { grid-template-columns: 1fr; }
+  .landing-site .reviews-grid { grid-template-columns: 1fr; }
   .landing-site .hero { background: linear-gradient(90deg, rgba(251,250,246,.98) 0%, rgba(251,250,246,.88) 62%, rgba(251,250,246,.48) 100%), linear-gradient(180deg, rgba(251,250,246,.24) 0%, rgba(251,250,246,.92) 100%), var(--hero-image) 62% center / cover no-repeat; }
   .landing-site .contact-actions { grid-template-columns: 1fr; max-width: 520px; }
   .landing-site .benefits { grid-template-columns: repeat(2, 1fr); }

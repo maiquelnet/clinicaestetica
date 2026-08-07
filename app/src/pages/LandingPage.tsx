@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import beforeAfterImage from '../assets/antes_depois_20260611.jpg'
 import profileImage from '../assets/foto_perfil_thais.jpg'
@@ -14,6 +15,7 @@ import heroImage from '../assets/hero-estetica.png'
 import brandEmblem from '../assets/logo_1080.jpg'
 import brandLogo from '../assets/logo_150.jpg'
 import './LandingPage.css'
+import { fetchGoogleReviews, type GoogleReviewsResponse } from '../lib/google-reviews'
 
 const instagramUrl = 'https://www.instagram.com/thaisschneider_estetica_/'
 const emailUrl = 'mailto:contato@esteticaschneider.com.br'
@@ -35,6 +37,24 @@ const whatsappLinks = {
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [googleReviews, setGoogleReviews] = useState<GoogleReviewsResponse | null>(null)
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [reviewsError, setReviewsError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchGoogleReviews()
+      .then((data) => {
+        if (!cancelled) setGoogleReviews(data)
+      })
+      .catch(() => {
+        if (!cancelled) setReviewsError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setReviewsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   function closeMenu() {
     setMenuOpen(false)
@@ -189,15 +209,11 @@ export function LandingPage() {
           <div className="reviews-copy">
             <p className="tag">Avaliações do Google</p>
             <h2 id="reviews-title">A experiência de quem escolhe se cuidar.</h2>
-            <p>Em breve, as avaliações verificadas do Google estarão disponíveis aqui.</p>
+            <p>{googleReviews?.rating ? `${googleReviews.rating.toFixed(1)} estrelas no Google${googleReviews.userRatingCount ? ` · ${googleReviews.userRatingCount} avaliações` : ''}.` : 'Veja o que as clientes dizem sobre o atendimento.'}</p>
           </div>
-          <div className="reviews-coming-soon" aria-label="Avaliações em breve">
-            <div className="stars" aria-hidden="true">
-              {[0, 1, 2, 3, 4].map((star) => <Star key={star} size={22} fill="currentColor" />)}
-            </div>
-            <strong>Avaliações verificadas</strong>
-            <span>Espaço preparado para integração com o Google</span>
-          </div>
+          {reviewsLoading ? <div className="reviews-coming-soon" aria-live="polite">Carregando avaliações do Google...</div> : null}
+          {!reviewsLoading && googleReviews?.reviews.length ? <div className="reviews-grid">{googleReviews.reviews.map((review) => <article className="review-card" key={review.id}><div className="stars" aria-label={`${review.rating} de 5 estrelas`}>{[0, 1, 2, 3, 4].map((star) => <Star key={star} size={18} fill={star < review.rating ? 'currentColor' : 'none'} />)}</div><strong>{review.author}</strong>{review.text ? <p>{review.text}</p> : null}</article>)}</div> : null}
+          {!reviewsLoading && (!googleReviews?.reviews.length || reviewsError) ? <div className="reviews-coming-soon"><strong>Avaliações do Google</strong><span>As avaliações estarão disponíveis assim que a integração for configurada.</span>{googleReviews?.reviewLink ? <a className="button outline" href={googleReviews.reviewLink} target="_blank" rel="noreferrer">Avaliar no Google</a> : null}</div> : null}
         </section>
 
         <section className="section faq" id="faq" aria-labelledby="faq-title">
