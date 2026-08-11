@@ -1,30 +1,74 @@
-# clinicaestetica
+# Estética Schneider
 
-Sistema de controle de agendamento e relacionamento com cliente voltado para clinicas de estetica e salao de beleza.
+Sistema web de atendimento e gestão para a Estética Schneider.
 
-## Deploy na Vercel
+Produção: https://www.esteticaschneider.com.br
 
-O repositorio esta configurado para deploy pela Vercel usando o arquivo `vercel.json` na raiz.
+Backend: Supabase `xucttzuthznqwlhushmg` (`sa-east-1`)
 
-Rotas principais:
+Deploy web: Vercel, branch `main`
 
-- `/`: landing page publica.
-- `/login`: acesso ao painel administrativo.
-- `/dashboard`: dashboard protegido por autenticacao.
+## Tecnologia
 
-Configuracao esperada:
+- Vite 8, React 19 e TypeScript 6;
+- React Router, TanStack React Query, React Hook Form e Zod;
+- Supabase Auth, PostgreSQL 17, PostgREST, RLS, RPCs e Edge Functions Deno;
+- Google Calendar API, Google Places API e Meta WhatsApp Cloud API;
+- Vercel para build e hospedagem da SPA.
 
-- Framework: Vite
-- Install command: `cd app && npm ci`
-- Build command: `cd app && npm run build`
-- Output directory: `app/dist`
+## Estrutura
 
-Variaveis obrigatorias por ambiente:
+- `app/`: frontend moderno e fontes usadas em deploys recentes;
+- `supabase/`: migrations e Edge Functions versionadas;
+- `doc/`: documentação técnica, operacional e funcional;
+- `apps-script/`: legado preservado somente como referência;
+- `vercel.json`: build e rewrite de rotas da Vercel.
+
+## Desenvolvimento
+
+```bash
+cd app
+npm ci
+npm run dev
+```
+
+Crie `app/.env.local`:
+
+```text
+VITE_APP_ENV=development
+VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
+```
+
+Nunca use secret key, service role ou tokens de integrações em variáveis `VITE_*`.
+
+## Validação
+
+```bash
+cd app
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Vercel
+
+`vercel.json` executa:
+
+- Install: `cd app && npm ci`
+- Build: `cd app && npm run build`
+- Output: `app/dist`
+
+Variáveis de produção:
 
 ```text
 VITE_APP_ENV=production
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publishable
+VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
 ```
 
-Use `VITE_APP_ENV=preview` para Preview Deployments e `VITE_APP_ENV=development` no ambiente local.
+## Documentação
+
+Comece em [doc/README.md](./doc/README.md) e consulte principalmente [operação, acessos e plataformas](./doc/operacao-plataformas.md).
+
+O runbook registra as URLs, os nomes exatos dos Secrets, as Edge Functions implantadas, as pendências de segurança e o estado real do agendador WhatsApp sem versionar credenciais.

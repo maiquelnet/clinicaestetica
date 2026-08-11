@@ -1,40 +1,44 @@
-# Documentacao do Sistema
+# Documentação do Sistema
 
-Projeto: Thais Schneider Estetica
+Projeto: Estética Schneider
 
-Status da documentacao: inicial, criada em 2026-07-03.
+Última revisão geral: 2026-08-11.
 
-Esta pasta concentra a documentacao tecnica, funcional, de seguranca e de IA do sistema. A documentacao deve ser atualizada sempre que houver mudanca de banco, arquitetura, fluxos de usuario, integracoes ou prompts.
+Esta pasta documenta a aplicação React em produção, o backend Supabase, a implantação Vercel e as integrações Google e WhatsApp. Atualize-a junto com qualquer mudança de arquitetura, banco, variáveis, Edge Functions ou fluxo de usuário.
 
-## Indice
+## Comece por aqui
 
-- [Arquitetura do Sistema](./arquitetura.md)
-- [Dicionario de Dados](./dicionario-de-dados.md)
-- [Documentacao da API](./api.md)
-- [Guia de Instalacao](./instalacao.md)
-- [Especificacoes da IA](./ia.md)
-- [Qualidade e Casos de Teste](./testes.md)
-- [Seguranca e LGPD](./seguranca-lgpd.md)
-- [Manual do Usuario](./manual-usuario.md)
-- [Google Agenda](./google-calendar.md)
+- [Operação, acessos e plataformas](./operacao-plataformas.md): identificadores, URLs, variáveis, Secrets, deploy, rotação e pendências verificadas.
+- [Arquitetura do sistema](./arquitetura.md): componentes, tecnologias e fluxos.
+- [Guia de instalação](./instalacao.md): desenvolvimento local e publicação.
+- [Histórico de implementação](./historico-implementacao.md): linha do tempo do que foi realizado.
+
+## Referências por assunto
+
+- [Dicionário de dados](./dicionario-de-dados.md)
+- [API e Edge Functions](./api.md)
+- [Qualidade e testes](./testes.md)
+- [Segurança e LGPD](./seguranca-lgpd.md)
+- [Manual do usuário](./manual-usuario.md)
+- [Google Agenda bidirecional](./google-calendar.md)
 - [WhatsApp Cloud API](./whatsapp-cloud.md)
-- [Historico de Implementacao](./historico-implementacao.md)
+- [Especificações de IA](./ia.md)
 
 ## Estado atual resumido
 
-O repositorio local contem:
+- Frontend moderno em `app/`, construído com Vite, React e TypeScript.
+- Produção em `https://www.esteticaschneider.com.br`, com deploy pela Vercel a partir da branch `main`.
+- Supabase de produção `estetica_schneider`, ref `xucttzuthznqwlhushmg`, região `sa-east-1`, PostgreSQL 17.
+- Autenticação pelo Supabase Auth e isolamento por clínica com RLS/papéis.
+- Módulos de clientes, serviços, agenda, fila de espera, equipamentos, tratamentos, financeiro, estoque, mensagens, campanhas, avaliações e configurações.
+- Google Agenda bidirecional conectado por OAuth e Edge Function.
+- Avaliações públicas do Google Places carregadas por Edge Function.
+- WhatsApp Cloud API implantado com consentimento, templates e fila; o acionamento periódico automático ainda depende de um agendador externo ou futura configuração de cron.
+- Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
 
-- Site publico estatico: `index.html`, `styles.css`, `script.js`, `assets/hero-estetica.avif`, `assets/hero-estetica.webp` e fallback `assets/hero-estetica.png`.
-- Pagina de admin que embute o Apps Script legado: `admin.html`.
-- Painel Apps Script legado: `apps-script/Code.gs`, `apps-script/Index.html`, `apps-script/Client.html`, `apps-script/Styles.html`.
-- Banco Supabase ja modelado, com 37 tabelas publicas, RLS habilitado e dados zerados.
+## Regras de documentação
 
-O sistema novo ainda nao possui aplicacao frontend moderna com Supabase no repositorio. A recomendacao e criar uma app `Vite + React + TypeScript + Supabase` para substituir gradualmente o painel Apps Script.
-
-## Decisoes atuais
-
-- Os dados das tabelas `public` do Supabase foram descartados porque o sistema esta sendo criado do zero.
-- A estrutura do banco foi preservada.
-- RLS, policies, funcoes e indices foram mantidos e corrigidos.
-- Nao ha IA aplicacional implementada ainda.
-- Nao ha API propria implementada no repositorio; a API atual prevista e a API gerada pelo Supabase/PostgREST.
+- Não grave valores de secret keys, service role, tokens OAuth, tokens Meta ou Personal Access Tokens.
+- Registre nomes exatos de variáveis e o local onde o valor é recuperado.
+- Diferencie claramente o que está implantado, o que foi apenas testado e o que está pendente.
+- Ao aplicar migration remota, registre o nome/versionamento retornado pelo Supabase.

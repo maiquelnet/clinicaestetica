@@ -1,44 +1,23 @@
-# Documentacao da API
+# API e Edge Functions
 
-## Estado atual
+Atualizado em: 2026-08-11.
 
-Nao existe API propria implementada no repositorio local.
+## Modelo de API
 
-As APIs existentes ou previstas sao:
+Não existe servidor HTTP próprio. A aplicação usa:
 
-- Google Apps Script legado via `google.script.run`.
-- Supabase PostgREST gerado automaticamente a partir das tabelas `public`.
-- Supabase Auth.
+- Supabase Data API/PostgREST para tabelas e views expostas;
+- Supabase RPC para operações transacionais;
+- Supabase Auth para sessão e JWT do usuário;
+- três Edge Functions para integrações externas.
 
-Nao ha Swagger/OpenAPI versionado no repositorio neste momento.
-
-## API legado: Google Apps Script
-
-O frontend `apps-script/Client.html` chama funcoes do backend `apps-script/Code.gs` via `google.script.run`.
-
-Funcoes principais:
-
-| Funcao | Entrada | Saida | Observacao |
-| --- | --- | --- | --- |
-| `getInitialData()` | Nenhuma | Estado completo do painel | Carrega dashboard, clientes, servicos, agenda, mensagens, campanhas e financeiro. |
-| `saveClient(payload)` | Dados de cliente | Estado completo atualizado | Cria ou atualiza cliente no Google Sheets. |
-| `saveService(payload)` | Dados de servico | Estado completo atualizado | Cria/atualiza servico e historico de preco. |
-| `saveAppointment(payload)` | Dados de agendamento | Estado completo atualizado | Cria/atualiza agenda e sincroniza Google Calendar. |
-| `saveConfig(payload)` | Configuracoes | Estado completo atualizado | Salva configuracoes do painel. |
-| `saveMessageTemplate(payload)` | Modelo de mensagem | Estado completo atualizado | Cria/atualiza modelo. |
-| `saveCampaign(payload)` | Campanha e clientes | Estado completo atualizado | Cria lista de envio. |
-| `recordMessageSent(payload)` | Mensagem enviada | Estado completo atualizado | Registra envio manual. |
-| `dismissAlert(payload)` | Pendencia | Estado completo atualizado | Dispensa alerta. |
-
-## API alvo: Supabase PostgREST
-
-Base URL:
+Base REST:
 
 ```text
 https://xucttzuthznqwlhushmg.supabase.co/rest/v1
 ```
 
-Headers esperados:
+Headers do frontend autenticado:
 
 ```http
 apikey: <SUPABASE_PUBLISHABLE_KEY>
@@ -46,176 +25,173 @@ Authorization: Bearer <JWT_DO_USUARIO>
 Content-Type: application/json
 ```
 
-Observacao: o sistema deve usar chave publishable/anon no frontend. Chaves secretas nao devem ir para o navegador.
+A publishable key não concede acesso às linhas por si só. As policies RLS usam a sessão e o vínculo em `usuarios_clinicas`.
 
-## Endpoints principais previstos
+## Data API
 
-### Clientes
+Principais recursos usados pela SPA:
 
-Listar:
+- acesso/contexto: `perfis`, `usuarios_clinicas`, `clinicas`;
+- clientes: `clientes`, `anotacoes_clientes`;
+- agenda: `agendamentos`, `bloqueios_agenda`, `eventos_agenda`, `lista_espera`;
+- serviços: `servicos`, `precos_servicos`;
+- mensagens: `modelos_mensagens`, `regras_mensagens`, `logs_mensagens`, `mensagens_dispensadas`, `fila_mensagens`;
+- financeiro: `movimentacoes_financeiras`, `contas_financeiras`, `categorias_financeiras`, `metodos_pagamento`, `caixas`;
+- estoque/ativos: `itens_estoque`, `movimentacoes_estoque`, `fornecedores`, `equipamentos`;
+- marketing: `campanhas`, `destinatarios_campanhas`, `avaliacoes_clientes`;
+- tratamentos: `planos_tratamento`, `itens_plano_tratamento`.
 
-```http
-GET /rest/v1/clientes?select=*
+## RPCs relevantes
+
+| RPC | Uso |
+| --- | --- |
+| `salvar_agendamento` | Criação/edição transacional de agendamento. |
+| `salvar_servico_com_preco` | Serviço e preço vigente na mesma operação. |
+| `confirmar_lista_espera` | Confirma reserva da fila com validação de conflito. |
+| `salvar_campanha_com_destinatarios` | Campanha e público destinatário. |
+| `salvar_modelo_mensagem_e_regra` | Modelo, regra e configuração WhatsApp. |
+| `list_public_signup_services` | Lista serviços ativos para o cadastro público. |
+| `register_public_client_signup` | Registra cliente/interesses sem abrir CRUD administrativo ao `anon`. |
+| `claim_whatsapp_message_queue` | Reserva lote da fila com `FOR UPDATE SKIP LOCKED`. |
+| `complete_whatsapp_message_queue` | Finaliza item aceito pela Meta. |
+| `fail_whatsapp_message_queue` | Marca falha e agenda retry limitado. |
+
+As RPCs públicas devem validar internamente a clínica e limitar os campos retornados. RPCs administrativas precisam de `search_path` fixo, autorização e grants mínimos.
+
+## Edge Function `google-calendar-sync`
+
+URL:
+
+```text
+https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync
 ```
 
-Criar:
+Versão remota confirmada: `32`; `verify_jwt=false`.
 
-```http
-POST /rest/v1/clientes
+### Ações POST administrativas
+
+```json
+{ "action": "status", "clinicId": "<uuid>" }
+{ "action": "connect", "clinicId": "<uuid>" }
+{ "action": "sync", "clinicId": "<uuid>" }
 ```
 
-Payload:
+Exigem JWT de usuário e vínculo ativo como proprietário/administrador.
+
+### OAuth callback
+
+`GET` com `code/state` vindo do Google. O `state` é assinado, tem expiração e associa `userId` e `clinicId`. Ao concluir, redireciona para as configurações do site oficial.
+
+### Webhook Google
+
+Usa headers `x-goog-channel-id`, `x-goog-channel-token`, `x-goog-resource-id` e `x-goog-resource-state`. A função compara canal/token/resource com `google_calendar_connections`.
+
+### Cron
+
+```json
+{ "action": "sync-all" }
+```
+
+Header privado:
+
+```http
+x-cron-secret: <GOOGLE_SYNC_CRON_SECRET>
+```
+
+## Edge Function `google-reviews`
+
+URL:
+
+```text
+https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews
+```
+
+Versão remota: `2`; `verify_jwt=false`.
+
+- Método: `GET`;
+- acesso público;
+- consulta a primeira clínica ativa para obter `google_place_id`;
+- chama Places API (New) com FieldMask;
+- retorna no máximo cinco avaliações, nota agregada, total e links públicos;
+- não retorna API key nem dados administrativos.
+
+Resposta resumida:
 
 ```json
 {
-  "clinica_id": "uuid",
-  "nome": "Nome da cliente",
-  "telefone": "51999999999",
-  "email": "cliente@email.com",
-  "data_nascimento": "1990-01-01",
-  "observacoes": "Texto livre",
-  "aceita_marketing": true,
-  "ativo": true
+  "reviews": [],
+  "rating": 5,
+  "userRatingCount": 10,
+  "googleMapsUrl": "https://maps.google.com/...",
+  "reviewLink": "https://g.page/r/.../review"
 }
 ```
 
-Atualizar:
+## Edge Function `whatsapp-messages`
 
-```http
-PATCH /rest/v1/clientes?id=eq.<uuid>
+URL:
+
+```text
+https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
 ```
 
-Arquivar:
+Versão remota: `4`; `verify_jwt=false`.
 
-```http
-PATCH /rest/v1/clientes?id=eq.<uuid>
+### `status`
+
+```json
+{ "action": "status", "clinicId": "<uuid>" }
 ```
 
-Payload:
+Exige JWT e papel proprietário/administrador. Retorna configuração de secrets, regras automáticas, fila e falhas recentes.
+
+### `validate-template`
 
 ```json
 {
-  "ativo": false,
-  "arquivado_em": "2026-07-03T00:00:00Z"
+  "action": "validate-template",
+  "clinicId": "<uuid>",
+  "templateName": "confirmacao_agendamento_v1",
+  "language": "pt_BR"
 }
 ```
 
-### Servicos
+Consulta a WABA e exige template aprovado.
 
-Listar:
-
-```http
-GET /rest/v1/servicos?select=*,precos_servicos(*)
-```
-
-Criar:
-
-```http
-POST /rest/v1/servicos
-```
-
-Payload:
+### `send-test`
 
 ```json
 {
-  "clinica_id": "uuid",
-  "nome": "Peeling diamante",
-  "categoria": "Procedimentos",
-  "descricao": "Descricao do servico",
-  "duracao_minutos": 60,
-  "preco_sob_consulta": false,
-  "observacao_preco": null,
-  "ativo": true
+  "action": "send-test",
+  "clinicId": "<uuid>",
+  "recipient": "5551999999999"
 }
 ```
 
-### Precos de servico
+Usa o primeiro modelo ativo de confirmação/lembrete. Durante homologação, o destinatário precisa estar permitido no painel Meta.
 
-Criar preco:
-
-```http
-POST /rest/v1/precos_servicos
-```
-
-Payload:
+### `process`
 
 ```json
-{
-  "clinica_id": "uuid",
-  "servico_id": "uuid",
-  "valor": 100,
-  "inicio_validade": "2026-07-03",
-  "fim_validade": null
-}
+{ "action": "process", "clinicId": "<uuid>" }
 ```
 
-### Agendamentos
-
-Listar por periodo:
+Autorização por:
 
 ```http
-GET /rest/v1/agendamentos?select=*,clientes(*),servicos(*)&inicio_em=gte.<inicio>&inicio_em=lt.<fim>
+x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
 ```
 
-Criar:
+Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates e registra sucesso/falha. Em 2026-08-11 não existia `pg_cron` no banco; um scheduler externo é necessário.
 
-```http
-POST /rest/v1/agendamentos
-```
+### Limitações da versão 4
 
-Payload:
-
-```json
-{
-  "clinica_id": "uuid",
-  "cliente_id": "uuid",
-  "servico_id": "uuid",
-  "profissional_id": "uuid",
-  "inicio_em": "2026-07-03T13:00:00-03:00",
-  "fim_em": "2026-07-03T14:00:00-03:00",
-  "status": "agendado",
-  "valor_aplicado": 100,
-  "observacoes": "Texto livre"
-}
-```
-
-### Mensagens
-
-Modelos:
-
-```http
-GET /rest/v1/modelos_mensagens?select=*,regras_mensagens(*)
-```
-
-Logs:
-
-```http
-POST /rest/v1/logs_mensagens
-```
-
-Payload:
-
-```json
-{
-  "clinica_id": "uuid",
-  "cliente_id": "uuid",
-  "agendamento_id": "uuid",
-  "modelo_mensagem_id": "uuid",
-  "canal": "whatsapp_manual",
-  "texto": "Mensagem enviada",
-  "ciclo": "confirmacao_agendamento:<agendamento_id>",
-  "status": "enviado",
-  "enviado_em": "2026-07-03T00:00:00Z"
-}
-```
+- não implementa webhook de status `sent/delivered/read/failed`;
+- registra `meta_message_id`, mas o log atual representa aceite/envio, não confirmação de leitura;
+- CORS está como `*` na implementação implantada;
+- o processamento lê no máximo 500 agendamentos e 2.000 logs/dispensas por execução;
+- a Graph API padrão é `v23.0` se `WHATSAPP_GRAPH_VERSION` não estiver definido.
 
 ## OpenAPI
 
-O Supabase consegue expor OpenAPI a partir do schema, mas o arquivo ainda nao foi versionado neste repositorio.
-
-Recomendacao futura:
-
-- Exportar OpenAPI do Supabase.
-- Salvar em `doc/openapi.json`.
-- Gerar SDK ou validacoes a partir desse contrato.
-
+O Supabase expõe o contrato OpenAPI do Data API, mas não há snapshot `openapi.json` versionado. Futuramente, exporte-o depois de estabilizar grants/RLS para auxiliar geração de tipos e revisão de endpoints.

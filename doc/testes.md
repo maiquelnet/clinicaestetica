@@ -1,99 +1,124 @@
 # Qualidade e Casos de Teste
 
-## Estado atual
+Atualizado em: 2026-08-11.
 
-Nao ha suite automatizada de testes no repositorio.
+## Automação existente
 
-O projeto atual contem arquivos estaticos e Apps Script legado. A futura app moderna deve incluir testes automatizados.
+Frontend:
 
-## Casos de teste recomendados por modulo
+```bash
+cd app
+npm run typecheck
+npm run lint
+npm run build
+```
 
-### Autenticacao e acesso
+- `typecheck`: TypeScript project build sem emitir arquivos;
+- `lint`: Oxlint;
+- `build`: TypeScript + bundle Vite de produção.
 
-| Cenario | Resultado esperado |
+Edge Functions:
+
+```bash
+deno test supabase/functions/google-calendar-sync/core.test.ts
+deno check supabase/functions/google-calendar-sync/index.ts
+deno test supabase/functions/whatsapp-messages/core.test.ts
+deno check supabase/functions/whatsapp-messages/index.ts
+deno check app/supabase/functions/whatsapp-messages/index.ts
+```
+
+Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A implementação WhatsApp robusta da raiz possui testes unitários, mas a versão 4 implantada é o arquivo simplificado em `app/supabase` e ainda não tem suite dedicada. Essa diferença deve aparecer no aceite de qualquer mudança.
+
+Não há Vitest/Testing Library/Playwright instalados no frontend até esta revisão.
+
+## Smoke test de deploy
+
+Após cada deploy Vercel:
+
+| URL | Resultado esperado |
 | --- | --- |
-| Usuario nao autenticado tenta acessar app admin | Redirecionar para login. |
-| Usuario autenticado sem vinculo em `usuarios_clinicas` | Bloquear acesso. |
-| Usuario vinculado a uma clinica acessa dados dela | Permitir leitura/escrita conforme papel. |
-| Usuario tenta acessar dados de outra clinica | Bloquear via RLS. |
+| `/` | Landing carrega serviços e, quando configuradas, avaliações Google. |
+| `/cadastro-cliente` | Formulário público lista serviços e conclui cadastro. |
+| `/login` | Login Supabase disponível. |
+| `/dashboard` sem sessão | Redireciona para `/login`. |
+| `/dashboard` com sessão/vínculo | Carrega painel e clínica. |
+| rota interna atualizada diretamente | Rewrite da Vercel devolve `index.html`, sem 404. |
 
-### Clientes
+## Autenticação e RLS
 
-| Cenario | Resultado esperado |
+| Cenário | Esperado |
 | --- | --- |
-| Criar cliente com nome e telefone validos | Registro criado. |
-| Criar cliente sem nome | Exibir erro de validacao. |
-| Criar cliente sem telefone | Exibir erro de validacao. |
-| Arquivar cliente | `ativo=false` e `arquivado_em` preenchido. |
-| Cliente com `aceita_marketing=false` entra em campanha | Bloquear selecao ou alertar operador. |
+| Usuário não autenticado acessa painel | Bloqueio/redirecionamento. |
+| Usuário autenticado sem vínculo | Tela “Acesso sem clínica vinculada”. |
+| Usuário de uma clínica consulta outra | Zero linhas/erro de autorização. |
+| `anon` acessa tabela administrativa | Bloqueado por grant/RLS. |
+| cadastro público | Somente RPC/campos públicos previstos. |
+| publishable key sem JWT | Papel `anon`, sem dados privados. |
 
-### Servicos e precos
+## Clientes e consentimento
 
-| Cenario | Resultado esperado |
-| --- | --- |
-| Criar servico com duracao positiva | Registro criado. |
-| Criar servico com duracao zero ou negativa | Bloquear. |
-| Criar preco atual | Inserir em `precos_servicos`. |
-| Alterar preco | Encerrar preco anterior e criar novo. |
-| Servico sob consulta | Nao exigir valor. |
+- criar cliente com telefone brasileiro válido;
+- rejeitar telefone inválido;
+- consentimentos iniciam desmarcados;
+- aceitar WhatsApp grava estado/origem/versão/data;
+- revogar impede novos envios;
+- trocar número invalida consentimento anterior;
+- marketing e WhatsApp permanecem independentes;
+- arquivamento remove cliente dos fluxos ativos.
 
-### Agendamentos
+## Agenda e Google Calendar
 
-| Cenario | Resultado esperado |
-| --- | --- |
-| Criar agendamento com fim depois do inicio | Registro criado. |
-| Criar agendamento com fim antes do inicio | Bloquear. |
-| Criar agendamento sem cliente | Bloquear. |
-| Criar agendamento sem servico, se obrigatorio no fluxo | Bloquear. |
-| Cancelar agendamento | Atualizar status e registrar historico. |
+- criar/editar/cancelar agendamento no sistema;
+- confirmar evento correspondente no Google sem duplicidade;
+- editar/cancelar no Google e confirmar retorno local;
+- criar evento comum no Google e confirmar `bloqueios_agenda`;
+- validar horários no fuso `America/Sao_Paulo`;
+- revogar OAuth e confirmar mensagem de reconexão;
+- simular sync token expirado (HTTP 410) e reset incremental;
+- confirmar que dados pessoais desnecessários não aparecem no evento.
 
-### Mensagens
+## WhatsApp
 
-| Cenario | Resultado esperado |
-| --- | --- |
-| Gerar confirmacao de agendamento | Criar pendencia ou sugestao de mensagem. |
-| Registrar mensagem enviada | Inserir em `logs_mensagens`. |
-| Dispensar mensagem | Inserir em `mensagens_dispensadas`. |
-| Tentar gerar mensagem duplicada para mesmo ciclo | Bloquear duplicidade. |
+Antes do scheduler automático, chame `action=process` manualmente com cron secret.
 
-### Financeiro
+1. Secrets ausentes retornam configuração pendente.
+2. Template não aprovado bloqueia ativação/envio.
+3. Destinatário de teste recebe template.
+4. Cliente sem opt-in é ignorado.
+5. Confirmação gera um único `ciclo` por agendamento/tipo.
+6. Lembrete respeita quantidade/unidade/direção.
+7. Cancelamento antes do claim impede envio.
+8. Falha Meta grava `ultimo_erro` e retry.
+9. Após cinco tentativas, item não deve ser novamente selecionado pela regra atual.
+10. `meta_message_id` é gravado no sucesso.
 
-| Cenario | Resultado esperado |
-| --- | --- |
-| Registrar receita de agendamento | Criar `movimentacoes_financeiras`. |
-| Registrar despesa | Valor positivo e tipo `despesa`. |
-| Marcar pagamento | Preencher `pago_em` e status `pago`. |
+A versão implantada não recebe webhooks delivered/read; não use esses estados como critério de aceite.
 
-## Testes de IA
+## Módulos administrativos
 
-Nao aplicavel no estado atual, pois nao ha IA implementada.
+- serviço/preço salvos transacionalmente;
+- fila de espera impede conflito ao confirmar;
+- financeiro filtra fluxo, receber e pagar;
+- estoque/fornecedor/equipamento respeitam clínica;
+- campanha gera destinatários conforme público e consentimento;
+- usuário sem papel de admin não altera configurações sensíveis.
 
-Quando IA for adicionada, testar:
+## Segurança
 
-- Resposta sem alucinacao para servicos inexistentes.
-- Recusa de diagnostico medico.
-- Recusa de promessa de resultado garantido.
-- Respeito a opt-out de marketing.
-- Uso apenas de dados da clinica atual.
-- Timeout e fallback manual.
+- procurar secrets no diff e no bundle;
+- verificar CORS e autenticação de cada Edge Function;
+- revisar `integracoes_google` com RLS desabilitado;
+- revisar RPCs com `search_path` mutável;
+- executar Supabase Security/Performance Advisors;
+- testar APIs com publishable key sem sessão;
+- verificar que service role nunca aparece em `app/dist`.
 
-## Testes de seguranca
+## Critério mínimo de release
 
-Obrigatorios antes de producao:
-
-- Usuario sem clinica nao acessa dados.
-- Usuario de uma clinica nao acessa outra.
-- `anon` nao executa RPCs sensiveis.
-- Chaves secretas nao aparecem no bundle frontend.
-- RLS bloqueia inserts com `clinica_id` indevida.
-
-## Ferramentas recomendadas
-
-Para app React futura:
-
-- Vitest para testes unitarios.
-- Testing Library para componentes.
-- Playwright para E2E.
-- Supabase CLI para banco local.
-- SQL tests para policies RLS.
-
+- `npm run typecheck`, `npm run lint` e `npm run build` aprovados;
+- migration revisada e aplicada uma única vez;
+- Edge Function comparada com a versão remota correta;
+- smoke test das rotas públicas/protegidas;
+- teste funcional da integração alterada;
+- documentação e variáveis atualizadas;
+- commit/push e deploy Vercel confirmados.

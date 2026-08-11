@@ -1,122 +1,164 @@
 # WhatsApp Cloud API
 
-## Escopo da primeira versao
+Atualizado em: 2026-08-11.
 
-A integracao atende somente a Estetica Schneider e automatiza dois eventos:
+## Escopo da primeira versão
 
-- confirmacao de um agendamento novo;
-- lembrete antes do horario do agendamento.
+A integração atende somente a Estética Schneider e foi preparada para:
 
-Pos-atendimento, aniversarios, retorno e campanhas continuam no fluxo manual. O numero pessoal pode ser usado como destinatario verificado durante os testes, mas nao deve ser adotado como remetente de producao. Para producao, prefira um numero pertencente e dedicado a clinica.
+- confirmação de agendamento;
+- lembrete antes do atendimento.
 
-## Preparacao na Meta
+Pós-atendimento, aniversários, retorno e campanhas permanecem no fluxo manual. O número pessoal do desenvolvedor/proprietário pode ser destinatário verificado de homologação, mas o remetente de produção deve ser um número controlado pela clínica.
 
-1. Crie um app em Meta for Developers e adicione o produto WhatsApp.
-2. Durante a homologacao, use o numero de teste fornecido pela Meta.
-3. Cadastre o numero pessoal como destinatario verificado de teste.
-4. Crie e envie para aprovacao dois modelos da categoria `UTILITY`, idioma `pt_BR`:
+## Estado implantado
+
+- Edge Function `whatsapp-messages`, versão remota `4`;
+- `verify_jwt=false`, com autorização própria para admin/cron;
+- templates/regras configuráveis no painel;
+- consentimento de WhatsApp por cliente;
+- fila `public.fila_mensagens` com claim transacional e retry;
+- função remota corresponde ao código em `app/supabase/functions/whatsapp-messages`;
+- fila e logs automáticos estavam vazios no snapshot de 2026-08-11;
+- o banco não possui `pg_cron`/`pg_net`: processamento periódico ainda precisa de scheduler externo.
+
+Existe também uma implementação mais robusta em `supabase/functions/whatsapp-messages`, com core/testes/webhook, mas ela não corresponde à versão 4 implantada. Não faça redeploy dessa versão sem planejar a migration e o cron compatíveis.
+
+## Preparação Meta
+
+1. Crie um app em Meta for Developers e adicione WhatsApp.
+2. Em homologação, use o número de teste da Meta.
+3. Adicione o número pessoal como destinatário permitido.
+4. Para produção, associe um número pertencente à clínica.
+5. Crie templates `UTILITY` em `pt_BR` e aguarde `APPROVED`.
+
+Sugestões:
 
 ### `confirmacao_agendamento_v1`
 
 ```text
-Ola, {{1}}. Seu agendamento na Estetica Schneider esta confirmado para {{2}}, as {{3}}. Esta e uma mensagem automatica.
+Olá, {{1}}. Seu agendamento na Estética Schneider está confirmado para {{2}}, às {{3}}. Esta é uma mensagem automática.
 ```
 
 ### `lembrete_agendamento_v1`
 
 ```text
-Ola, {{1}}. Este e um lembrete do seu agendamento na Estetica Schneider em {{2}}, as {{3}}. Esta e uma mensagem automatica.
+Olá, {{1}}. Este é um lembrete do seu agendamento na Estética Schneider em {{2}}, às {{3}}. Esta é uma mensagem automática.
 ```
 
-Os tres parametros sao nome, data e horario. O procedimento nao e enviado para reduzir a exposicao de informacao sensivel.
+A implementação atual monta parâmetros conforme os placeholders nomeados existentes em `modelos_mensagens.texto`, como `{nome}`, `{data}`, `{hora}`, `{servico}` e `{link_avaliacao_google}`. O texto cadastrado no sistema e o template Meta precisam ter a mesma ordem de parâmetros.
 
-## Secrets da Edge Function
-
-Em Supabase, abra **Edge Functions > Secrets** e configure:
+## Edge Secrets da versão implantada
 
 ```text
-WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+WHATSAPP_ACCESS_TOKEN
 WHATSAPP_PHONE_NUMBER_ID
-WHATSAPP_WABA_ID
-WHATSAPP_WEBHOOK_VERIFY_TOKEN
-META_APP_SECRET
+WHATSAPP_BUSINESS_ACCOUNT_ID
+WHATSAPP_GRAPH_VERSION=v23.0
 WHATSAPP_CRON_SECRET
-META_GRAPH_API_VERSION=v25.0
+WHATSAPP_FUNCTION_URL=https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
 ```
 
-O token temporario do painel da Meta serve para homologacao e expira. Antes da producao, substitua-o por um token de System User com privilegio minimo. Nunca use variaveis `VITE_*` para esses valores.
+Os três primeiros são necessários para status pronto/envio. `WHATSAPP_CRON_SECRET` e `WHATSAPP_FUNCTION_URL` são necessários ao processamento periódico/status do agendador.
 
-Permissoes minimas do token:
+O token temporário do painel Meta expira. Para produção, use System User token com permissões mínimas:
 
-- `whatsapp_business_messaging` para enviar;
-- `whatsapp_business_management` para inscrever o app na conta WhatsApp Business.
+- `whatsapp_business_messaging`;
+- `whatsapp_business_management` quando consultar/administrar templates e WABA.
 
-## Webhook
+Nunca use `VITE_*` para tokens Meta.
 
-Configure no produto WhatsApp da Meta:
+## Consentimento
+
+Campos em `clientes`:
 
 ```text
-Callback URL: https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
-Verify token: o mesmo valor de WHATSAPP_WEBHOOK_VERIFY_TOKEN
-Campo assinado: messages
+whatsapp_opt_in_status
+whatsapp_opt_in_em
+whatsapp_opt_in_origem
+whatsapp_opt_in_versao
+whatsapp_opt_out_em
 ```
 
-Inscreva o app explicitamente na WABA uma vez, usando o ID da conta WhatsApp Business e o token com `whatsapp_business_management`:
+Estados: `pendente`, `aceito`, `recusado`, `revogado`. Somente `aceito` participa do automático. Marketing (`aceita_marketing`) é consentimento separado.
+
+Ao trocar o telefone, é necessário obter novo consentimento para o número novo. Não reutilize automaticamente a autorização do número anterior.
+
+## Templates e regras
+
+`modelos_mensagens` possui:
+
+- `whatsapp_template_name`;
+- `whatsapp_template_language`, padrão `pt_BR`.
+
+`regras_mensagens` possui:
+
+- `gatilho`: `agendamento_criado` ou `inicio_agendamento` para os automáticos;
+- `quantidade`, `unidade`, `direcao`;
+- `canal_padrao='whatsapp_business'`;
+- `automacao_iniciada_em`;
+- `ativo`.
+
+O painel valida o template aprovado antes de ativar a automação.
+
+## Fila e processamento
+
+`fila_mensagens` usa chave única `(clinica_id, canal, ciclo)` para evitar duplicidade. Status possíveis:
+
+```text
+pendente
+processando
+enviado
+erro
+cancelado
+```
+
+`claim_whatsapp_message_queue` reserva até 25 registros com `FOR UPDATE SKIP LOCKED`. Falhas usam `fail_whatsapp_message_queue`, retry de 300 segundos e máximo de cinco tentativas na seleção atual.
+
+Chamada do scheduler:
 
 ```http
-POST https://graph.facebook.com/v25.0/<WABA_ID>/subscribed_apps
-Authorization: Bearer <SYSTEM_USER_ACCESS_TOKEN>
+POST https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
+Content-Type: application/json
+x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
+
+{
+  "action": "process",
+  "clinicId": "<UUID_DA_CLINICA>"
+}
 ```
 
-A funcao valida `X-Hub-Signature-256` com `META_APP_SECRET` antes de aceitar eventos. Os estados `sent`, `delivered`, `read` e `failed` sao armazenados usando o horario informado pela Meta.
+Em 2026-08-11 não havia job interno. Opções futuras:
 
-Respostas recebidas dos clientes ainda nao formam uma caixa de entrada nesta versao; o webhook processa apenas o status dos envios.
+- cron externo da Vercel/serviço dedicado;
+- Supabase Cron + `pg_net` e Vault;
+- scheduler gerenciado separado.
 
-## Ativar o agendador
+Qualquer opção deve manter o secret fora do SQL em texto claro e registrar monitoramento de HTTP.
 
-A migracao cria um Cron que executa a fila a cada minuto. Ele permanece inerte enquanto estes dois valores nao existirem no Supabase Vault:
+## Segurança da função atual
 
-```sql
-select vault.create_secret(
-  'https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages',
-  'whatsapp_function_url'
-);
+- `status`, `send-test` e `validate-template` exigem JWT de usuário e papel proprietário/administrador;
+- `process` exige `x-whatsapp-cron-secret`;
+- o código usa service role apenas no servidor;
+- CORS remoto está como `*`, por isso a autorização de cada ação é essencial;
+- a versão implantada não valida webhook Meta e não mantém estados entregue/lido.
 
-select vault.create_secret(
-  '<MESMO_VALOR_DE_WHATSAPP_CRON_SECRET>',
-  'whatsapp_cron_secret'
-);
-```
+## Homologação
 
-Os nomes no Vault sao unicos. Se eles ja existirem, atualize-os pela tela do Vault ou com `vault.update_secret`, em vez de criar outra copia.
+1. Confirmar todos os Secrets.
+2. Criar/ativar um modelo e validar `APPROVED`.
+3. Enviar teste a destinatário permitido.
+4. Criar cliente de teste com consentimento explícito.
+5. Criar agendamento futuro e chamar manualmente `process`.
+6. Confirmar um único item por `ciclo`.
+7. Reagendar antes do processamento e validar horário/payload.
+8. Cancelar antes do processamento e confirmar ausência de envio.
+9. Revogar consentimento e confirmar bloqueio/cancelamento.
+10. Simular erro Meta e validar retry/`ultimo_erro`.
 
-## Ativacao no sistema
+Não homologue com clientes reais enquanto número, token e templates de produção não estiverem aprovados. Não afirme status entregue ou lido com a versão 4; ela registra o aceite retornado pela chamada de envio.
 
-1. Em **Configuracoes > Parametros Gerais > WhatsApp Cloud API**, atualize o status.
-2. Envie `hello_world` para um destinatario verificado.
-3. Em cada cliente, marque o consentimento somente depois de obter autorizacao explicita para confirmacoes e lembretes.
-4. Em **Mensagens**, abra os modelos de confirmacao e lembrete, informe o nome aprovado na Meta e escolha **Automatico pela Meta Cloud API**.
+## Evolução recomendada
 
-O momento de ativacao vira a data de corte. Confirmacoes historicas nao sao enviadas. Lembretes sao criados somente para agendamentos futuros e clientes com consentimento ativo.
-
-## Garantias operacionais
-
-- A fila e processada no servidor mesmo com o painel fechado.
-- Chaves de deduplicacao e reserva antes do envio evitam repeticao pelo Cron.
-- Um timeout depois da chamada a Meta nao e reenviado automaticamente; fica para revisao manual.
-- Reagendamento, troca de cliente, cancelamento, revogacao de consentimento ou desativacao da regra cancelam o job anterior.
-- O webhook e persistido mesmo se chegar antes de o ID da mensagem ser associado ao log.
-- O navegador pode consultar a fila, mas nao criar ou alterar envios do canal automatico.
-
-## Roteiro de homologacao
-
-1. **Conexao:** confirme que a tela mostra todos os Secrets configurados.
-2. **Envio:** use o botao de teste e confirme o recebimento de `hello_world`.
-3. **Confirmacao:** crie uma cliente de teste com consentimento e um agendamento futuro; confira um unico envio.
-4. **Lembrete:** use um agendamento dentro da janela da regra e aguarde o Cron.
-5. **Reagendamento:** altere o horario antes do envio e confira que apenas o horario novo permanece na fila.
-6. **Cancelamento:** cancele antes do envio e confirme que nenhuma mensagem e disparada.
-7. **Opt-out:** revogue o consentimento e confirme que os jobs pendentes ficam dispensados.
-8. **Webhook:** confira no log a progressao para enviado, entregue e lido.
-
-Nao execute a homologacao com clientes reais enquanto o app Meta, os modelos e o numero de producao nao estiverem aprovados.
+A implementação experimental da raiz contém ideias úteis — webhook assinado, estados do provedor, CORS por allowlist, reserva mais rígida e testes. A evolução deve ser feita como uma nova migration/versão, preservando compatibilidade com `fila_mensagens`, frontend e scheduler atuais, em vez de sobrescrever produção diretamente.

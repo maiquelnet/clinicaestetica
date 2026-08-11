@@ -1,94 +1,97 @@
-# Historico de Implementacao
+# Histórico de Implementação
+
+Atualizado em: 2026-08-11.
 
 ## 2026-06
 
-### MCP Supabase
+- Projeto Supabase `estetica_schneider` criado/reativado.
+- Ref `xucttzuthznqwlhushmg`, região São Paulo.
+- MCP Supabase preparado para inspeção/manutenção.
 
-Foi configurado o MCP do Supabase no Codex:
+## 2026-07
 
-```toml
-[mcp_servers.supabase]
-url = "https://mcp.supabase.com/mcp?project_ref=xucttzuthznqwlhushmg"
-bearer_token_env_var = "SUPABASE_ACCESS_TOKEN"
-enabled = true
-```
+### Banco e segurança inicial
 
-Projeto conectado:
+- dados iniciais descartados para reinício do sistema;
+- RLS/policies revisados;
+- helpers de autorização movidos para schema `private`;
+- execução de funções sensíveis restringida;
+- extensão `citext` organizada;
+- índices de FKs adicionados;
+- regras de mensagens e preços iniciais criados.
 
-```text
-https://xucttzuthznqwlhushmg.supabase.co
-```
+### Aplicação React
 
-## 2026-07-02
+- SPA Vite + React + TypeScript implementada em `app/`;
+- Supabase Auth, sessão persistida, perfil e vínculo por clínica;
+- rotas públicas/protegidas e layout administrativo;
+- módulos de dashboard, clientes, serviços, agenda e mensagens;
+- módulos administrativos de fila de espera, equipamentos, tratamento, financeiro, estoque, fornecedores, campanhas, disparos, satisfação, parâmetros e usuários;
+- RPCs transacionais para operações críticas;
+- Vercel configurada por `vercel.json` com build a partir da raiz.
 
-### Raio-x inicial
+### Google Agenda
 
-Foi identificado:
+- Edge Function unificada `google-calendar-sync`;
+- OAuth por usuário com associação à clínica;
+- tokens criptografados;
+- sincronização bidirecional de agendamentos;
+- eventos externos importados como bloqueios;
+- sync token, webhook e renovação de canal;
+- testes unitários de conexão, envio, importação e cancelamento;
+- função publicada com `verify_jwt=false` e autenticação própria.
 
-- Site estatico local.
-- Painel Apps Script legado.
-- Banco Supabase modelado.
-- Projeto inicialmente inativo e depois reativado.
+## 2026-08
 
-### Projeto Supabase ativo
+### Produção web
 
-Status confirmado:
+- domínio oficial consolidado em `https://www.esteticaschneider.com.br`;
+- alias Vercel conhecido `https://clinicaestetica-softolive.vercel.app`;
+- branch `main` configurada como fonte de produção;
+- cadastro público de clientes e interesses em serviços;
+- landing page atualizada e simplificada;
+- integração Google Places para avaliações públicas.
 
-- Nome: `estetica_schneider`
-- Ref: `xucttzuthznqwlhushmg`
-- Status: `ACTIVE_HEALTHY`
-- Regiao: `sa-east-1`
-- Postgres: `17`
+### Google Reviews
 
-## 2026-07-03
+- campos `google_place_id` e `link_google_avaliacao` em clínicas;
+- Edge Function `google-reviews` publicada, versão remota 2;
+- landing page carrega nota/avaliações e mantém fallback de conteúdo;
+- segredo `GOOGLE_PLACES_API_KEY` mantido no Supabase.
 
-### Reset de dados
+### WhatsApp Cloud API
 
-Como o sistema esta sendo criado do zero, todas as tabelas do schema `public` foram truncadas com `CASCADE`.
+- consentimento específico separado de marketing;
+- campos de opt-in/opt-out adicionados a clientes;
+- nomes/idioma dos templates Meta adicionados a modelos;
+- ativação automática adicionada a regras;
+- painel de configuração/status/teste e validação de template;
+- fila `fila_mensagens` e RPCs de claim/complete/fail;
+- Edge Function `whatsapp-messages` versão 4 publicada com `verify_jwt=false`;
+- Meta Graph, número remetente, WABA e cron configuráveis por Secrets;
+- versão implantada preservada localmente em `app/supabase` para ser commitada.
 
-Resultado:
+### Implementação WhatsApp experimental
 
-- Estrutura preservada.
-- RLS preservado.
-- Policies preservadas e depois corrigidas.
-- Funcoes preservadas e depois corrigidas.
-- Dados zerados.
+Uma versão mais robusta foi criada em `supabase/functions/whatsapp-messages` com webhook, status do provedor, CORS por allowlist, reservas e testes. Ela foi integrada ao Git, mas não é a mesma versão remota atualmente ativa. A produção posterior adotou uma fila simplificada. Futuras evoluções devem reconciliar esses dois desenhos antes do deploy.
 
-### Correcoes de seguranca
+### Documentação e auditoria de 2026-08-11
 
-Migration:
+- tecnologias, rotas, plataformas e variáveis consolidadas;
+- Supabase confirmado saudável, PostgreSQL 17, 45 tabelas públicas e três Edge Functions ativas;
+- uma conexão Google Calendar confirmada;
+- migrations remotas WhatsApp registradas;
+- ausência de `pg_cron`/`pg_net` confirmada: scheduler WhatsApp ainda pendente;
+- Security Advisor apontou RLS desabilitado em `integracoes_google` e outros avisos documentados;
+- código remoto WhatsApp não commitado identificado em `app/supabase`.
 
-```text
-20260703014440_fix_security_advisor_findings
-```
+## Pendências abertas
 
-Correcoes:
-
-- `definir_atualizado_em` recebeu `search_path` fixo.
-- Funcoes auxiliares de RLS movidas para schema `private`.
-- Execucao direta de funcoes sensiveis revogada para `anon` e `authenticated`.
-- Policies passaram a chamar `private.usuario_tem_acesso_clinica`.
-- Policies passaram a chamar `private.usuario_e_admin_clinica`.
-- Uso de `auth.uid()` em policies ajustado para `(select auth.uid())`.
-- Policies sobrepostas de `usuarios_clinicas` foram separadas por acao.
-- Extensao `citext` movida para schema `extensions`.
-
-### Correcoes de performance
-
-Migration:
-
-```text
-20260703014500_add_missing_foreign_key_indexes
-```
-
-Correcoes:
-
-- Criados indices para FKs sem cobertura.
-- Validado `uncovered_fk_count = 0`.
-
-### Pendencias conhecidas
-
-- Protecao contra senhas vazadas depende de plano Pro ou superior no Supabase.
-- Advisors de `unused_index` podem aparecer enquanto o banco estiver vazio ou sem uso real.
-- Ainda nao ha app moderna Supabase no repositorio.
-
+1. Reautenticar GitHub CLI e enviar a atualização documental/código remoto.
+2. Definir scheduler real do WhatsApp e monitoramento.
+3. Consolidar `supabase/` e `app/supabase/` sem substituir a função remota errada.
+4. Corrigir/remover `integracoes_google` após confirmar que o legado não depende dela.
+5. Fixar `search_path` das RPCs indicadas pelo Advisor.
+6. Revisar FKs sem índice e policies duplicadas.
+7. Criar suite dedicada para a versão WhatsApp implantada.
+8. Criar ambiente Supabase de staging para Preview Deployments.

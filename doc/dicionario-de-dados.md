@@ -1,21 +1,29 @@
 # Dicionario de Dados
 
+Atualizado em: 2026-08-11.
+
 Banco: Supabase Postgres
 
 Schema principal: `public`
 
-Status dos dados: todas as tabelas `public` foram truncadas e estao com `0` registros.
+Status: banco de producao ativo com 45 tabelas `public`. Os dados nao estao mais zerados; em 2026-08-11 havia clientes, agendamentos, bloqueios, fila de espera e uma conexao Google.
 
-## Migrations aplicadas nesta etapa
+## Ultimas migrations remotas confirmadas
 
-- `20260703014440_fix_security_advisor_findings`
-- `20260703014500_add_missing_foreign_key_indexes`
+- `20260803192636_google_calendar_bidirectional_sync`
+- `20260806171333_public_client_service_interests`
+- `20260806192216_add_whatsapp_consent_columns`
+- `20260807185358_whatsapp_automation`
+- `20260807190318_fix_whatsapp_rpc_security`
+- `20260810173548_whatsapp_message_queue`
+
+O historico completo deve ser consultado com `supabase migration list --linked`. Alguns arquivos locais possuem timestamps diferentes porque migrations foram aplicadas por ferramentas remotas.
 
 ## Politicas gerais de modelagem
 
 - Todas as entidades operacionais usam `uuid`.
 - A maioria das tabelas possui `clinica_id` para isolamento multi-clinica.
-- RLS esta habilitado nas tabelas publicas.
+- RLS esta habilitado em 44 das 45 tabelas publicas. `integracoes_google` permanece com RLS desabilitado e e uma pendencia critica do Security Advisor.
 - Acesso por clinica e validado por funcoes auxiliares no schema `private`.
 - Tabelas com alteracao possuem `criado_em` e `atualizado_em`.
 - Arquivamento logico usa `arquivado_em` quando aplicavel.
@@ -62,8 +70,14 @@ Status dos dados: todas as tabelas `public` foram truncadas e estao com `0` regi
 - `logs_mensagens`
 - `mensagens_dispensadas`
 - `lembretes_agendamentos`
+- `fila_mensagens`
 - `campanhas`
 - `destinatarios_campanhas`
+
+### Integracoes
+
+- `google_calendar_connections`
+- `integracoes_google` (legado, vazio e com RLS pendente)
 
 ### Financeiro
 
@@ -96,6 +110,10 @@ Colunas:
 - `status text not null`
 - `valor_aplicado numeric not null`
 - `google_event_id text`
+- `google_sync_status text not null`
+- `google_sync_erro text`
+- `google_atualizado_em timestamp with time zone`
+- `google_ultima_sincronizacao_em timestamp with time zone`
 - `observacoes text`
 - `criado_em timestamp with time zone not null`
 - `atualizado_em timestamp with time zone not null`
@@ -127,6 +145,14 @@ Colunas:
 - `criado_em timestamp with time zone not null`
 - `atualizado_em timestamp with time zone not null`
 - `arquivado_em timestamp with time zone`
+- `intervalo_retorno_dias integer`
+- `parceira boolean not null`
+- `servicos_interesse uuid[] not null`
+- `whatsapp_opt_in_status text not null`
+- `whatsapp_opt_in_em timestamp with time zone`
+- `whatsapp_opt_in_origem text`
+- `whatsapp_opt_in_versao text`
+- `whatsapp_opt_out_em timestamp with time zone`
 
 Chaves:
 
@@ -144,10 +170,14 @@ Colunas:
 - `telefone text`
 - `email citext`
 - `endereco text`
+- `complemento text`
+- `cep text`
 - `cidade text`
 - `estado text`
 - `fuso_horario text not null`
 - `logo_url text`
+- `link_google_avaliacao text`
+- `google_place_id text`
 - `ativo boolean not null`
 - `criado_em timestamp with time zone not null`
 - `atualizado_em timestamp with time zone not null`
@@ -248,6 +278,8 @@ Colunas:
 - `criado_em timestamp with time zone not null`
 - `atualizado_em timestamp with time zone not null`
 - `arquivado_em timestamp with time zone`
+- `whatsapp_template_name text`
+- `whatsapp_template_language text not null`
 
 Chaves:
 
@@ -270,6 +302,8 @@ Colunas:
 - `ativo boolean not null`
 - `criado_em timestamp with time zone not null`
 - `atualizado_em timestamp with time zone not null`
+- `janela_alerta_dias integer`
+- `automacao_iniciada_em timestamp with time zone`
 
 Chaves:
 
@@ -427,6 +461,44 @@ As tabelas abaixo fazem parte do schema e devem ser detalhadas conforme forem im
 - `planos_tratamento`
 - `progresso_onboarding`
 - `secoes_atendimento`
+
+### `google_calendar_connections`
+
+Armazena uma conexao OAuth por clinica:
+
+- `id uuid`
+- `clinica_id uuid`
+- `calendar_id text`, padrao `primary`
+- `tokens_encrypted text`
+- `sync_token text`
+- `channel_id text`
+- `resource_id text`
+- `channel_token text`
+- `channel_expires_at timestamptz`
+- `ultima_sincronizacao_em timestamptz`
+- `ativo boolean`
+- timestamps de criacao/atualizacao
+
+RLS esta habilitado sem policy de frontend. A Edge Function usa credencial server-side. `tokens_encrypted` nunca deve ser exibido ou copiado para logs/documentacao.
+
+### `fila_mensagens`
+
+Outbox da versao WhatsApp implantada:
+
+- IDs de clinica, cliente, agendamento e modelo;
+- `canal`, `tipo` e `ciclo`;
+- `payload jsonb` com os parametros do template;
+- `status`: `pendente`, `processando`, `enviado`, `erro` ou `cancelado`;
+- `tentativas`, `disponivel_em`, `processando_em`, `enviado_em`;
+- `ultimo_erro` e `meta_message_id`;
+- timestamps.
+
+Restricoes/indices:
+
+- UNIQUE `(clinica_id, canal, ciclo)`;
+- indice de processamento por clinica/status/disponibilidade;
+- indice de agendamento/modelo;
+- RLS habilitado sem policy de frontend; processamento pela Edge Function/service role.
 
 ## RLS e funcoes auxiliares
 

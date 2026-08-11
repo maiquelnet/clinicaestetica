@@ -1,101 +1,112 @@
-# Seguranca e LGPD
+# Segurança e LGPD
 
-## Dados pessoais tratados
+Atualizado em: 2026-08-11.
 
-O sistema foi modelado para armazenar:
+## Dados tratados
 
-- Nome.
-- Telefone.
-- E-mail.
-- Data de nascimento.
-- CPF, quando informado.
-- Genero, quando necessario.
-- Historico de agendamentos.
-- Observacoes internas.
-- Dados financeiros.
-- Registros de mensagens.
-- Anexos de atendimento, quando implementados.
+O sistema pode armazenar identificação, contato, nascimento, CPF, agenda, procedimentos, observações, anexos, informações financeiras e histórico de comunicações. Dependendo do conteúdo, registros de atendimento estético podem ser dados pessoais sensíveis relacionados à saúde.
 
-Esses dados podem ser dados pessoais e, em alguns contextos, dados sensiveis ou relacionados a saude/estetica. Devem ser tratados com cautela.
+Princípios:
 
-## Principios LGPD
+- coletar apenas o necessário;
+- informar finalidade e base legal;
+- separar consentimento de marketing do consentimento de mensagens operacionais;
+- limitar acesso por clínica e papel;
+- manter trilha de alterações críticas;
+- permitir correção, revogação e retenção/exclusão conforme obrigação legal;
+- não enviar observações sensíveis a Google, Meta ou outros terceiros sem necessidade.
 
-Recomendacoes:
+## Consentimentos
 
-- Coletar somente dados necessarios.
-- Informar finalidade do uso.
-- Registrar consentimento para marketing em `clientes.aceita_marketing`.
-- Permitir correcao e exclusao/arquivamento quando aplicavel.
-- Restringir acesso por clinica e papel.
-- Evitar envio de dados sensiveis para servicos externos sem base legal.
+`aceita_marketing` controla comunicação promocional. WhatsApp de agendamento usa campos próprios:
 
-## Estado atual de seguranca no Supabase
+```text
+whatsapp_opt_in_status
+whatsapp_opt_in_em
+whatsapp_opt_in_origem
+whatsapp_opt_in_versao
+whatsapp_opt_out_em
+```
 
-Ja implementado:
+O checkbox deve começar desmarcado. Registre origem, versão do texto e data/hora. Troca de telefone exige novo aceite; um aceite antigo não deve autorizar automaticamente o novo número.
 
-- RLS habilitado nas tabelas publicas.
-- Isolamento por `clinica_id`.
-- Funcoes auxiliares de RLS movidas para schema `private`.
-- Execucao direta de funcoes sensiveis revogada para `anon` e `authenticated`.
-- `citext` movida para schema `extensions`.
-- FKs sem cobertura receberam indices.
-- Dados das tabelas `public` foram zerados.
+## Modelo de segurança
 
-Migrations:
+- Frontend usa apenas publishable key.
+- Supabase Auth identifica o usuário.
+- `usuarios_clinicas` e RLS limitam o tenant.
+- Edge Functions usam secret/service role somente no servidor.
+- OAuth Google é associado à clínica e tokens são criptografados.
+- WhatsApp automático exige consentimento, regra ativa e template aprovado.
+- Arquivos `.env`, `.vercel/`, tokens e secrets são ignorados pelo Git.
 
-- `20260703014440_fix_security_advisor_findings`
-- `20260703014500_add_missing_foreign_key_indexes`
+## Chaves e segredos
 
-Pendente por limitacao de plano:
+Nunca versionar ou enviar em chat/e-mail:
 
-- Protecao contra senhas vazadas via HaveIBeenPwned. A API retornou `402 Payment Required`, indicando recurso disponivel em planos Pro ou superiores.
+- `SUPABASE_ACCESS_TOKEN`;
+- Supabase secret key ou `SUPABASE_SERVICE_ROLE_KEY`;
+- `GOOGLE_CLIENT_SECRET`;
+- `GOOGLE_TOKEN_ENCRYPTION_KEY`;
+- `GOOGLE_SYNC_CRON_SECRET`;
+- `GOOGLE_PLACES_API_KEY`;
+- tokens Meta/WhatsApp;
+- `WHATSAPP_CRON_SECRET`;
+- `VERCEL_TOKEN`.
 
-## Politicas RLS
+Publishable key e project ref não são segredos, mas dependem de RLS correto. Variáveis `VITE_*` são públicas no bundle.
 
-Padrao geral:
+## Security Advisor: fotografia de 2026-08-11
 
-- Tabelas com `clinica_id` usam policy baseada em `private.usuario_tem_acesso_clinica(clinica_id)`.
-- `usuarios_clinicas` usa policies separadas para select/insert/update/delete.
-- `perfis` permite acesso ao proprio registro com `(select auth.uid())`.
-- `modulos` permite leitura para usuarios autenticados.
+### Crítico
 
-## IA e treinamento
+`public.integracoes_google` está exposta pelo schema `public` com RLS desabilitado. A tabela estava vazia e a integração atual usa `google_calendar_connections`, mas o risco permanece. A correção precisa decidir entre:
 
-Nao ha IA implementada no produto.
+- remover a tabela legada, se não for usada;
+- mover para schema não exposto;
+- habilitar RLS e criar policies adequadas.
 
-Portanto:
+Não habilite RLS isoladamente sem entender consumidores; isso pode bloquear o legado. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
 
-- Dados de usuarios ainda nao sao enviados para APIs de IA pelo sistema.
-- Nao ha uso de dados para treinamento de IA.
-- Quando IA for adicionada, cada provedor deve ser avaliado quanto a retencao, treinamento, logs e residencia de dados.
+### Avisos
 
-## Regras recomendadas para futura IA
+- `salvar_agendamento`, `confirmar_lista_espera`, `salvar_servico_com_preco` e `salvar_campanha_com_destinatarios` aparecem com `search_path` mutável;
+- `fila_mensagens` e `google_calendar_connections` têm RLS habilitado sem policies; o acesso atual é backend-only, mas grants devem ser conferidos;
+- `list_public_signup_services` é `SECURITY DEFINER` executável por `anon` e `authenticated`; isso só é aceitável se retornar estritamente os serviços públicos previstos;
+- proteção contra senhas vazadas está desabilitada;
+- existem policies permissivas duplicadas em módulos e FKs sem índices.
 
-- Nunca enviar CPF, telefone ou observacoes sensiveis para IA sem necessidade.
-- Preferir anonimizar contexto.
-- Registrar consentimento quando IA atuar em comunicacao personalizada.
-- Nunca permitir envio automatico de mensagens sem revisao humana.
+## Edge Functions com `verify_jwt=false`
 
-## Segredos e chaves
+As três funções remotas estão com verificação da plataforma desativada para suportar publishable keys, OAuth/webhooks ou acesso público. Cada handler precisa autenticar seu próprio fluxo:
 
-Nao versionar:
+- Google Calendar: state OAuth, webhook e JWT/papel;
+- WhatsApp: JWT/papel ou cron secret;
+- Google Reviews: endpoint deliberadamente público, somente leitura de avaliações públicas.
 
-- `SUPABASE_ACCESS_TOKEN`
-- service role key
-- tokens Google
-- secrets de IA
-- webhooks privados
+Qualquer nova action deve começar negando acesso e liberar apenas o caso necessário. Não confie apenas em CORS: ele não é mecanismo de autenticação.
 
-Chaves publicaveis do Supabase podem ser usadas no frontend, mas sempre com RLS corretamente configurado.
+## Integrações e minimização
 
-## Auditoria recomendada
+Google Calendar recebe horário e serviço; não recebe telefone/nome/observações do cliente. Tokens ficam criptografados.
 
-Antes de producao:
+WhatsApp recebe telefone, nome e parâmetros de agendamento necessários ao template. Evite incluir procedimento sensível no texto. A Meta passa a ser operadora/terceiro do tratamento conforme contrato/políticas aplicáveis.
 
-1. Revisar todas as policies RLS.
-2. Criar usuario de teste sem permissao e validar isolamento.
-3. Criar usuario admin e validar permissoes.
-4. Testar leitura/escrita cross-clinica.
-5. Revisar logs de Auth.
-6. Revisar backups e plano de recuperacao.
+Google Places retorna avaliações públicas; a API key fica na Edge Function.
 
+## Auditoria antes de produção
+
+1. Testar usuário sem clínica e cross-clinic.
+2. Revisar RLS e grants de todas as tabelas `public`.
+3. Corrigir ou remover `integracoes_google`.
+4. Revisar RPCs `SECURITY DEFINER` e `search_path`.
+5. Rotacionar tokens temporários Google/Meta.
+6. Confirmar que nenhum secret aparece no bundle ou Git.
+7. Validar consentimento e opt-out do WhatsApp.
+8. Revisar logs de Auth e Edge Functions.
+9. Definir backup, retenção e resposta a incidente.
+10. Executar Security e Performance Advisors.
+
+## IA
+
+Não há IA generativa no produto. Dados de clientes não são enviados a provedores de IA pela aplicação. Qualquer futura integração deve ter avaliação própria de finalidade, minimização, retenção e uso para treinamento.
