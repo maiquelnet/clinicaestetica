@@ -49,6 +49,6 @@ O deploy deve ser feito a partir da raiz do repositorio. O arquivo `../vercel.js
 
 Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes Production, Preview e Development da Vercel.
 
-## Snapshots Supabase
+## Backend Supabase
 
-`app/supabase/` preserva os fontes dos deploys recentes de Google Reviews e WhatsApp. Leia [`supabase/README.md`](./supabase/README.md) antes de publicar, pois existe uma implementação WhatsApp diferente em `../supabase/`.
+As migrations e Edge Functions ficam exclusivamente em `../supabase/`. Não crie snapshots ou cópias dentro de `app/`.

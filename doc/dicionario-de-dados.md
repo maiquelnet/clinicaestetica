@@ -6,7 +6,7 @@ Banco: Supabase Postgres
 
 Schema principal: `public`
 
-Status: banco de producao ativo com 45 tabelas `public`. Os dados nao estao mais zerados; em 2026-08-11 havia clientes, agendamentos, bloqueios, fila de espera e uma conexao Google.
+Status: banco de producao ativo com 44 tabelas `public`. Os dados nao estao mais zerados; em 2026-08-11 havia clientes, agendamentos, bloqueios, fila de espera e uma conexao Google.
 
 ## Ultimas migrations remotas confirmadas
 
@@ -23,7 +23,7 @@ O historico completo deve ser consultado com `supabase migration list --linked`.
 
 - Todas as entidades operacionais usam `uuid`.
 - A maioria das tabelas possui `clinica_id` para isolamento multi-clinica.
-- RLS esta habilitado em 44 das 45 tabelas publicas. `integracoes_google` permanece com RLS desabilitado e e uma pendencia critica do Security Advisor.
+- RLS esta habilitado nas 44 tabelas publicas. A tabela legada `integracoes_google` foi removida em 2026-08-14.
 - Acesso por clinica e validado por funcoes auxiliares no schema `private`.
 - Tabelas com alteracao possuem `criado_em` e `atualizado_em`.
 - Arquivamento logico usa `arquivado_em` quando aplicavel.
@@ -77,7 +77,6 @@ O historico completo deve ser consultado com `supabase migration list --linked`.
 ### Integracoes
 
 - `google_calendar_connections`
-- `integracoes_google` (legado, vazio e com RLS pendente)
 
 ### Financeiro
 

@@ -1,6 +1,6 @@
 # Manual do Usuário
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-08-13.
 
 ## Acesso
 
@@ -97,7 +97,8 @@ O botão de teste não significa que o scheduler periódico está ativo. Consult
 
 ## Limitações atuais
 
-- WhatsApp automático precisa de scheduler externo; `pg_cron` não está instalado.
+- WhatsApp automático usa Supabase Cron a cada cinco minutos; em 2026-08-13 o painel confirmou `Agendador ativo`.
+- Os templates de confirmação e lembrete ainda aguardavam aprovação da Meta nessa data; regras automáticas não devem ser ativadas antes de `APPROVED`.
 - A versão WhatsApp implantada não registra entregue/lido por webhook.
 - Não existe IA generativa no produto.
 - Alguns módulos administrativos ainda têm pendências de segurança/performance registradas no runbook.

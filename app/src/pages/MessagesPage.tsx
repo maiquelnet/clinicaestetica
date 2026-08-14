@@ -531,32 +531,30 @@ export function MessagesPage() {
                     </select>
                   </label>
                 </div>
+                <div className="form-grid">
+                  <label>
+                    Nome do modelo aprovado na Meta
+                    <input
+                      placeholder="confirmacao_agendamento_v1"
+                      disabled={!canConfigureAutomation}
+                      value={templateDraft.whatsapp_template_name}
+                      onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_name: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Idioma do modelo na Meta
+                    <input
+                      placeholder="pt_BR"
+                      disabled={!canConfigureAutomation}
+                      value={templateDraft.whatsapp_template_language}
+                      onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_language: event.target.value })}
+                    />
+                  </label>
+                </div>
                 {templateDraft.canal_padrao === 'whatsapp_business' ? (
-                  <>
-                    <div className="form-grid">
-                      <label>
-                        Nome do modelo aprovado na Meta
-                        <input
-                          placeholder="lembrete_agendamento_v1"
-                          disabled={!canConfigureAutomation}
-                          value={templateDraft.whatsapp_template_name}
-                          onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_name: event.target.value })}
-                        />
-                      </label>
-                      <label>
-                        Idioma do modelo
-                        <input
-                          placeholder="pt_BR"
-                          disabled={!canConfigureAutomation}
-                          value={templateDraft.whatsapp_template_language}
-                          onChange={(event) => setTemplateDraft({ ...templateDraft, whatsapp_template_language: event.target.value })}
-                        />
-                      </label>
-                    </div>
-                    <div className="form-alert">
-                      A automacao comeca ao salvar. Confirmacoes antigas nao serao enviadas; lembretes valem apenas para agendamentos futuros e clientes com consentimento.
-                    </div>
-                  </>
+                  <div className="form-alert">
+                    A automacao comeca ao salvar. Confirmacoes antigas nao serao enviadas; lembretes valem apenas para agendamentos futuros e clientes com consentimento.
+                  </div>
                 ) : null}
                 <label className="check-row">
                   <input type="checkbox" checked={templateDraft.ativo} onChange={(event) => setTemplateDraft({ ...templateDraft, ativo: event.target.checked })} />

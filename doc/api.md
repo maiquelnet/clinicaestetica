@@ -1,6 +1,6 @@
 # API e Edge Functions
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-08-13.
 
 ## Modelo de API
 
@@ -182,7 +182,7 @@ Autorização por:
 x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
 ```
 
-Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates e registra sucesso/falha. Em 2026-08-11 não existia `pg_cron` no banco; um scheduler externo é necessário.
+Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates e registra sucesso/falha. Desde 2026-08-13, o job Supabase Cron `process-whatsapp-messages` chama essa ação a cada cinco minutos usando `pg_net`; URL e segredo são lidos do Vault.
 
 ### Limitações da versão 4
 

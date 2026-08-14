@@ -53,16 +53,14 @@ O `package-lock.json` deve ser commitado e a Vercel usa `npm ci` para builds rep
 ```text
 /
 ├── app/                         SPA React
-│   ├── src/                     componentes, contextos, páginas e clientes de integração
-│   └── supabase/                fontes usadas nos deploys recentes de Google Reviews/WhatsApp
-├── supabase/                    migrations e Edge Functions versionadas na raiz
+│   └── src/                     componentes, contextos, páginas e clientes de integração
+├── supabase/                    única fonte de migrations e Edge Functions
 ├── doc/                         documentação técnica e operacional
-├── apps-script/                 aplicação legada, somente referência
 ├── vercel.json                  comandos de build e rewrite da SPA
 └── README.md                    visão rápida do projeto
 ```
 
-Há histórico duplicado entre `supabase/` e `app/supabase/`: a integração WhatsApp robusta em `supabase/functions/whatsapp-messages` não é a mesma versão atualmente implantada; a versão remota 4 corresponde à implementação de fila em `app/supabase/functions/whatsapp-messages`. Não faça redeploy escolhendo uma das pastas sem conferir [Operação, acessos e plataformas](./operacao-plataformas.md) e a função remota.
+Desde 2026-08-13, não há fontes Supabase duplicadas. `supabase/functions/whatsapp-messages` corresponde à versão simplificada implantada, com fila e processamento periódico. A implementação experimental anterior foi removida para evitar redeploy acidental.
 
 ## Frontend
 
@@ -130,8 +128,4 @@ Operações multi-registro usam RPCs transacionais, como salvar agendamento, ser
 3. A Edge Function avalia agendamentos e cria itens idempotentes em `fila_mensagens`.
 4. RPC com `FOR UPDATE SKIP LOCKED` reserva lotes.
 5. A Meta recebe o template aprovado e o resultado vai para fila/logs.
-6. O acionamento periódico ainda precisa de scheduler; não é automático apenas por existir a fila.
-
-## Estado legado
-
-`apps-script/` e materiais estáticos antigos permanecem para consulta histórica. Eles não são a fonte de verdade do painel de produção e não devem receber novas funcionalidades sem uma decisão explícita de arquitetura.
+6. O Supabase Cron aciona o processamento a cada cinco minutos usando `pg_net` e Secrets do Vault.

@@ -56,17 +56,15 @@ Nunca versionar ou enviar em chat/e-mail:
 
 Publishable key e project ref não são segredos, mas dependem de RLS correto. Variáveis `VITE_*` são públicas no bundle.
 
-## Security Advisor: fotografia de 2026-08-11
+## Security Advisor: situação em 2026-08-13
 
-### Crítico
+### Correção aplicada
 
-`public.integracoes_google` está exposta pelo schema `public` com RLS desabilitado. A tabela estava vazia e a integração atual usa `google_calendar_connections`, mas o risco permanece. A correção precisa decidir entre:
+O alerta crítico `rls_disabled_in_public` de `public.integracoes_google` foi inicialmente contido com RLS e revogação de todos os privilégios de `PUBLIC`, `anon` e `authenticated`.
 
-- remover a tabela legada, se não for usada;
-- mover para schema não exposto;
-- habilitar RLS e criar policies adequadas.
+Após a correção, o Security Advisor deixou de apresentar o erro crítico.
 
-Não habilite RLS isoladamente sem entender consumidores; isso pode bloquear o legado. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
+A avaliação de remoção encontrou zero linhas, nenhuma função, view, materialized view, trigger, publication ou constraint externa dependente. Como o código atual usa `google_calendar_connections`, `integracoes_google` foi removida em 2026-08-14 pela migration `20260814034340_remove_legacy_integracoes_google`. A exclusão foi feita sem `CASCADE`. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
 
 ### Avisos
 
@@ -98,7 +96,7 @@ Google Places retorna avaliações públicas; a API key fica na Edge Function.
 
 1. Testar usuário sem clínica e cross-clinic.
 2. Revisar RLS e grants de todas as tabelas `public`.
-3. Corrigir ou remover `integracoes_google`.
+3. Confirmar que tabelas legadas removidas não reaparecem em restaurações ou migrations antigas.
 4. Revisar RPCs `SECURITY DEFINER` e `search_path`.
 5. Rotacionar tokens temporários Google/Meta.
 6. Confirmar que nenhum secret aparece no bundle ou Git.

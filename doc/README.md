@@ -2,7 +2,7 @@
 
 Projeto: Estética Schneider
 
-Última revisão geral: 2026-08-11.
+Última revisão geral: 2026-08-13.
 
 Esta pasta documenta a aplicação React em produção, o backend Supabase, a implantação Vercel e as integrações Google e WhatsApp. Atualize-a junto com qualquer mudança de arquitetura, banco, variáveis, Edge Functions ou fluxo de usuário.
 
@@ -33,7 +33,7 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - Módulos de clientes, serviços, agenda, fila de espera, equipamentos, tratamentos, financeiro, estoque, mensagens, campanhas, avaliações e configurações.
 - Google Agenda bidirecional conectado por OAuth e Edge Function.
 - Avaliações públicas do Google Places carregadas por Edge Function.
-- WhatsApp Cloud API implantado com consentimento, templates e fila; o acionamento periódico automático ainda depende de um agendador externo ou futura configuração de cron.
+- WhatsApp Cloud API implantado com consentimento, templates e fila; Supabase Cron está ativo a cada cinco minutos, e os dois templates transacionais aguardam aprovação da Meta.
 - Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
 
 ## Regras de documentação

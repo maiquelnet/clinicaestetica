@@ -1,6 +1,6 @@
 # Operação, acessos e plataformas
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-08-13.
 
 Este documento é o runbook de operação da aplicação Estética Schneider. Ele registra os identificadores que podem ser versionados, as variáveis necessárias e onde recuperar credenciais. Valores secretos não devem ser gravados no Git, em chamados ou em mensagens.
 
@@ -160,7 +160,9 @@ O número pessoal pode ser destinatário verificado durante a homologação. Par
 
 ### Estado do agendador WhatsApp
 
-Em 2026-08-11, `pg_cron` e `pg_net` não estavam instalados no projeto. Portanto, a fila não é processada automaticamente pelo Postgres. Para automatizar, um agendador externo ou uma futura migration precisa chamar:
+Em 2026-08-13, Supabase Cron, `pg_cron` e `pg_net` foram instalados. O job `process-whatsapp-messages` chama a Edge Function a cada cinco minutos. A URL e o segredo do cron ficam no Supabase Vault com os nomes `whatsapp_function_url` e `whatsapp_cron_secret`; o comando não contém o segredo em texto claro.
+
+Formato da chamada:
 
 ```http
 POST /functions/v1/whatsapp-messages
@@ -173,19 +175,21 @@ x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
 }
 ```
 
-Até esse agendador existir e ser testado, considere o WhatsApp automático parcialmente configurado. A fila `public.fila_mensagens` e as RPCs de claim/complete/fail já estão no banco.
+O job retornou HTTP `200` no teste e o painel exibiu `Agendador ativo`. A fila `public.fila_mensagens` e as RPCs de claim/complete/fail estão no banco. O envio de produção ainda depende da aprovação dos templates Meta e da ativação das regras.
+
+Para monitorar, consulte o histórico em Integrations > Cron > Jobs, os logs de `whatsapp-messages` e, quando necessário, `net._http_response`. Foram observados erros transitórios `JWT issued at future`, seguidos de execução normal sem alteração de configuração.
 
 ## Banco de dados: fotografia verificada
 
 Em 2026-08-11:
 
-- 45 tabelas base no schema `public`;
+- 44 tabelas base no schema `public`;
 - PostgreSQL 17;
 - 1 conexão Google Calendar;
 - 8 modelos de mensagem e 10 regras;
 - fila WhatsApp e logs automáticos vazios;
-- extensões confirmadas: `citext 1.6` e `supabase_vault 0.3.1`;
-- `pg_cron` e `pg_net` não instalados.
+- extensões confirmadas no snapshot inicial: `citext 1.6` e `supabase_vault 0.3.1`;
+- `pg_cron` e `pg_net` instalados posteriormente, em 2026-08-13.
 
 As migrations remotas registradas terminam em:
 
@@ -197,9 +201,13 @@ As migrations remotas registradas terminam em:
 
 Algumas migrations foram aplicadas por ferramentas remotas e receberam timestamps diferentes dos arquivos locais. Antes de usar `supabase db push`, compare `supabase migration list --local` e `--linked`; não aplique a pasta inteira às cegas.
 
-## Pendências de segurança conhecidas
+## Segurança: correção de `integracoes_google`
 
-O Security Advisor confirmou um erro crítico: `public.integracoes_google` está no schema exposto com RLS desabilitado. A tabela está vazia e não é a tabela usada pela sincronização nova, mas continua exposta enquanto não houver decisão de removê-la ou protegê-la. Não habilite RLS sem definir as policies necessárias ao fluxo que ainda depender dela.
+Em 2026-08-13, o alerta crítico `rls_disabled_in_public` de `public.integracoes_google` foi contido com RLS e revogação dos privilégios de `PUBLIC`, `anon` e `authenticated`. O Advisor confirmou a eliminação do erro crítico.
+
+A tabela estava vazia, não era usada pela integração atual e não possuía dependências em funções, views, triggers, publications ou constraints externas. Em 2026-08-14, ela foi removida sem `CASCADE` pela migration `20260814034340_remove_legacy_integracoes_google`.
+
+## Pendências de segurança conhecidas
 
 Outros avisos atuais:
 
@@ -209,7 +217,7 @@ Outros avisos atuais:
 - proteção contra senhas vazadas está desabilitada;
 - há FKs sem índices e policies permissivas duplicadas em módulos administrativos.
 
-Consulte periodicamente o Security Advisor e o Performance Advisor do projeto. Referência para a pendência crítica: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
+Consulte periodicamente o Security Advisor e o Performance Advisor do projeto. Referência da correção aplicada: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
 
 ## Publicação e validação
 

@@ -1,6 +1,6 @@
 # Qualidade e Casos de Teste
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-08-13.
 
 ## Automação existente
 
@@ -22,12 +22,11 @@ Edge Functions:
 ```bash
 deno test supabase/functions/google-calendar-sync/core.test.ts
 deno check supabase/functions/google-calendar-sync/index.ts
-deno test supabase/functions/whatsapp-messages/core.test.ts
+deno check supabase/functions/google-reviews/index.ts
 deno check supabase/functions/whatsapp-messages/index.ts
-deno check app/supabase/functions/whatsapp-messages/index.ts
 ```
 
-Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A implementação WhatsApp robusta da raiz possui testes unitários, mas a versão 4 implantada é o arquivo simplificado em `app/supabase` e ainda não tem suite dedicada. Essa diferença deve aparecer no aceite de qualquer mudança.
+Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A versão 4 do WhatsApp está em `supabase/functions/whatsapp-messages` e ainda não tem suite dedicada. Essa lacuna deve aparecer no aceite de qualquer mudança.
 
 Não há Vitest/Testing Library/Playwright instalados no frontend até esta revisão.
 
@@ -107,7 +106,7 @@ A versão implantada não recebe webhooks delivered/read; não use esses estados
 
 - procurar secrets no diff e no bundle;
 - verificar CORS e autenticação de cada Edge Function;
-- revisar `integracoes_google` com RLS desabilitado;
+- confirmar que a tabela legada `integracoes_google` permanece ausente;
 - revisar RPCs com `search_path` mutável;
 - executar Supabase Security/Performance Advisors;
 - testar APIs com publishable key sem sessão;

@@ -140,29 +140,22 @@ supabase secrets set NOME=valor
 
 Prefira fornecer um arquivo `.env` local ignorado pelo Git quando houver vários valores. Nunca coloque o arquivo no commit.
 
-## Fontes Supabase duplicadas
+## Fonte Supabase canônica
 
-Os deploys recentes criaram arquivos também em `app/supabase/`. Em 2026-08-11:
-
-- `app/supabase/functions/google-reviews` corresponde à função Google Reviews implantada;
-- `app/supabase/functions/whatsapp-messages` corresponde à versão 4 implantada;
-- `supabase/functions/google-calendar-sync` corresponde à versão Google Calendar implantada;
-- `supabase/functions/whatsapp-messages` contém uma implementação mais robusta, porém diferente da função WhatsApp remota.
-
-Antes de consolidar diretórios, baixe ou consulte a função remota e compare o conteúdo. Não substitua produção pela versão experimental apenas porque ela possui mais recursos.
+Desde 2026-08-13, todas as Edge Functions e migrations ficam em `supabase/`. A pasta duplicada `app/supabase/` e a implementação WhatsApp experimental foram removidas. `supabase/functions/whatsapp-messages` corresponde à versão implantada baseada em `fila_mensagens`.
 
 ## Testes de Edge Functions
 
-Google Calendar possui `core.test.ts`; a versão experimental WhatsApp da raiz também possui testes. Rode com Deno:
+Google Calendar possui `core.test.ts`. A versão WhatsApp implantada ainda não possui suite dedicada. Rode com Deno:
 
 ```bash
 deno test supabase/functions/google-calendar-sync/core.test.ts
-deno test supabase/functions/whatsapp-messages/core.test.ts
 deno check supabase/functions/google-calendar-sync/index.ts
-deno check app/supabase/functions/whatsapp-messages/index.ts
+deno check supabase/functions/google-reviews/index.ts
+deno check supabase/functions/whatsapp-messages/index.ts
 ```
 
-Os testes do WhatsApp da raiz não validam automaticamente a versão simplificada implantada em `app/supabase`; trate isso como dívida técnica.
+Criar testes automatizados para a versão WhatsApp implantada permanece como dívida técnica.
 
 ## Google e Meta
 

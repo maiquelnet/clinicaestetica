@@ -19,9 +19,8 @@ Deploy web: Vercel, branch `main`
 ## Estrutura
 
 - `app/`: frontend moderno e fontes usadas em deploys recentes;
-- `supabase/`: migrations e Edge Functions versionadas;
+- `supabase/`: única fonte canônica de migrations e Edge Functions;
 - `doc/`: documentação técnica, operacional e funcional;
-- `apps-script/`: legado preservado somente como referência;
 - `vercel.json`: build e rewrite de rotas da Vercel.
 
 ## Desenvolvimento
