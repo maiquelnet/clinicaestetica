@@ -27,6 +27,28 @@ export type Database = {
         }
         Returns: string
       }
+      salvar_plano_tratamento_com_cronograma: {
+        Args: {
+          p_plano_id: string | null
+          p_clinica_id: string
+          p_cliente_id: string
+          p_servico_id: string
+          p_nome: string
+          p_total_sessoes: number
+          p_valor_total: number
+          p_valor_sessao: number
+          p_status: string
+          p_inicio_em: string
+          p_horario_preferencial: string
+          p_frequencia: string
+          p_intervalo_dias: number | null
+          p_considerar_sabado: boolean
+          p_considerar_domingo: boolean
+          p_observacoes: string | null
+          p_ocorrencias: Json
+        }
+        Returns: Json
+      }
       confirmar_lista_espera: {
         Args: {
           p_lista_espera_id: string
