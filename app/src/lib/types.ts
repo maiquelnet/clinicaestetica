@@ -109,6 +109,16 @@ export type Appointment = {
   arquivado_em: string | null
   clientes?: Pick<Client, 'id' | 'nome' | 'telefone'>
   servicos?: Pick<Service, 'id' | 'nome' | 'categoria' | 'duracao_minutos'>
+  itens_plano_tratamento?: Array<{
+    id: string
+    numero_sessao: number | null
+    situacao: 'planejado' | 'aguardando_reagendamento' | 'cancelado_plano'
+    planos_tratamento?: {
+      id: string
+      nome: string
+      total_sessoes: number
+    } | null
+  }>
 }
 
 export type Supplier = {
@@ -170,6 +180,7 @@ export type TreatmentPlan = {
   clinica_id: string
   cliente_id: string
   servico_id: string
+  profissional_id: string | null
   nome: string
   total_sessoes: number
   sessoes_realizadas: number
@@ -178,6 +189,11 @@ export type TreatmentPlan = {
   status: TreatmentPlanStatus
   inicio_em: string | null
   fim_previsto_em: string | null
+  frequencia: 'diario' | 'semanal' | 'mensal' | 'intervalo' | null
+  intervalo_dias: number | null
+  horario_preferencial: string | null
+  considerar_sabado: boolean
+  considerar_domingo: boolean
   observacoes: string | null
   criado_em: string
   atualizado_em: string
@@ -186,6 +202,25 @@ export type TreatmentPlan = {
   servicos?: Pick<Service, 'id' | 'nome' | 'categoria' | 'duracao_minutos'>
 }
 
+
+
+export type TreatmentPlanItem = {
+  id: string
+  clinica_id: string
+  plano_tratamento_id: string
+  servico_id: string | null
+  agendamento_id: string | null
+  numero_sessao: number | null
+  status: string
+  inicio_previsto_em: string | null
+  fim_previsto_em: string | null
+  ajuste_manual: boolean
+  situacao: 'planejado' | 'aguardando_reagendamento' | 'cancelado_plano'
+  observacoes: string | null
+  criado_em: string
+  atualizado_em: string
+  arquivado_em: string | null
+}
 export type FinancialMovement = {
   id: string
   clinica_id: string

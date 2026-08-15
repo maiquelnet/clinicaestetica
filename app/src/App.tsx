@@ -16,7 +16,8 @@ const MessagesPage = lazy(() => import('./pages/MessageControlPage').then((modul
 const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((module) => ({ default: module.MessageTemplatesPage })))
 const WaitlistPage = lazy(() => import('./pages/admin/agenda/WaitlistPage').then((module) => ({ default: module.WaitlistPage })))
 const EquipmentPage = lazy(() => import('./pages/admin/assets/EquipmentPage').then((module) => ({ default: module.EquipmentPage })))
-const TreatmentPlansPage = lazy(() => import('./pages/admin/treatments/TreatmentPlansPage').then((module) => ({ default: module.TreatmentPlansPage })))
+const TreatmentPlansPage = lazy(() => import('./pages/admin/treatments/TreatmentPlansListPage').then((module) => ({ default: module.TreatmentPlansListPage })))
+const TreatmentPlanFormPage = lazy(() => import('./pages/admin/treatments/TreatmentPlanFormPage').then((module) => ({ default: module.TreatmentPlanFormPage })))
 const FinancePage = lazy(() => import('./pages/admin/finance/FinancePage').then((module) => ({ default: module.FinancePage })))
 const StockItemsPage = lazy(() => import('./pages/admin/stock/StockItemsPage').then((module) => ({ default: module.StockItemsPage })))
 const SuppliersPage = lazy(() => import('./pages/admin/stock/SuppliersPage').then((module) => ({ default: module.SuppliersPage })))
@@ -77,6 +78,8 @@ function ClinicGate() {
           <Route path="/agenda/fila-espera" element={<WaitlistPage />} />
           <Route path="/equipamentos" element={<EquipmentPage />} />
           <Route path="/planos-tratamento" element={<TreatmentPlansPage />} />
+          <Route path="/planos-tratamento/novo" element={<TreatmentPlanFormPage />} />
+          <Route path="/planos-tratamento/:id/editar" element={<TreatmentPlanFormPage />} />
           <Route path="/financeiro/fluxo-caixa" element={<FinancePage mode="cashflow" />} />
           <Route path="/financeiro/contas-a-receber" element={<FinancePage mode="receivable" />} />
           <Route path="/financeiro/contas-a-pagar" element={<FinancePage mode="payable" />} />

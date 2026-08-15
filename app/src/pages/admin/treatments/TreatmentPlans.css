@@ -1,0 +1,374 @@
+.treatment-list-page,
+.treatment-form-page {
+  max-width: 1320px;
+}
+
+.treatment-section-nav {
+  background: rgba(255, 254, 250, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  padding: 4px;
+}
+
+.treatment-section-nav a {
+  align-items: center;
+  border-radius: 11px;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  font-weight: 750;
+  gap: 7px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 8px;
+  text-align: center;
+}
+
+.treatment-section-nav a.active {
+  background: var(--sage-dark);
+  box-shadow: 0 7px 20px rgba(53, 67, 58, 0.15);
+  color: #fff;
+}
+
+.treatment-summary {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.treatment-summary article {
+  align-content: center;
+  background: rgba(255, 254, 250, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  display: grid;
+  min-height: 88px;
+  padding: 14px;
+}
+
+.treatment-summary article svg {
+  color: var(--gold-deep);
+  margin-bottom: 7px;
+}
+
+.treatment-summary strong {
+  font-family: "Iowan Old Style", "Baskerville", Georgia, serif;
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.treatment-summary span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.treatment-catalog {
+  display: grid;
+  gap: 14px;
+}
+
+.treatment-tools {
+  display: grid;
+  gap: 10px;
+}
+
+.treatment-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  display: grid;
+  gap: 15px;
+  padding: 17px;
+}
+
+.treatment-card-header,
+.treatment-card-footer,
+.treatment-plan-meta,
+.treatment-progress-heading,
+.occurrence-heading,
+.treatment-editor-actions {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  justify-content: space-between;
+}
+
+.treatment-card-header h2 {
+  font-size: 18px;
+  margin-top: 3px;
+}
+
+.treatment-card-header p,
+.treatment-plan-meta,
+.treatment-card-footer small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.treatment-plan-meta {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.treatment-plan-meta span {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.treatment-progress-heading strong {
+  font-size: 13px;
+}
+
+.treatment-progress-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.treatment-progress-track {
+  background: #ece7dc;
+  border-radius: 99px;
+  height: 7px;
+  margin-top: 7px;
+  overflow: hidden;
+}
+
+.treatment-progress-track span {
+  background: linear-gradient(90deg, var(--gold), var(--sage-dark));
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.treatment-card-footer {
+  align-items: stretch;
+  border-top: 1px solid var(--line);
+  flex-direction: column;
+  padding-top: 13px;
+}
+
+.treatment-card-footer > div {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+}
+
+.treatment-card-footer .record-actions {
+  width: 100%;
+}
+
+.treatment-card-footer .record-actions a {
+  flex: 1;
+  justify-content: center;
+}
+
+.treatment-editor {
+  display: grid;
+  gap: 17px;
+}
+
+.treatment-editor fieldset {
+  border: 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 21px 0 0;
+}
+
+.treatment-editor fieldset:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.treatment-editor legend {
+  color: var(--gold-deep);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  padding-right: 10px;
+  text-transform: uppercase;
+}
+
+.treatment-editor label small,
+.schedule-preview-intro {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.day-options {
+  display: grid;
+  gap: 9px;
+}
+
+.day-option {
+  align-items: center;
+  background: #faf8f2;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  font-size: 12px;
+  min-height: 48px;
+  padding: 10px 13px;
+}
+
+.day-option input {
+  width: auto;
+}
+
+.professional-note {
+  align-items: flex-start;
+  background: #f1f5ef;
+  border: 1px solid #dce6d9;
+  border-radius: 13px;
+  color: var(--sage-dark);
+  display: flex;
+  font-size: 12px;
+  gap: 9px;
+  padding: 13px;
+}
+
+.schedule-preview {
+  display: grid;
+  gap: 9px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.occurrence-card {
+  background: #faf8f2;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+}
+
+.occurrence-card.conflict {
+  background: #fff6f3;
+  border-color: #dba99f;
+}
+
+.occurrence-card.preserved {
+  background: #f1f5ef;
+  border-color: #cbd9c8;
+}
+
+.occurrence-heading strong {
+  font-size: 12px;
+}
+
+.occurrence-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.occurrence-card input {
+  font-size: 13px;
+}
+
+.occurrence-conflicts {
+  color: var(--danger);
+  display: grid;
+  font-size: 11px;
+  gap: 3px;
+}
+
+.treatment-editor-actions {
+  align-items: stretch;
+  background: rgba(255, 254, 250, 0.97);
+  border-top: 1px solid var(--line);
+  bottom: calc(63px + env(safe-area-inset-bottom));
+  flex-direction: column;
+  margin: 4px -20px -20px;
+  padding: 14px 20px;
+  position: sticky;
+  z-index: 4;
+}
+
+.treatment-editor-actions button,
+.treatment-editor-actions a {
+  justify-content: center;
+  width: 100%;
+}
+
+@media (min-width: 700px) {
+  .treatment-section-nav {
+    max-width: 590px;
+  }
+
+  .treatment-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .treatment-tools {
+    grid-template-columns: minmax(0, 1fr) 210px;
+  }
+
+  .treatment-plan-meta,
+  .treatment-card-footer,
+  .treatment-editor-actions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .treatment-card-footer .record-actions {
+    margin-left: auto;
+    width: auto;
+  }
+
+  .treatment-card-footer .record-actions a {
+    flex: none;
+  }
+
+  .day-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .occurrence-card {
+    align-items: center;
+    grid-template-columns: minmax(150px, 0.55fr) minmax(220px, 1fr);
+  }
+
+  .occurrence-conflicts {
+    grid-column: 1 / -1;
+  }
+
+  .treatment-editor-actions {
+    bottom: 0;
+    justify-content: flex-end;
+  }
+
+  .treatment-editor-actions button,
+  .treatment-editor-actions a {
+    width: auto;
+  }
+}
+
+@media (min-width: 1080px) {
+  .treatment-editor {
+    padding: 26px;
+  }
+
+  .treatment-form-layout {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 0.58fr) minmax(370px, 0.42fr);
+  }
+
+  .schedule-preview-panel {
+    align-self: start;
+    position: sticky;
+    top: 86px;
+  }
+}

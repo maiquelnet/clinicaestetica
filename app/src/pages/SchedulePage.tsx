@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { EmptyState, FieldError, LoadingBlock } from '../components/Ui'
 import { useClinic } from '../contexts/useClinic'
@@ -89,7 +90,7 @@ async function fetchSchedule(clinicId: string, fromDate: string, toDate: string)
     supabase.from('servicos').select('*,precos_servicos(*)').eq('clinica_id', clinicId).eq('ativo', true).is('arquivado_em', null).order('nome'),
     supabase
       .from('agendamentos')
-      .select('*,clientes(id,nome,telefone),servicos(id,nome,categoria,duracao_minutos)')
+      .select('*,clientes(id,nome,telefone),servicos(id,nome,categoria,duracao_minutos),itens_plano_tratamento(id,numero_sessao,situacao,planos_tratamento(id,nome,total_sessoes))')
       .eq('clinica_id', clinicId)
       .gte('inicio_em', from)
       .lte('inicio_em', to)
@@ -126,10 +127,16 @@ function whatsappUrl(appointment: Appointment) {
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
 }
 
+function treatmentLabel(appointment: Appointment) {
+  const item = appointment.itens_plano_tratamento?.[0]
+  const plan = item?.planos_tratamento
+  return item && plan ? `Tratamento · Atendimento ${item.numero_sessao}/${plan.total_sessoes}` : null
+}
 export function SchedulePage() {
   const { activeClinicId, activeMembership } = useClinic()
   const queryClient = useQueryClient()
-  const [selectedDate, setSelectedDate] = useState(toInputDate())
+  const [searchParams] = useSearchParams()
+  const [selectedDate, setSelectedDate] = useState(() => /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('data') || '') ? searchParams.get('data')! : toInputDate())
   const [calendarView, setCalendarView] = useState<CalendarView>('three_days')
   const [editing, setEditing] = useState<Appointment | null>(null)
   const [preview, setPreview] = useState<Appointment | null>(null)
@@ -246,7 +253,7 @@ export function SchedulePage() {
         p_clinica_id: activeClinicId,
         p_cliente_id: values.cliente_id,
         p_servico_id: values.servico_id,
-        p_profissional_id: activeMembership?.perfil_id ?? null,
+        p_profissional_id: editing?.itens_plano_tratamento?.length ? editing.profissional_id : activeMembership?.perfil_id ?? null,
         p_inicio_em: start.toISOString(),
         p_fim_em: end.toISOString(),
         p_valor_aplicado: values.valor_aplicado ? parseCurrency(values.valor_aplicado) : currentPrice(service),
@@ -584,6 +591,7 @@ export function SchedulePage() {
             </header>
             <h2>{preview.clientes?.nome}</h2>
             <p>{preview.servicos?.nome}</p>
+            {treatmentLabel(preview) ? <p className="treatment-appointment-label">{treatmentLabel(preview)}</p> : null}
             <dl>
               <div><dt>Horário</dt><dd>{formatTime(preview.inicio_em)} — {formatTime(preview.fim_em)}</dd></div>
               <div><dt>Valor</dt><dd>{formatMoney(preview.valor_aplicado)}</dd></div>
@@ -707,6 +715,7 @@ function AppointmentCard({
         <span className="appointment-info">
           <strong>{appointment.clientes?.nome}</strong>
           <span>{appointment.servicos?.nome || 'Procedimento'}</span>
+          {treatmentLabel(appointment) ? <small className="treatment-appointment-label">{treatmentLabel(appointment)}</small> : null}
           <small><span className={`mini-status ${appointment.status}`} />{appointment.status.replace('_', ' ')}</small>
         </span>
         <span className="appointment-indicators">
