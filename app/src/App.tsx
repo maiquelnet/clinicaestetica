@@ -12,7 +12,8 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) =
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((module) => ({ default: module.ClientsPage })))
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then((module) => ({ default: module.ServicesPage })))
 const SchedulePage = lazy(() => import('./pages/SchedulePage').then((module) => ({ default: module.SchedulePage })))
-const MessagesPage = lazy(() => import('./pages/MessagesPage').then((module) => ({ default: module.MessagesPage })))
+const MessagesPage = lazy(() => import('./pages/MessageControlPage').then((module) => ({ default: module.MessagesPage })))
+const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((module) => ({ default: module.MessageTemplatesPage })))
 const WaitlistPage = lazy(() => import('./pages/admin/agenda/WaitlistPage').then((module) => ({ default: module.WaitlistPage })))
 const EquipmentPage = lazy(() => import('./pages/admin/assets/EquipmentPage').then((module) => ({ default: module.EquipmentPage })))
 const TreatmentPlansPage = lazy(() => import('./pages/admin/treatments/TreatmentPlansPage').then((module) => ({ default: module.TreatmentPlansPage })))
@@ -82,6 +83,7 @@ function ClinicGate() {
           <Route path="/estoque/itens" element={<StockItemsPage />} />
           <Route path="/estoque/fornecedores" element={<SuppliersPage />} />
           <Route path="/mensagens" element={<MessagesPage />} />
+          <Route path="/mensagens/modelos" element={<MessageTemplatesPage />} />
           <Route path="/marketing/campanhas" element={<CampaignsPage />} />
           <Route path="/marketing/disparos" element={<DispatchesPage />} />
           <Route path="/marketing/satisfacao" element={<SatisfactionPage />} />
