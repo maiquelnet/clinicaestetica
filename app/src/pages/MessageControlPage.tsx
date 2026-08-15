@@ -122,7 +122,7 @@ export function MessagesPage() {
 
   return (
     <main className="content-page message-control-page">
-      <PageHeader eyebrow="Mensagens" title="Controle de envios" description="Veja o que precisa ser enviado e acompanhe o hist?rico em um s? lugar." />
+      <PageHeader eyebrow="Mensagens" title="Controle de envios" description="Veja o que precisa ser enviado e acompanhe o histórico em um só lugar." />
       <MessageSectionNav pendingCount={alerts.length} />
       {query.error ? <div className="form-alert">{query.error.message}</div> : null}
       {registerMessage.error || dismissAlert.error ? <div className="form-alert">{(registerMessage.error || dismissAlert.error)?.message}</div> : null}
@@ -142,7 +142,7 @@ export function MessagesPage() {
               <label>Modelo<select value={manualTemplateId} onChange={(event) => setManualTemplateId(event.target.value)}><option value="">Selecione</option>{(data?.templates || []).filter((template) => template.ativo && activeRule(template)?.canal_padrao !== 'whatsapp_business').map((template) => <option key={template.id} value={template.id}>{template.nome}</option>)}</select></label>
               <label>Agendamento vinculado<select value={manualAppointmentId} onChange={(event) => setManualAppointmentId(event.target.value)}><option value="">Sem agendamento</option>{(data?.appointments || []).filter((appointment) => !manualClientId || appointment.cliente_id === manualClientId).slice(0, 40).map((appointment) => <option key={appointment.id} value={appointment.id}>{formatDateTime(appointment.inicio_em)}</option>)}</select></label>
             </div>
-            <div className="manual-preview">{manualText || 'A mensagem pronta aparecer? aqui.'}</div>
+            <div className="manual-preview">{manualText || 'A mensagem pronta aparecerá aqui.'}</div>
             <div className="record-actions">
               <button className="primary-button" type="button" disabled={!manualWhatsappUrl} onClick={() => openWhatsApp(manualWhatsappUrl)}><Send size={16} /> Abrir WhatsApp</button>
               <button className="ghost-button" type="button" disabled={!manualText || registerMessage.isPending} onClick={() => void registerManualMessage()}><Check size={16} /> Registrar envio</button>
@@ -150,33 +150,33 @@ export function MessagesPage() {
           </div>
         </details>
 
-        <div className="message-view-switch" role="tablist" aria-label="Visualiza??o das mensagens">
+        <div className="message-view-switch" role="tablist" aria-label="Visualização das mensagens">
           <button className={view === 'pending' ? 'active' : ''} type="button" role="tab" aria-selected={view === 'pending'} onClick={() => setView('pending')}>Pendentes <span>{alerts.length}</span></button>
-          <button className={view === 'history' ? 'active' : ''} type="button" role="tab" aria-selected={view === 'history'} onClick={() => setView('history')}>Hist?rico</button>
+          <button className={view === 'history' ? 'active' : ''} type="button" role="tab" aria-selected={view === 'history'} onClick={() => setView('history')}>Histórico</button>
         </div>
 
         {view === 'pending' ? <section className="panel list-panel messages-pending-panel">
-          <div className="panel-header"><div><h2>Pr?ximas a??es</h2><p>Organizadas por cliente e vencimento.</p></div></div>
+          <div className="panel-header"><div><h2>Próximas ações</h2><p>Organizadas por cliente e vencimento.</p></div></div>
           {alerts.length ? <div className="client-alert-list">{Object.entries(groupedAlerts).map(([clientId, clientAlerts]) => {
             const firstAlert = clientAlerts[0]
             if (!firstAlert) return null
             return <section className="client-alert-group" key={clientId}>
-              <div className="group-header"><h3>{firstAlert.clienteNome}</h3><span>?ltima mensagem: {firstAlert.ultimaMensagem ? formatDateTime(firstAlert.ultimaMensagem.enviado_em || firstAlert.ultimaMensagem.criado_em) : 'sem registro'}</span></div>
+              <div className="group-header"><h3>{firstAlert.clienteNome}</h3><span>Última mensagem: {firstAlert.ultimaMensagem ? formatDateTime(firstAlert.ultimaMensagem.enviado_em || firstAlert.ultimaMensagem.criado_em) : 'sem registro'}</span></div>
               <div className="record-list">{clientAlerts.map((alert) => <article className="record-card message-alert-card" key={alert.id}>
                 <div><h3>{alert.tipoLabel}</h3><div className="record-meta"><span className={`badge ${alert.status === 'atrasado' ? 'cancelado' : 'warning'}`}>{alert.status === 'atrasado' ? 'Atrasada' : 'Pendente'}</span><span>Venceu {formatDateTime(alert.dataVencimento)}</span>{alert.servicoNome ? <span>{alert.servicoNome}</span> : null}</div><p className="message-preview">{alert.texto}</p></div>
                 <div className="record-actions"><button className="primary-button" type="button" onClick={() => openWhatsApp(alert.whatsappUrl)}><Send size={16} /> WhatsApp</button><button className="ghost-button" type="button" disabled={registerMessage.isPending} onClick={() => void registerAlert(alert)}><Check size={16} /> Marcar enviada</button><button className="danger-button" type="button" disabled={dismissAlert.isPending} onClick={() => void dismissAlert.mutateAsync(alert)}><Trash2 size={16} /> Dispensar</button></div>
               </article>)}</div>
             </section>
-          })}</div> : <EmptyState title="Tudo em dia">N?o h? mensagens pendentes para enviar.</EmptyState>}
+          })}</div> : <EmptyState title="Tudo em dia">Não há mensagens pendentes para enviar.</EmptyState>}
         </section> : <section className="panel message-history-panel">
-          <div className="panel-header"><div><h2>Hist?rico de mensagens</h2><p>Envios registrados, aceitos ou com falha.</p></div></div>
+          <div className="panel-header"><div><h2>Histórico de mensagens</h2><p>Envios registrados, aceitos ou com falha.</p></div></div>
           <div className="message-history-filters">
             <label className="search-field"><Search size={17} /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Buscar cliente ou mensagem" /></label>
             <label><span className="sr-only">Filtrar por status</span><select value={historyStatus} onChange={(event) => setHistoryStatus(event.target.value)}><option value="todos">Todos os status</option><option value="enviado">Enviadas</option><option value="entregue">Entregues</option><option value="lido">Lidas</option><option value="erro">Com erro</option></select></label>
           </div>
           {filteredLogs.length ? <div className="message-history-list">{filteredLogs.map((log) => <article className="message-history-item" key={log.id}>
             <span className={`history-status-icon ${log.status}`}><History size={17} /></span>
-            <div><div className="history-item-heading"><h3>{clientNames.get(log.cliente_id) || 'Cliente n?o localizado'}</h3><span className={`badge ${log.status === 'erro' ? 'cancelado' : 'success'}`}>{log.status}</span></div><p>{templateNames.get(log.modelo_mensagem_id || '') || 'Mensagem avulsa'} ? {log.canal === 'whatsapp_business' ? 'Autom?tica' : 'Manual'}</p><p className="message-preview">{log.texto}</p><small>{formatDateTime(log.enviado_em || log.criado_em)}</small>{log.observacao ? <small>{log.observacao}</small> : null}</div>
+            <div><div className="history-item-heading"><h3>{clientNames.get(log.cliente_id) || 'Cliente não localizado'}</h3><span className={`badge ${log.status === 'erro' ? 'cancelado' : 'success'}`}>{log.status}</span></div><p>{templateNames.get(log.modelo_mensagem_id || '') || 'Mensagem avulsa'} · {log.canal === 'whatsapp_business' ? 'Automática' : 'Manual'}</p><p className="message-preview">{log.texto}</p><small>{formatDateTime(log.enviado_em || log.criado_em)}</small>{log.observacao ? <small>{log.observacao}</small> : null}</div>
           </article>)}</div> : <EmptyState title="Nenhum envio encontrado">Ajuste os filtros ou registre o primeiro envio.</EmptyState>}
         </section>}
       </>}

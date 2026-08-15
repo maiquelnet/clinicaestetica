@@ -38,9 +38,9 @@ const emptyTemplateDraft: TemplateDraft = {
 const triggerLabels: Record<string, string> = {
   manual: 'Envio manual',
   agendamento_criado: 'Ao criar agendamento',
-  inicio_agendamento: 'Pr?ximo ao agendamento',
-  aniversario: 'Anivers?rio da cliente',
-  ultimo_agendamento: 'Ap?s o ?ltimo atendimento',
+  inicio_agendamento: 'Próximo ao agendamento',
+  aniversario: 'Aniversário da cliente',
+  ultimo_agendamento: 'Após o Último atendimento',
 }
 
 function draftFromTemplate(template: MessageTemplate): TemplateDraft {
@@ -93,11 +93,11 @@ export function MessageTemplatesPage() {
       const templateName = templateDraft.whatsapp_template_name.trim()
       const templateLanguage = templateDraft.whatsapp_template_language.trim() || 'pt_BR'
       if (!tipo || !templateDraft.nome.trim() || !templateDraft.texto.trim()) throw new Error('Informe tipo, nome e texto da mensagem.')
-      if (isAutomatic && !['confirmacao_agendamento', 'lembrete_agendamento'].includes(tipo)) throw new Error('Apenas confirma??o e lembrete de agendamento podem ser autom?ticos nesta vers?o.')
-      if (isAutomatic && !/^[a-z0-9_]+$/.test(templateName)) throw new Error('Informe o nome exato aprovado pela Meta, com letras min?sculas, n?meros e sublinhado.')
-      if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) throw new Error('Informe um idioma v?lido, por exemplo pt_BR.')
-      if (isAutomatic && tipo === 'confirmacao_agendamento' && templateDraft.gatilho !== 'agendamento_criado') throw new Error('A confirma??o autom?tica deve usar ?Ao criar agendamento?.')
-      if (isAutomatic && tipo === 'lembrete_agendamento' && templateDraft.gatilho !== 'inicio_agendamento') throw new Error('O lembrete autom?tico deve usar ?Pr?ximo ao agendamento?.')
+      if (isAutomatic && !['confirmacao_agendamento', 'lembrete_agendamento'].includes(tipo)) throw new Error('Apenas confirmação e lembrete de agendamento podem ser automáticos nesta versão.')
+      if (isAutomatic && !/^[a-z0-9_]+$/.test(templateName)) throw new Error('Informe o nome exato aprovado pela Meta, com letras minÚsculas, nÚmeros e sublinhado.')
+      if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) throw new Error('Informe um idioma válido, por exemplo pt_BR.')
+      if (isAutomatic && tipo === 'confirmacao_agendamento' && templateDraft.gatilho !== 'agendamento_criado') throw new Error('A confirmação automática deve usar “Ao criar agendamento”.')
+      if (isAutomatic && tipo === 'lembrete_agendamento' && templateDraft.gatilho !== 'inicio_agendamento') throw new Error('O lembrete automático deve usar “Próximo ao agendamento”.')
       if (isAutomatic) await validateWhatsAppTemplate(activeClinicId!, templateName, templateLanguage)
       const { error } = await supabase.rpc('salvar_modelo_mensagem_e_regra', {
         p_clinica_id: activeClinicId,
@@ -133,14 +133,14 @@ export function MessageTemplatesPage() {
 
   return (
     <main className="content-page message-templates-page">
-      <PageHeader eyebrow="Mensagens" title="Modelos e automa??es" description="Cadastre textos, defina quando enviar e conecte modelos aprovados pela Meta." actions={<button className="primary-button" type="button" onClick={() => focusForm()}><Plus size={17} /> Novo modelo</button>} />
+      <PageHeader eyebrow="Mensagens" title="Modelos e automações" description="Cadastre textos, defina quando enviar e conecte modelos aprovados pela Meta." actions={<button className="primary-button" type="button" onClick={() => focusForm()}><Plus size={17} /> Novo modelo</button>} />
       <MessageSectionNav pendingCount={alerts.length} />
       {query.error ? <div className="form-alert">{query.error.message}</div> : null}
       {query.isLoading ? <LoadingBlock /> : <>
         <section className="template-summary" aria-label="Resumo dos modelos">
           <article><strong>{data?.templates.length || 0}</strong><span>modelos cadastrados</span></article>
           <article><CheckCircle2 size={18} /><strong>{data?.templates.filter((template) => template.ativo).length || 0}</strong><span>ativos</span></article>
-          <article><Bot size={18} /><strong>{automaticCount}</strong><span>autom?ticos</span></article>
+          <article><Bot size={18} /><strong>{automaticCount}</strong><span>automáticos</span></article>
         </section>
 
         <div className="template-management-layout">
@@ -148,13 +148,13 @@ export function MessageTemplatesPage() {
             <div className="panel-header"><div><h2>Modelos cadastrados</h2><p>Selecione um modelo para editar.</p></div></div>
             <div className="template-catalog-tools">
               <label className="search-field"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar modelo" /></label>
-              <select aria-label="Filtrar modelos" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}><option value="todos">Todos</option><option value="ativos">Ativos</option><option value="automaticos">Autom?ticos</option></select>
+              <select aria-label="Filtrar modelos" value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)}><option value="todos">Todos</option><option value="ativos">Ativos</option><option value="automaticos">Automáticos</option></select>
             </div>
             {filteredTemplates.length ? <div className="template-catalog-list">{filteredTemplates.map((template) => {
               const rule = activeRule(template)
               return <button className={`template-catalog-card ${draft.id === template.id ? 'selected' : ''}`} type="button" key={template.id} onClick={() => focusForm(template)}>
                 <span className="template-card-heading"><strong>{template.nome}</strong><Pencil size={15} /></span>
-                <span className="template-card-badges"><small className={`badge ${template.ativo ? 'success' : 'warning'}`}>{template.ativo ? 'Ativo' : 'Inativo'}</small><small className={`badge ${rule?.canal_padrao === 'whatsapp_business' ? 'success' : ''}`}>{rule?.canal_padrao === 'whatsapp_business' ? 'Autom?tico' : 'Manual'}</small></span>
+                <span className="template-card-badges"><small className={`badge ${template.ativo ? 'success' : 'warning'}`}>{template.ativo ? 'Ativo' : 'Inativo'}</small><small className={`badge ${rule?.canal_padrao === 'whatsapp_business' ? 'success' : ''}`}>{rule?.canal_padrao === 'whatsapp_business' ? 'Automático' : 'Manual'}</small></span>
                 <span>{triggerLabels[rule?.gatilho || 'manual'] || rule?.gatilho}</span>
                 <p>{template.texto}</p>
               </button>
@@ -163,23 +163,23 @@ export function MessageTemplatesPage() {
 
           <section className="panel form-panel template-editor" ref={formRef}>
             <div className="panel-header"><div><p className="eyebrow">{draft.id ? 'Editando modelo' : 'Novo cadastro'}</p><h2>{draft.id ? draft.nome || 'Modelo sem nome' : 'Criar modelo de mensagem'}</h2></div><button className="ghost-button" type="button" onClick={() => setDraft(emptyTemplateDraft)}><Eraser size={16} /> Limpar</button></div>
-            <fieldset><legend>Conte?do da mensagem</legend>
-              <div className="form-grid"><label>Nome para identifica??o<input value={draft.nome} onChange={(event) => setDraft({ ...draft, nome: event.target.value })} placeholder="Ex.: Lembrete de amanh?" /></label><label>Tipo da mensagem<input list="message-types" value={draft.tipo} onChange={(event) => setDraft({ ...draft, tipo: event.target.value })} placeholder="Selecione ou digite" /><datalist id="message-types"><option value="confirmacao_agendamento" /><option value="lembrete_agendamento" /><option value="aniversario" /><option value="lembrete_retorno" /><option value="pedido_avaliacao" /></datalist></label></div>
-              <label>Texto<textarea rows={6} value={draft.texto} onChange={(event) => setDraft({ ...draft, texto: event.target.value })} placeholder="Ol?, {nome}! Seu hor?rio ? dia {data}, ?s {hora}." /><small>Campos dispon?veis: {'{nome}'}, {'{data}'}, {'{hora}'}, {'{servico}'} e {'{link_avaliacao_google}'}.</small></label>
+            <fieldset><legend>ConteÚdo da mensagem</legend>
+              <div className="form-grid"><label>Nome para identificação<input value={draft.nome} onChange={(event) => setDraft({ ...draft, nome: event.target.value })} placeholder="Ex.: Lembrete de amanhã" /></label><label>Tipo da mensagem<input list="message-types" value={draft.tipo} onChange={(event) => setDraft({ ...draft, tipo: event.target.value })} placeholder="Selecione ou digite" /><datalist id="message-types"><option value="confirmacao_agendamento" /><option value="lembrete_agendamento" /><option value="aniversario" /><option value="lembrete_retorno" /><option value="pedido_avaliacao" /></datalist></label></div>
+              <label>Texto<textarea rows={6} value={draft.texto} onChange={(event) => setDraft({ ...draft, texto: event.target.value })} placeholder="Olá, {nome}! Seu horário é dia {data}, às {hora}." /><small>Campos disponíveis: {'{nome}'}, {'{data}'}, {'{hora}'}, {'{servico}'} e {'{link_avaliacao_google}'}.</small></label>
             </fieldset>
 
             <fieldset><legend>Regra de envio</legend>
-              <div className="form-grid"><label>Quando preparar a mensagem<select value={draft.gatilho} onChange={(event) => setDraft({ ...draft, gatilho: event.target.value })}><option value="manual">Somente quando eu enviar</option><option value="agendamento_criado">Ao criar agendamento</option><option value="inicio_agendamento">Pr?ximo ao agendamento</option><option value="aniversario">No anivers?rio da cliente</option><option value="ultimo_agendamento">Ap?s o ?ltimo atendimento</option></select></label><label>Prioridade<input type="number" min={1} value={draft.prioridade} onChange={(event) => setDraft({ ...draft, prioridade: event.target.value })} /><small>1 aparece antes; n?meros maiores aparecem depois.</small></label></div>
-              {draft.gatilho !== 'manual' ? <div className="form-grid rule-offset-grid"><label>Tempo<input type="number" min={0} value={draft.quantidade} onChange={(event) => setDraft({ ...draft, quantidade: event.target.value })} /></label><label>Unidade<select value={draft.unidade} onChange={(event) => setDraft({ ...draft, unidade: event.target.value })}><option value="">Selecione</option><option value="horas">Horas</option><option value="dias">Dias</option></select></label><label>Dire??o<select value={draft.direcao} onChange={(event) => setDraft({ ...draft, direcao: event.target.value })}><option value="">Selecione</option><option value="antes">Antes</option><option value="depois">Depois</option></select></label></div> : null}
+              <div className="form-grid"><label>Quando preparar a mensagem<select value={draft.gatilho} onChange={(event) => setDraft({ ...draft, gatilho: event.target.value })}><option value="manual">Somente quando eu enviar</option><option value="agendamento_criado">Ao criar agendamento</option><option value="inicio_agendamento">Próximo ao agendamento</option><option value="aniversario">No aniversário da cliente</option><option value="ultimo_agendamento">Após o Último atendimento</option></select></label><label>Prioridade<input type="number" min={1} value={draft.prioridade} onChange={(event) => setDraft({ ...draft, prioridade: event.target.value })} /><small>1 aparece antes; nÚmeros maiores aparecem depois.</small></label></div>
+              {draft.gatilho !== 'manual' ? <div className="form-grid rule-offset-grid"><label>Tempo<input type="number" min={0} value={draft.quantidade} onChange={(event) => setDraft({ ...draft, quantidade: event.target.value })} /></label><label>Unidade<select value={draft.unidade} onChange={(event) => setDraft({ ...draft, unidade: event.target.value })}><option value="">Selecione</option><option value="horas">Horas</option><option value="dias">Dias</option></select></label><label>Direção<select value={draft.direcao} onChange={(event) => setDraft({ ...draft, direcao: event.target.value })}><option value="">Selecione</option><option value="antes">Antes</option><option value="depois">Depois</option></select></label></div> : null}
               {draft.gatilho === 'aniversario' ? <label>Janela de alerta em dias<input type="number" min={0} value={draft.janela_alerta_dias} onChange={(event) => setDraft({ ...draft, janela_alerta_dias: event.target.value })} placeholder="7" /></label> : null}
             </fieldset>
 
-            <fieldset><legend>Canal e automa??o</legend>
-              <div className="form-grid"><label>Modo de envio<select value={draft.canal_padrao} disabled={!canConfigureAutomation} onChange={(event) => setDraft({ ...draft, canal_padrao: event.target.value as TemplateDraft['canal_padrao'] })}><option value="whatsapp_manual">Manual pelo WhatsApp</option><option value="whatsapp_business">Autom?tico pela Meta</option></select></label><label className="check-row template-active-check"><input type="checkbox" checked={draft.ativo} onChange={(event) => setDraft({ ...draft, ativo: event.target.checked })} /> Dispon?vel para uso</label></div>
-              {draft.canal_padrao === 'whatsapp_business' ? <><div className="form-grid"><label>Nome aprovado na Meta<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_name} onChange={(event) => setDraft({ ...draft, whatsapp_template_name: event.target.value })} placeholder="confirmacao_agendamento_v1" /></label><label>Idioma<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_language} onChange={(event) => setDraft({ ...draft, whatsapp_template_language: event.target.value })} placeholder="pt_BR" /></label></div><div className="form-alert">A automa??o come?a ao salvar. O sistema valida se o modelo est? aprovado pela Meta.</div></> : null}
+            <fieldset><legend>Canal e automação</legend>
+              <div className="form-grid"><label>Modo de envio<select value={draft.canal_padrao} disabled={!canConfigureAutomation} onChange={(event) => setDraft({ ...draft, canal_padrao: event.target.value as TemplateDraft['canal_padrao'] })}><option value="whatsapp_manual">Manual pelo WhatsApp</option><option value="whatsapp_business">Automático pela Meta</option></select></label><label className="check-row template-active-check"><input type="checkbox" checked={draft.ativo} onChange={(event) => setDraft({ ...draft, ativo: event.target.checked })} /> Disponível para uso</label></div>
+              {draft.canal_padrao === 'whatsapp_business' ? <><div className="form-grid"><label>Nome aprovado na Meta<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_name} onChange={(event) => setDraft({ ...draft, whatsapp_template_name: event.target.value })} placeholder="confirmacao_agendamento_v1" /></label><label>Idioma<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_language} onChange={(event) => setDraft({ ...draft, whatsapp_template_language: event.target.value })} placeholder="pt_BR" /></label></div><div className="form-alert">A automação começa ao salvar. O sistema valida se o modelo está aprovado pela Meta.</div></> : null}
             </fieldset>
             {saveTemplate.error ? <div className="form-alert">{saveTemplate.error.message}</div> : null}
-            {!canConfigureAutomation && draft.canal_padrao === 'whatsapp_business' ? <div className="form-alert">Apenas propriet?rios e administradores podem alterar automa??es.</div> : null}
+            {!canConfigureAutomation && draft.canal_padrao === 'whatsapp_business' ? <div className="form-alert">Apenas proprietários e administradores podem alterar automações.</div> : null}
             <div className="template-editor-actions"><button className="primary-button" type="button" disabled={saveTemplate.isPending || (!canConfigureAutomation && draft.canal_padrao === 'whatsapp_business')} onClick={() => void saveTemplate.mutateAsync(draft)}><Save size={18} /> {saveTemplate.isPending ? 'Salvando...' : 'Salvar modelo'}</button></div>
           </section>
         </div>

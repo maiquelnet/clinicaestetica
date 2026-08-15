@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 
 export function MessageSectionNav({ pendingCount = 0 }: { pendingCount?: number }) {
   return (
-    <nav className="message-section-nav" aria-label="Se??es de mensagens">
+    <nav className="message-section-nav" aria-label="Seções de mensagens">
       <NavLink to="/mensagens" end>
         <MessagesSquare size={18} />
         <span>Controle de envios</span>
@@ -11,7 +11,7 @@ export function MessageSectionNav({ pendingCount = 0 }: { pendingCount?: number 
       </NavLink>
       <NavLink to="/mensagens/modelos">
         <ListChecks size={18} />
-        <span>Modelos e automa??es</span>
+        <span>Modelos e automações</span>
       </NavLink>
     </nav>
   )
