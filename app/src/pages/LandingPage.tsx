@@ -1,263 +1,543 @@
 import {
   ArrowRight,
-  Mail,
+  Award,
+  Check,
+  Clock3,
+  GraduationCap,
+  MapPin,
   Menu,
   MessageCircle,
+  ShieldCheck,
+  Sparkles,
   Star,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
-import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import beforeAfterImage from '../assets/antes_depois_20260611.jpg'
 import profileImage from '../assets/foto_perfil_thais.jpg'
-import heroImage from '../assets/hero-estetica.png'
-import brandEmblem from '../assets/logo_1080.jpg'
+import heroAvif from '../assets/hero-estetica.avif'
+import heroWebp from '../assets/hero-estetica.webp'
+import heroPng from '../assets/hero-estetica.png'
 import brandLogo from '../assets/logo_150.jpg'
+import {
+  analyticsConfigured,
+  clearAnalyticsConsent,
+  initializeAnalytics,
+  readAnalyticsConsent,
+  saveAnalyticsConsent,
+  trackLandingEvent,
+  type AnalyticsConsent,
+} from '../lib/landing-analytics'
+import { buildWhatsAppUrl, type LandingInterest, type WhatsAppPlacement } from '../lib/landing'
+import type { GoogleReviewsResponse } from '../lib/google-reviews'
 import './LandingPage.css'
-import { fetchGoogleReviews, type GoogleReviewsResponse } from '../lib/google-reviews'
 
-const instagramUrl = 'https://www.instagram.com/thaisschneider_estetica_/'
-const emailUrl = 'mailto:contato@esteticaschneider.com.br'
-const whatsappUrl =
-  'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20agendar%20um%20atendimento.'
+const mapsUrl = 'https://share.google/yGBANlVbrTTMG3HX6'
 
-const whatsappLinks = {
-  facial:
-    'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20est%C3%A9tica%20facial.',
-  micropigmentation:
-    'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20micropigmenta%C3%A7%C3%A3o.',
-  makeup:
-    'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20gostaria%20de%20agendar%20maquiagem.',
-  about:
-    'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20mais%20sobre%20os%20atendimentos%20da%20Thais.',
-  result:
-    'https://wa.me/5551985910322?text=Ol%C3%A1%2C%20vi%20o%20resultado%20de%20micropigmenta%C3%A7%C3%A3o%20no%20site%20e%20gostaria%20de%20saber%20mais.',
+const serviceCards: Array<{
+  interest: LandingInterest
+  eyebrow: string
+  title: string
+  description: string
+  items: string[]
+}> = [
+  {
+    interest: 'skin',
+    eyebrow: 'Pele',
+    title: 'Cuidado que respeita o momento da sua pele',
+    description: 'Uma escolha orientada para tratar textura, viço e sinais que incomodam você.',
+    items: ['Avaliação personalizada', 'Protocolos faciais', 'Orientação de cuidados'],
+  },
+  {
+    interest: 'eyebrows',
+    eyebrow: 'Sobrancelhas',
+    title: 'Expressão definida sem perder sua identidade',
+    description: 'Design e técnicas que consideram seus traços, rotina e resultado desejado.',
+    items: ['Design personalizado', 'Micropigmentação', 'Resultado natural'],
+  },
+  {
+    interest: 'toxin',
+    eyebrow: 'Toxina botulínica',
+    title: 'Leveza para as marcas de expressão',
+    description: 'Conversa e avaliação individual para alinhar expectativas com segurança e naturalidade.',
+    items: ['Avaliação individual', 'Plano personalizado', 'Acompanhamento'],
+  },
+]
+
+const procedureGroups = [
+  { title: 'Pele e face', items: ['Limpeza de pele', 'Peeling químico', 'Jato de plasma', 'Dermaplaning', 'Microagulhamento'] },
+  { title: 'Sobrancelhas', items: ['Design de sobrancelhas', 'Design com henna', 'Micropigmentação', 'Retoque de micropigmentação'] },
+  { title: 'Corpo e bem-estar', items: ['Drenagem linfática', 'Massagem modeladora', 'Vacuoterapia', 'Endermoterapia'] },
+  { title: 'Beleza e ocasião', items: ['Maquiagem social', 'Maquiagem para noivas', 'Depilação facial', 'Depilação corporal'] },
+]
+
+const faqs: Array<[string, string]> = [
+  ['Como funciona a primeira conversa?', 'Você conta pelo WhatsApp o que deseja melhorar e recebe uma orientação inicial gratuita. Quando necessário, a avaliação presencial define o cuidado mais adequado.'],
+  ['O atendimento precisa ser agendado?', 'Sim. Todos os atendimentos são realizados com hora marcada para que você receba atenção exclusiva e sem pressa.'],
+  ['Como saber o valor do procedimento?', 'O valor depende do procedimento e, em alguns casos, da avaliação individual. Na conversa pelo WhatsApp você recebe as informações adequadas ao seu objetivo.'],
+  ['Os procedimentos são seguros?', 'Antes de indicar qualquer cuidado, Thaís considera seu histórico, suas necessidades e possíveis contraindicações. As orientações antes e depois do atendimento fazem parte do processo.'],
+  ['Tem estacionamento?', 'Sim. Há estacionamento para tornar sua chegada mais tranquila. O endereço é Rua Paulino Chaves, 437, no bairro Santo Antônio.'],
+  ['O que significa atendimento exclusivo?', 'Seu horário é reservado e o atendimento é conduzido de forma individual, com escuta, privacidade e foco nas suas necessidades.'],
+]
+
+type WhatsAppLinkProps = {
+  interest: LandingInterest
+  placement: WhatsAppPlacement
+  className?: string
+  children: ReactNode
+  onClick?: () => void
+}
+
+function WhatsAppLink({ interest, placement, className, children, onClick }: WhatsAppLinkProps) {
+  return (
+    <a
+      className={className}
+      href={buildWhatsAppUrl({ interest, placement })}
+      target="_blank"
+      rel="noreferrer"
+      onClick={() => {
+        onClick?.()
+        trackLandingEvent('whatsapp_click', { interest, placement })
+        trackLandingEvent('generate_lead', { method: 'whatsapp', interest, placement })
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
+function useLazyReviews(sectionRef: React.RefObject<HTMLElement | null>) {
+  const [state, setState] = useState<{
+    status: 'idle' | 'loading' | 'success' | 'error'
+    data: GoogleReviewsResponse | null
+  }>({ status: 'idle', data: null })
+
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
+    let cancelled = false
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        observer.disconnect()
+        setState({ status: 'loading', data: null })
+        void import('../lib/google-reviews')
+          .then(({ fetchGoogleReviews }) => fetchGoogleReviews())
+          .then((data) => {
+            if (!cancelled) setState({ status: 'success', data })
+          })
+          .catch(() => {
+            if (!cancelled) setState({ status: 'error', data: null })
+          })
+      },
+      { rootMargin: '500px 0px' },
+    )
+
+    observer.observe(section)
+    return () => {
+      cancelled = true
+      observer.disconnect()
+    }
+  }, [sectionRef])
+
+  return state
 }
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [googleReviews, setGoogleReviews] = useState<GoogleReviewsResponse | null>(null)
-  const [reviewsLoading, setReviewsLoading] = useState(true)
-  const [reviewsError, setReviewsError] = useState(false)
+  const [consent, setConsent] = useState<AnalyticsConsent>(() => readAnalyticsConsent())
+  const reviewsRef = useRef<HTMLElement>(null)
+  const reviewsState = useLazyReviews(reviewsRef)
+  const hasAnalytics = analyticsConfigured()
 
   useEffect(() => {
-    let cancelled = false
-    void fetchGoogleReviews()
-      .then((data) => {
-        if (!cancelled) setGoogleReviews(data)
-      })
-      .catch(() => {
-        if (!cancelled) setReviewsError(true)
-      })
-      .finally(() => {
-        if (!cancelled) setReviewsLoading(false)
-      })
-    return () => { cancelled = true }
+    if (consent === 'granted') initializeAnalytics()
+  }, [consent])
+
+  useEffect(() => {
+    const reached = new Set<number>()
+    const handleScroll = () => {
+      const available = document.documentElement.scrollHeight - window.innerHeight
+      if (available <= 0) return
+      const percentage = Math.round((window.scrollY / available) * 100)
+      for (const depth of [25, 50, 75, 90]) {
+        if (percentage >= depth && !reached.has(depth)) {
+          reached.add(depth)
+          trackLandingEvent('scroll_depth', { percent_scrolled: depth })
+        }
+      }
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  function closeMenu() {
-    setMenuOpen(false)
+  useEffect(() => {
+    if (!menuOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [menuOpen])
+
+  const updateConsent = (value: Exclude<AnalyticsConsent, 'unset'>) => {
+    saveAnalyticsConsent(value)
+    setConsent(value)
+  }
+
+  const resetConsent = () => {
+    clearAnalyticsConsent()
+    setConsent('unset')
   }
 
   return (
     <div className="landing-site">
+      <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
       <header className="site-header">
-        <a className="brand" href="#inicio" aria-label="Thais Schneider Estética" onClick={closeMenu}>
-          <img src={brandLogo} alt="" aria-hidden="true" />
-          <span className="brand-text">
-            <strong>Thais Schneider</strong>
-            <span>Estética em Porto Alegre</span>
-          </span>
-        </a>
+        <div className="landing-container header-inner">
+          <a className="brand" href="#inicio" aria-label="Thaís Schneider Estética, início">
+            <img src={brandLogo} width="64" height="64" alt="" />
+            <span><strong>Thaís Schneider</strong><small>Estética</small></span>
+          </a>
 
-        <button
-          className="nav-toggle"
-          type="button"
-          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-          aria-expanded={menuOpen}
-          aria-controls="landing-navigation"
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+          <button
+            className="menu-button"
+            type="button"
+            aria-expanded={menuOpen}
+            aria-controls="site-navigation"
+            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </button>
 
-        <nav id="landing-navigation" className={menuOpen ? 'is-open' : ''} aria-label="Navegação principal">
-          <a href="#atendimentos" onClick={closeMenu}>Atendimentos</a>
-          <a href="#beneficios" onClick={closeMenu}>Benefícios</a>
-          <a href="#quem-sou" onClick={closeMenu}>Quem sou eu</a>
-          <a href="#avaliacoes" onClick={closeMenu}>Avaliações</a>
-          <a href="#faq" onClick={closeMenu}>FAQ</a>
-          <Link to="/cadastro-cliente" onClick={closeMenu}>Cadastro</Link>
-        </nav>
+          <nav id="site-navigation" className={menuOpen ? 'site-nav is-open' : 'site-nav'} aria-label="Navegação principal">
+            <a href="#objetivos" onClick={() => setMenuOpen(false)}>Cuidados</a>
+            <a href="#resultados" onClick={() => setMenuOpen(false)}>Resultados</a>
+            <a href="#sobre" onClick={() => setMenuOpen(false)}>Sobre</a>
+            <a href="#localizacao" onClick={() => setMenuOpen(false)}>Localização</a>
+            <a href="/cadastro-cliente" onClick={() => setMenuOpen(false)}>Cadastro de cliente</a>
+          </nav>
 
-        <a className="header-cta" href={whatsappUrl} target="_blank" rel="noreferrer">
-          Agendar agora
-        </a>
+          <WhatsAppLink className="button button-primary header-cta" interest="general" placement="header">
+            Falar com a Thaís
+          </WhatsAppLink>
+        </div>
       </header>
 
-      <main id="inicio">
-        <section className="hero" aria-labelledby="hero-title" style={{ '--hero-image': `url(${heroImage})` } as React.CSSProperties}>
-          <div className="hero-content">
-            <p className="tag">Esteticista | Micropigmentadora | Maquiadora</p>
-            <h1 id="hero-title">Realce sua beleza natural com atendimento personalizado.</h1>
-            <p>
-              Agende sua avaliação e descubra o procedimento ideal para sua pele, sobrancelhas ou produção especial.
-            </p>
-
-            <div className="contact-actions" aria-label="Canais para agendamento">
-              <a className="contact-card instagram" href={instagramUrl} target="_blank" rel="noreferrer">
-                <span className="icon" aria-hidden="true">
-                  <svg className="social-icon" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="3" width="18" height="18" rx="5" />
-                    <circle cx="12" cy="12" r="4" />
-                    <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
-                  </svg>
-                </span>
-                <span><strong>Instagram</strong><small>Chamar no perfil</small></span>
-              </a>
-              <a className="contact-card whatsapp" href={whatsappUrl} target="_blank" rel="noreferrer">
-                <span className="icon" aria-hidden="true"><MessageCircle size={24} /></span>
-                <span><strong>WhatsApp</strong><small>Agendar agora</small></span>
-              </a>
-              <a className="contact-card email" href={emailUrl}>
-                <span className="icon" aria-hidden="true"><Mail size={24} /></span>
-                <span><strong>E-mail</strong><small>Enviar mensagem</small></span>
-              </a>
+      <main id="conteudo">
+        <section className="hero" id="inicio">
+          <div className="landing-container hero-grid">
+            <div className="hero-copy">
+              <p className="eyebrow"><Sparkles aria-hidden="true" /> Estética em Porto Alegre • Desde 2012</p>
+              <h1>Realce o que você já tem de mais bonito — com naturalidade.</h1>
+              <p className="hero-lead">Cuidados personalizados para pele, sobrancelhas e marcas de expressão, escolhidos depois de uma conversa atenta sobre você.</p>
+              <div className="hero-actions">
+                <WhatsAppLink className="button button-primary button-large" interest="general" placement="hero">
+                  Fazer minha triagem gratuita <ArrowRight aria-hidden="true" />
+                </WhatsAppLink>
+                <span><Clock3 aria-hidden="true" /> Resposta média em 15 minutos</span>
+              </div>
             </div>
 
-            <div className="hero-links">
-              <a className="text-link" href="#atendimentos">
-                Escolher atendimento <ArrowRight size={17} />
-              </a>
+            <div className="hero-visual" aria-hidden="true">
+              <picture>
+                <source srcSet={heroAvif} type="image/avif" />
+                <source srcSet={heroWebp} type="image/webp" />
+                <img
+                  src={heroPng}
+                  width="1744"
+                  height="902"
+                  alt=""
+                  fetchPriority="high"
+                  loading="eager"
+                  decoding="async"
+                />
+              </picture>
+              <div className="hero-note"><ShieldCheck aria-hidden="true" /><span><strong>Atendimento só seu</strong>Com hora marcada e sem pressa</span></div>
+            </div>
+          </div>
+
+          <div className="landing-container trust-strip" aria-label="Diferenciais do atendimento">
+            <span><strong>Desde 2012</strong><small>experiência e cuidado</small></span>
+            <span><strong>Atendimento exclusivo</strong><small>um horário reservado para você</small></span>
+            <span><strong>Estacionamento</strong><small>mais tranquilidade na chegada</small></span>
+            <span><strong>15 minutos</strong><small>tempo médio de resposta</small></span>
+          </div>
+        </section>
+
+        <section className="section objectives" id="objetivos" aria-labelledby="objectives-title">
+          <div className="landing-container">
+            <div className="section-heading centered">
+              <p className="eyebrow">Comece pelo seu objetivo</p>
+              <h2 id="objectives-title">O que você deseja cuidar agora?</h2>
+              <p>Você não precisa saber o nome do procedimento. Conte o que incomoda e receba uma orientação inicial.</p>
+            </div>
+            <div className="service-grid">
+              {serviceCards.map((service, index) => (
+                <article className="service-card" key={service.interest}>
+                  <span className="card-number">0{index + 1}</span>
+                  <p className="eyebrow">{service.eyebrow}</p>
+                  <h3>{service.title}</h3>
+                  <p>{service.description}</p>
+                  <ul>
+                    {service.items.map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}
+                  </ul>
+                  <WhatsAppLink
+                    className="text-link"
+                    interest={service.interest}
+                    placement="interest"
+                    onClick={() => trackLandingEvent('service_interest', { interest: service.interest })}
+                  >
+                    Conversar sobre {service.eyebrow.toLowerCase()} <ArrowRight aria-hidden="true" />
+                  </WhatsAppLink>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="section choice" id="atendimentos" aria-labelledby="choice-title">
-          <div className="section-head">
-            <p className="tag">Escolha seu atendimento</p>
-            <h2 id="choice-title">O que você quer melhorar hoje?</h2>
-          </div>
-          <div className="choice-grid">
-            <article>
-              <span>Pele</span>
-              <h3>Estética facial</h3>
-              <p>Para luminosidade, textura, viço e uma rotina de cuidado mais direcionada.</p>
-              <a href={whatsappLinks.facial} target="_blank" rel="noreferrer">Quero cuidar da pele</a>
-            </article>
-            <article>
-              <span>Sobrancelhas</span>
-              <h3>Micropigmentação</h3>
-              <p>Para valorizar o desenho natural com acabamento delicado e personalizado.</p>
-              <a href={whatsappLinks.micropigmentation} target="_blank" rel="noreferrer">Quero saber mais</a>
-            </article>
-            <article>
-              <span>Evento</span>
-              <h3>Maquiagem</h3>
-              <p>Para produções elegantes em eventos, ensaios e momentos especiais.</p>
-              <a href={whatsappLinks.makeup} target="_blank" rel="noreferrer">Quero agendar maquiagem</a>
-            </article>
+        <section className="section procedures" id="procedimentos" aria-labelledby="procedures-title">
+          <div className="landing-container procedures-grid">
+            <div className="section-heading">
+              <p className="eyebrow">Cuidados disponíveis</p>
+              <h2 id="procedures-title">Um repertório completo, uma indicação que faz sentido.</h2>
+              <p>Os procedimentos são escolhidos conforme seu objetivo, sua rotina e a avaliação profissional — nunca como uma lista automática.</p>
+              <WhatsAppLink className="button button-secondary" interest="general" placement="interest">
+                Pedir uma orientação <MessageCircle aria-hidden="true" />
+              </WhatsAppLink>
+            </div>
+            <div className="procedure-list">
+              {procedureGroups.map((group, index) => (
+                <details key={group.title} open={index === 0}>
+                  <summary><span>{group.title}</span><span aria-hidden="true">+</span></summary>
+                  <ul>{group.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="brand-emblem" aria-labelledby="brand-emblem-title">
-          <div className="emblem-card">
-            <img src={brandEmblem} alt="Emblema Thais Schneider Estética" />
+        <section className="section process" aria-labelledby="process-title">
+          <div className="landing-container">
+            <div className="section-heading centered">
+              <p className="eyebrow">Simples, humano e individual</p>
+              <h2 id="process-title">Você entende cada passo antes de decidir.</h2>
+            </div>
+            <ol className="process-list">
+              <li><span>1</span><div><h3>Conversa inicial</h3><p>Você conta o que deseja e recebe uma orientação inicial pelo WhatsApp.</p></div></li>
+              <li><span>2</span><div><h3>Avaliação personalizada</h3><p>Thaís considera seus traços, histórico, rotina e expectativas com clareza.</p></div></li>
+              <li><span>3</span><div><h3>Atendimento com hora marcada</h3><p>Seu horário é exclusivo, com privacidade, atenção e orientações de cuidado.</p></div></li>
+            </ol>
+          </div>
+        </section>
+
+        <section className="section result-section" id="resultados" aria-labelledby="result-title">
+          <div className="landing-container result-grid">
+            <div className="result-media">
+              <img
+                src={beforeAfterImage}
+                width="1080"
+                height="1350"
+                alt="Comparação do resultado real de sobrancelhas: antes à esquerda e depois à direita"
+                loading="lazy"
+                decoding="async"
+              />
+              <span className="result-year">Resultado real • 2026</span>
+            </div>
+            <div className="result-copy">
+              <p className="eyebrow">Naturalidade que você percebe</p>
+              <h2 id="result-title">Mudança visível. Expressão preservada.</h2>
+              <p>O objetivo não é transformar quem você é. É equilibrar detalhes para que você se reconheça ainda mais bonita.</p>
+              <ul className="feature-list">
+                <li><Check aria-hidden="true" />Planejamento de acordo com seus traços</li>
+                <li><Check aria-hidden="true" />Alinhamento claro do resultado desejado</li>
+                <li><Check aria-hidden="true" />Orientação antes e depois do atendimento</li>
+              </ul>
+              <WhatsAppLink className="button button-primary" interest="result" placement="result">
+                Quero entender meu caso <ArrowRight aria-hidden="true" />
+              </WhatsAppLink>
+              <small>Imagem autorizada. Resultados variam conforme características individuais e cuidados posteriores.</small>
+            </div>
+          </div>
+        </section>
+
+        <section className="section authority" aria-labelledby="authority-title">
+          <div className="landing-container authority-grid">
             <div>
-              <p className="tag">Marca e propósito</p>
-              <h2 id="brand-emblem-title">Cuidado estético com assinatura, técnica e acolhimento.</h2>
-              <p>Cada detalhe da marca traduz um atendimento delicado, seguro e pensado para valorizar a sua beleza natural.</p>
+              <p className="eyebrow light">Formação e prática</p>
+              <h2 id="authority-title">Conhecimento que sustenta um atendimento cuidadoso.</h2>
+              <p>Formação científica, especialização em estética e atualização contínua ajudam a construir escolhas responsáveis para cada pessoa.</p>
+            </div>
+            <div className="credential-grid">
+              <article><GraduationCap aria-hidden="true" /><h3>Ciências Biológicas</h3><p>Graduação que oferece uma base sólida sobre o corpo e seus processos.</p></article>
+              <article><Award aria-hidden="true" /><h3>Estética e Cosmetologia</h3><p>Pós-graduação com foco em saúde, bem-estar e cuidados estéticos.</p></article>
+              <article><Sparkles aria-hidden="true" /><h3>Capacitações selecionadas</h3><p>Micropigmentação, jato de plasma, equipamentos estéticos e atualização em toxina botulínica.</p></article>
             </div>
           </div>
         </section>
 
-        <section className="benefits" id="beneficios" aria-label="Benefícios rápidos">
-          <div><strong>01</strong><span>Avaliação individual</span></div>
-          <div><strong>02</strong><span>Resultado natural</span></div>
-          <div><strong>03</strong><span>Ambiente acolhedor</span></div>
-          <div><strong>04</strong><span>Cuidados pós-atendimento</span></div>
-        </section>
-
-        <section className="section about" id="quem-sou" aria-labelledby="about-title">
-          <div className="about-copy">
-            <p className="tag">Quem sou eu</p>
-            <h2 id="about-title">Ciência, técnica e carinho em cada protocolo.</h2>
-            <p>
-              Transformar a autoestima é minha missão desde 2012. Sou Thaís Schneider e, por trás de cada protocolo que realizo, existe muito estudo e um cuidado real com a sua saúde. Minha formação acadêmica me deu a base científica perfeita para entender a sua pele de forma profunda e oferecer resultados seguros e duradouros. Com extensões em estética facial e aplicação de toxina botulínica, uno ciência, técnica e muito carinho. Cristã, esposa e mãe de dois, levo toda essa dedicação para o meu espaço, onde cada atendimento é uma experiência única de autocuidado. Vamos realçar a sua melhor versão?
-            </p>
-            <a className="about-cta" href={whatsappLinks.about} target="_blank" rel="noreferrer">Conversar com a Thais</a>
-          </div>
-          <figure className="about-photo">
-            <img src={profileImage} alt="Thaís Schneider sorrindo" />
-          </figure>
-        </section>
-
-        <section className="section result-showcase" aria-labelledby="result-title">
-          <div className="result-copy">
-            <p className="tag">Resultado real</p>
-            <h2 id="result-title">Resultado real em micropigmentação</h2>
-            <p>Um exemplo de trabalho realizado para demonstrar como a técnica certa valoriza os traços com naturalidade, definição e harmonia.</p>
-            <a className="result-cta" href={whatsappLinks.result} target="_blank" rel="noreferrer">Quero um resultado assim</a>
-          </div>
-          <figure className="result-image">
-            <img src={beforeAfterImage} alt="Antes e depois de micropigmentação realizada por Thaís Schneider" />
-          </figure>
-        </section>
-
-        <section className="section reviews" id="avaliacoes" aria-labelledby="reviews-title">
-          <div className="reviews-copy">
-            <p className="tag">Avaliações do Google</p>
-            <h2 id="reviews-title">A experiência de quem escolhe se cuidar.</h2>
-            <p>{googleReviews?.rating ? `${googleReviews.rating.toFixed(1)} estrelas no Google${googleReviews.userRatingCount ? ` · ${googleReviews.userRatingCount} avaliações` : ''}.` : 'Veja o que as clientes dizem sobre o atendimento.'}</p>
-          </div>
-          {reviewsLoading ? <div className="reviews-coming-soon" aria-live="polite">Carregando avaliações do Google...</div> : null}
-          {!reviewsLoading && googleReviews?.reviews.length ? <div className="reviews-grid">{googleReviews.reviews.map((review) => <article className="review-card" key={review.id}><div className="stars" aria-label={`${review.rating} de 5 estrelas`}>{[0, 1, 2, 3, 4].map((star) => <Star key={star} size={18} fill={star < review.rating ? 'currentColor' : 'none'} />)}</div><strong>{review.author}</strong>{review.text ? <p>{review.text}</p> : null}</article>)}</div> : null}
-          {!reviewsLoading && (!googleReviews?.reviews.length || reviewsError) ? <div className="reviews-coming-soon"><strong>Avaliações do Google</strong><span>As avaliações estarão disponíveis assim que a integração for configurada.</span>{googleReviews?.reviewLink ? <a className="button outline" href={googleReviews.reviewLink} target="_blank" rel="noreferrer">Avaliar no Google</a> : null}</div> : null}
-        </section>
-
-        <section className="section faq" id="faq" aria-labelledby="faq-title">
-          <div className="section-head">
-            <p className="tag">Perguntas frequentes</p>
-            <h2 id="faq-title">Tire suas dúvidas antes de chamar</h2>
-          </div>
-          <div className="faq-list">
-            <details>
-              <summary>Como faço para agendar?</summary>
-              <p>Chame pelo Instagram ou WhatsApp, envie o atendimento desejado e combine o melhor horário disponível.</p>
-            </details>
-            <details>
-              <summary>Preciso passar por avaliação?</summary>
-              <p>A avaliação ajuda a entender seu objetivo e indicar o procedimento mais adequado.</p>
-            </details>
-            <details>
-              <summary>Quanto custa cada procedimento?</summary>
-              <p>Os valores podem variar conforme o atendimento. A consulta de preço é feita pelo Instagram, WhatsApp ou e-mail.</p>
-            </details>
-            <details>
-              <summary>Onde é o atendimento?</summary>
-              <p>O atendimento é em Porto Alegre, com hora marcada.</p>
-            </details>
+        <section className="section about" id="sobre" aria-labelledby="about-title">
+          <div className="landing-container about-grid">
+            <div className="about-photo">
+              <img src={profileImage} width="1335" height="1335" alt="Thaís Schneider sorrindo" loading="lazy" decoding="async" />
+              <span><strong>+14 anos</strong> de experiência</span>
+            </div>
+            <div className="about-copy">
+              <p className="eyebrow">Quem cuida de você</p>
+              <h2 id="about-title">Oi, eu sou a Thaís.</h2>
+              <p className="about-lead">Acredito que um bom atendimento começa pela escuta — e que o melhor resultado é aquele que combina com você.</p>
+              <p>Atuo na estética desde 2012, unindo minha formação em Ciências Biológicas à pós-graduação em Estética e Cosmetologia. Em cada atendimento, busco explicar possibilidades com clareza e respeitar seu ritmo, seus traços e suas escolhas.</p>
+              <blockquote>“Naturalidade não é fazer menos. É saber exatamente o que valorizar.”</blockquote>
+              <WhatsAppLink className="text-link" interest="general" placement="final">
+                Conversar diretamente comigo <ArrowRight aria-hidden="true" />
+              </WhatsAppLink>
+            </div>
           </div>
         </section>
 
-        <section className="final-cta" aria-labelledby="final-title" style={{ '--hero-image': `url(${heroImage})` } as React.CSSProperties}>
-          <p className="tag">Agendamento rápido</p>
-          <h2 id="final-title">Quer saber qual atendimento combina com você?</h2>
-          <p>Envie uma mensagem agora e receba orientação para escolher o melhor procedimento.</p>
-          <div className="final-actions">
-            <a className="button light" href={whatsappUrl} target="_blank" rel="noreferrer">Chamar no WhatsApp</a>
-            <a className="button outline" href={instagramUrl} target="_blank" rel="noreferrer">Abrir Instagram</a>
-            <a className="button outline" href={emailUrl}>Enviar e-mail</a>
+        <section className="section location" id="localizacao" aria-labelledby="location-title">
+          <div className="landing-container location-card">
+            <div>
+              <p className="eyebrow light">Fácil de chegar</p>
+              <h2 id="location-title">Seu momento de cuidado no bairro Santo Antônio.</h2>
+              <p>Rua Paulino Chaves, 437<br />Santo Antônio, Porto Alegre–RS<br />CEP 90640-200</p>
+              <div className="location-features">
+                <span><MapPin aria-hidden="true" />Estacionamento no local</span>
+                <span><Clock3 aria-hidden="true" />Atendimento com hora marcada</span>
+                <span><ShieldCheck aria-hidden="true" />Atendimento exclusivo</span>
+              </div>
+            </div>
+            <div className="location-actions">
+              <a className="button button-light" href={mapsUrl} target="_blank" rel="noreferrer">
+                Abrir no Google Maps <ArrowRight aria-hidden="true" />
+              </a>
+              <WhatsAppLink className="button button-outline-light" interest="general" placement="location">
+                Agendar atendimento
+              </WhatsAppLink>
+            </div>
+          </div>
+        </section>
+
+        <section className="section reviews" ref={reviewsRef} aria-labelledby="reviews-title">
+          <div className="landing-container">
+            <div className="section-heading centered">
+              <p className="eyebrow">Experiência compartilhada</p>
+              <h2 id="reviews-title">Conheça a experiência de quem já foi atendida.</h2>
+            </div>
+
+            {reviewsState.status === 'loading' || reviewsState.status === 'idle' ? (
+              <div className="reviews-loading" role="status">
+                <span className="spinner" aria-hidden="true" />
+                Carregando avaliações do Google
+              </div>
+            ) : reviewsState.status === 'success' && reviewsState.data?.reviews.length ? (
+              <>
+                <div className="rating-summary">
+                  <strong>{reviewsState.data.rating?.toFixed(1)}</strong>
+                  <span><span className="stars" aria-label={`${reviewsState.data.rating} de 5 estrelas`}>★★★★★</span>{reviewsState.data.userRatingCount} avaliações no Google</span>
+                </div>
+                <div className="review-grid">
+                  {reviewsState.data.reviews.slice(0, 3).map((review) => (
+                    <article key={review.id}>
+                      <Star aria-hidden="true" />
+                      <p>“{review.text}”</p>
+                      <strong>{review.author}</strong>
+                    </article>
+                  ))}
+                </div>
+                <a className="text-link review-link" href={reviewsState.data.googleMapsUrl ?? mapsUrl} target="_blank" rel="noreferrer">
+                  Ver perfil no Google <ArrowRight aria-hidden="true" />
+                </a>
+              </>
+            ) : (
+              <div className="reviews-fallback">
+                <Star aria-hidden="true" />
+                <div>
+                  <h3>Veja as avaliações diretamente no Google</h3>
+                  <p>A integração não trouxe avaliações agora. Para manter esta página honesta e atualizada, consulte o perfil oficial.</p>
+                </div>
+                <a className="button button-secondary" href={reviewsState.data?.googleMapsUrl ?? mapsUrl} target="_blank" rel="noreferrer">
+                  Consultar no Google <ArrowRight aria-hidden="true" />
+                </a>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="section faq" aria-labelledby="faq-title">
+          <div className="landing-container faq-grid">
+            <div className="section-heading">
+              <p className="eyebrow">Antes de agendar</p>
+              <h2 id="faq-title">Dúvidas comuns, respostas claras.</h2>
+              <p>Se sua dúvida não estiver aqui, fale diretamente com a Thaís pelo WhatsApp.</p>
+            </div>
+            <div className="faq-list">
+              {faqs.map(([question, answer]) => (
+                <details
+                  key={question}
+                  onToggle={(event) => {
+                    if (event.currentTarget.open) trackLandingEvent('faq_open', { question })
+                  }}
+                >
+                  <summary>{question}<span aria-hidden="true">+</span></summary>
+                  <p>{answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section final-cta" aria-labelledby="final-title">
+          <div className="landing-container final-card">
+            <p className="eyebrow light">Seu próximo passo pode ser simples</p>
+            <h2 id="final-title">Conte o que você deseja cuidar. Eu ajudo você a escolher com calma.</h2>
+            <p>A triagem inicial é gratuita, pelo WhatsApp, e não obriga você a agendar.</p>
+            <WhatsAppLink className="button button-light button-large" interest="general" placement="final">
+              Falar com a Thaís agora <MessageCircle aria-hidden="true" />
+            </WhatsAppLink>
+            <span><Clock3 aria-hidden="true" /> Resposta média em 15 minutos durante os períodos de atendimento</span>
           </div>
         </section>
       </main>
 
-      <footer>
-        <strong>Thais Schneider Estética</strong>
-        <span>Porto Alegre | contato@esteticaschneider.com.br | +55 51 98591-0322</span>
-        <Link className="footer-admin-link" to="/login">Painel administrativo</Link>
+      <footer className="site-footer">
+        <div className="landing-container footer-grid">
+          <div className="brand footer-brand">
+            <img src={brandLogo} width="56" height="56" alt="" loading="lazy" />
+            <span><strong>Thaís Schneider</strong><small>Estética</small></span>
+          </div>
+          <address>Rua Paulino Chaves, 437<br />Santo Antônio • Porto Alegre–RS<br />CEP 90640-200</address>
+          <div className="footer-meta">
+            <span>CNPJ 17.228.454/0001-17</span>
+            <span>Atendimento somente com hora marcada</span>
+            <a href="/login">Área de gestão</a>
+            {hasAnalytics ? <button type="button" onClick={resetConsent}>Revisar privacidade</button> : null}
+          </div>
+        </div>
+        <div className="landing-container footer-bottom">© {new Date().getFullYear()} Thaís Schneider Estética. Todos os direitos reservados.</div>
       </footer>
+
+      <WhatsAppLink className="mobile-whatsapp" interest="general" placement="mobile">
+        <MessageCircle aria-hidden="true" /> Falar com a Thaís
+      </WhatsAppLink>
+
+      {hasAnalytics && consent === 'unset' ? (
+        <aside className="consent-banner" aria-labelledby="consent-title">
+          <div>
+            <strong id="consent-title">Sua privacidade importa</strong>
+            <p>Usamos cookies de medição apenas com sua permissão para entender o uso da página. Nenhum dado sensível é enviado.</p>
+          </div>
+          <div className="consent-actions">
+            <button type="button" className="button button-secondary" onClick={() => updateConsent('denied')}>Recusar</button>
+            <button type="button" className="button button-primary" onClick={() => updateConsent('granted')}>Aceitar medição</button>
+          </div>
+        </aside>
+      ) : null}
     </div>
   )
 }
+
+export default LandingPage
