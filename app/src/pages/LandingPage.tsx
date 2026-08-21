@@ -33,6 +33,7 @@ import type { GoogleReviewsResponse } from '../lib/google-reviews'
 import './LandingPage.css'
 
 const mapsUrl = 'https://share.google/yGBANlVbrTTMG3HX6'
+const SHOW_TOXIN_CONTENT = false
 
 const serviceCards: Array<{
   interest: LandingInterest
@@ -63,6 +64,14 @@ const serviceCards: Array<{
     items: ['Avaliação individual', 'Plano personalizado', 'Acompanhamento'],
   },
 ]
+
+const visibleServiceCards = serviceCards.filter(
+  (service) => SHOW_TOXIN_CONTENT || service.interest !== 'toxin',
+)
+
+const selectedTrainingDescription = SHOW_TOXIN_CONTENT
+  ? 'Micropigmentação, jato de plasma, equipamentos estéticos e atualização em toxina botulínica.'
+  : 'Micropigmentação, jato de plasma e equipamentos estéticos.'
 
 const procedureGroups = [
   { title: 'Pele e face', items: ['Limpeza de pele', 'Peeling químico', 'Jato de plasma', 'Dermaplaning', 'Microagulhamento'] },
@@ -275,8 +284,8 @@ export function LandingPage() {
               <h2 id="objectives-title">O que você deseja cuidar agora?</h2>
               <p>Você não precisa saber o nome do procedimento. Conte o que incomoda e receba uma orientação inicial.</p>
             </div>
-            <div className="service-grid">
-              {serviceCards.map((service, index) => (
+            <div className={SHOW_TOXIN_CONTENT ? 'service-grid' : 'service-grid is-condensed'}>
+              {visibleServiceCards.map((service, index) => (
                 <article className="service-card" key={service.interest}>
                   <span className="card-number">0{index + 1}</span>
                   <p className="eyebrow">{service.eyebrow}</p>
@@ -374,7 +383,7 @@ export function LandingPage() {
             <div className="credential-grid">
               <article><GraduationCap aria-hidden="true" /><h3>Ciências Biológicas</h3><p>Graduação que oferece uma base sólida sobre o corpo e seus processos.</p></article>
               <article><Award aria-hidden="true" /><h3>Estética e Cosmetologia</h3><p>Pós-graduação com foco em saúde, bem-estar e cuidados estéticos.</p></article>
-              <article><Sparkles aria-hidden="true" /><h3>Capacitações selecionadas</h3><p>Micropigmentação, jato de plasma, equipamentos estéticos e atualização em toxina botulínica.</p></article>
+              <article><Sparkles aria-hidden="true" /><h3>Capacitações selecionadas</h3><p>{selectedTrainingDescription}</p></article>
             </div>
           </div>
         </section>

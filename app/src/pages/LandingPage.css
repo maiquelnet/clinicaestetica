@@ -399,6 +399,7 @@ img { display: block; max-width: 100%; }
   .trust-strip > span { min-height: 110px; padding-inline: 18px; border-right: 1px solid var(--line); border-bottom: 0; }
   .trust-strip > span:last-child { border-right: 0; }
   .service-grid { grid-template-columns: repeat(3, 1fr); }
+  .service-grid.is-condensed { width: min(100%, 820px); grid-template-columns: repeat(2, minmax(0, 1fr)); margin-inline: auto; }
   .service-card { padding: 34px 26px; }
   .procedures-grid,
   .faq-grid { grid-template-columns: .86fr 1.14fr; gap: 70px; }
