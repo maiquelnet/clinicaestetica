@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Thaís Schneider Estética</title>
+  <desc id="description">Beleza natural com atendimento personalizado em Porto Alegre.</desc>
+  <rect width="1200" height="630" fill="#fbfaf6"/>
+  <circle cx="1030" cy="110" r="230" fill="#c98386" opacity=".15"/>
+  <circle cx="1090" cy="590" r="300" fill="#b48a4b" opacity=".12"/>
+  <path d="M0 520C210 450 340 575 570 510s380-5 630-95v215H0Z" fill="#263d31"/>
+  <text x="105" y="190" fill="#263d31" font-family="Georgia,serif" font-size="31" letter-spacing="6">THAÍS SCHNEIDER</text>
+  <text x="105" y="265" fill="#263d31" font-family="Georgia,serif" font-size="70">Estética que realça</text>
+  <text x="105" y="342" fill="#263d31" font-family="Georgia,serif" font-size="70">a sua naturalidade.</text>
+  <text x="105" y="408" fill="#755f50" font-family="Arial,sans-serif" font-size="27">Atendimento personalizado em Porto Alegre • Desde 2012</text>
+  <text x="105" y="568" fill="#fbfaf6" font-family="Arial,sans-serif" font-size="24">Rua Paulino Chaves, 437 • Santo Antônio</text>
+</svg>

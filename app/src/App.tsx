@@ -4,10 +4,10 @@ import { ClinicProvider } from './contexts/ClinicContext'
 import { useAuth } from './contexts/useAuth'
 import { useClinic } from './contexts/useClinic'
 import { AppLayout } from './components/AppLayout'
-import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { ClientSignupPage } from './pages/ClientSignupPage'
 
+const LandingPage = lazy(() => import('./pages/LandingPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((module) => ({ default: module.ClientsPage })))
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then((module) => ({ default: module.ServicesPage })))
@@ -139,7 +139,7 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<Suspense fallback={<FullPageStatus title="Carregando" />}><LandingPage /></Suspense>} />
       <Route path="/cadastro-cliente" element={<ClientSignupPage />} />
       <Route
         path="/login"
