@@ -83,8 +83,52 @@ export type Database = {
           p_publico: string
           p_status: string
           p_criado_por: string | null
+          p_servicos_alvo: string[]
         }
         Returns: string
+      }
+      register_public_client_signup: {
+        Args: {
+          p_clinica_id: string
+          p_nome: string
+          p_telefone: string
+          p_email: string | null
+          p_data_nascimento: string | null
+          p_servicos_interesse: string[]
+        }
+        Returns: Array<{ cliente_id: string; cadastro_atualizado: boolean }>
+      }
+      salvar_cliente_com_interesses: {
+        Args: {
+          p_cliente_id: string | null
+          p_clinica_id: string
+          p_nome: string
+          p_telefone: string
+          p_email: string | null
+          p_data_nascimento: string | null
+          p_cpf: string | null
+          p_genero: string | null
+          p_observacoes: string | null
+          p_intervalo_retorno_dias: number | null
+          p_parceira: boolean
+          p_aceita_marketing: boolean
+          p_whatsapp_opt_in_status: string
+          p_whatsapp_opt_in_em: string | null
+          p_whatsapp_opt_in_origem: string | null
+          p_whatsapp_opt_in_versao: string | null
+          p_whatsapp_opt_out_em: string | null
+          p_ativo: boolean
+          p_servicos_interesse: string[]
+        }
+        Returns: string
+      }
+      prever_publico_campanha: {
+        Args: {
+          p_clinica_id: string
+          p_publico: string
+          p_servicos_alvo: string[]
+        }
+        Returns: number
       }
     }
     Enums: Record<string, never>

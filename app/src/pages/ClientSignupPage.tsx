@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { FieldError, LoadingBlock } from '../components/Ui'
 import { supabase } from '../lib/supabase'
+import { registerPublicClientSignup } from '../lib/rpc'
 import type { Service } from '../lib/types'
 
 type ClinicReference = {
@@ -106,44 +107,17 @@ export function ClientSignupPage() {
       if (!clinic) throw new Error('Não foi possível identificar a clínica.')
 
       const phone = phoneDigits(values.telefone)
-      const now = new Date().toISOString()
-      const payload = {
-        clinica_id: clinic.id,
-        nome: values.nome.trim(),
-        telefone: phone,
-        email: values.email?.trim() || null,
-        data_nascimento: values.data_nascimento || null,
-        servicos_interesse: values.servicos_interesse,
-        cpf: null,
-        genero: null,
-        observacoes: null,
-        intervalo_retorno_dias: null,
-        parceira: false,
-        aceita_marketing: false,
-        ativo: true,
-        criado_em: now,
-        atualizado_em: now,
-      }
-
-      const { data: existing, error: selectError } = await supabase
-        .from('clientes')
-        .select('id')
-        .eq('clinica_id', clinic.id)
-        .eq('telefone', phone)
-        .is('arquivado_em', null)
-        .maybeSingle()
-
-      if (selectError) throw selectError
-
-      if (existing?.id) {
-        const { error } = await supabase.from('clientes').update(payload).eq('id', existing.id)
-        if (error) throw error
-        setSavedMessage('Cadastro atualizado com sucesso. Obrigado!')
-      } else {
-        const { error } = await supabase.from('clientes').insert(payload)
-        if (error) throw error
-        setSavedMessage('Cadastro realizado com sucesso. Obrigado!')
-      }
+      const result = await registerPublicClientSignup({
+        p_clinica_id: clinic.id,
+        p_nome: values.nome.trim(),
+        p_telefone: phone,
+        p_email: values.email?.trim() || null,
+        p_data_nascimento: values.data_nascimento || null,
+        p_servicos_interesse: values.servicos_interesse,
+      })
+      setSavedMessage(result?.[0]?.cadastro_atualizado
+        ? 'Cadastro atualizado com sucesso. Obrigado!'
+        : 'Cadastro realizado com sucesso. Obrigado!')
     },
     onSuccess: () => {
       form.reset()

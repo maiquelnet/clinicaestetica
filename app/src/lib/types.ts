@@ -46,6 +46,7 @@ export type Client = {
   observacoes: string | null
   intervalo_retorno_dias: number | null
   parceira: boolean
+  servicos_interesse: string[]
   aceita_marketing: boolean
   whatsapp_opt_in_status: WhatsAppOptInStatus
   whatsapp_opt_in_em: string | null
@@ -56,6 +57,17 @@ export type Client = {
   criado_em: string
   atualizado_em: string
   arquivado_em: string | null
+  clientes_servicos_interesse?: ClientServiceInterest[]
+}
+
+export type ClientServiceInterest = {
+  clinica_id: string
+  cliente_id: string
+  servico_id: string
+  origem: 'cadastro_publico' | 'painel' | 'migracao'
+  criado_em: string
+  atualizado_em: string
+  servicos?: Pick<Service, 'id' | 'nome' | 'categoria' | 'ativo' | 'arquivado_em'>
 }
 
 export type ServicePrice = {
@@ -342,6 +354,16 @@ export type Campaign = {
   arquivado_em: string | null
   modelos_mensagens?: Pick<MessageTemplate, 'id' | 'nome' | 'tipo'>
   destinatarios_campanhas?: CampaignRecipient[]
+  campanhas_servicos_alvo?: CampaignTargetService[]
+}
+
+export type CampaignTargetService = {
+  clinica_id: string
+  campanha_id: string
+  servico_id: string
+  criado_em: string
+  atualizado_em: string
+  servicos?: Pick<Service, 'id' | 'nome' | 'categoria' | 'ativo' | 'arquivado_em'>
 }
 
 export type CampaignRecipient = {
