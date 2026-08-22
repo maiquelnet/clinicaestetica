@@ -8,8 +8,9 @@ import { EmptyState, FieldError, LoadingBlock } from '../components/Ui'
 import { PageHeader } from '../components/PageHeader'
 import { useClinic } from '../contexts/useClinic'
 import { formatDate } from '../lib/format'
+import { saveClientWithInterests } from '../lib/rpc'
 import { supabase } from '../lib/supabase'
-import type { Client } from '../lib/types'
+import type { Client, Service } from '../lib/types'
 
 function phoneDigits(value: string) {
   return value.replace(/\D/g, '')
@@ -35,6 +36,7 @@ const clientSchema = z.object({
   aceita_marketing: z.boolean(),
   whatsapp_opt_in: z.boolean(),
   ativo: z.boolean(),
+  servicos_interesse: z.array(z.string()),
 })
 
 type ClientFormInput = z.input<typeof clientSchema>
@@ -53,6 +55,7 @@ const defaultValues: ClientFormInput = {
   aceita_marketing: false,
   whatsapp_opt_in: false,
   ativo: true,
+  servicos_interesse: [],
 }
 
 const WHATSAPP_OPT_IN_ORIGIN = 'cadastro_painel'
@@ -74,7 +77,7 @@ function whatsappConsentBadge(status: Client['whatsapp_opt_in_status']) {
 async function fetchClients(clinicId: string) {
   const { data, error } = await supabase
     .from('clientes')
-    .select('*')
+    .select('*,clientes_servicos_interesse(*,servicos(id,nome,categoria,ativo,arquivado_em))')
     .eq('clinica_id', clinicId)
     .is('arquivado_em', null)
     .order('nome', { ascending: true })
@@ -83,11 +86,23 @@ async function fetchClients(clinicId: string) {
   return (data || []) as Client[]
 }
 
+async function fetchServices(clinicId: string) {
+  const { data, error } = await supabase
+    .from('servicos')
+    .select('*')
+    .eq('clinica_id', clinicId)
+    .order('nome', { ascending: true })
+
+  if (error) throw error
+  return (data || []) as Service[]
+}
+
 export function ClientsPage() {
   const { activeClinicId } = useClinic()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Client | null>(null)
   const [search, setSearch] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('')
   const [formOpen, setFormOpen] = useState(false)
 
   const form = useForm<ClientFormInput, unknown, ClientForm>({
@@ -99,6 +114,12 @@ export function ClientsPage() {
     queryKey: ['clients', activeClinicId],
     enabled: Boolean(activeClinicId),
     queryFn: () => fetchClients(activeClinicId!),
+  })
+
+  const servicesQuery = useQuery({
+    queryKey: ['client-interest-services', activeClinicId],
+    enabled: Boolean(activeClinicId),
+    queryFn: () => fetchServices(activeClinicId!),
   })
 
   const saveClient = useMutation({
@@ -135,28 +156,28 @@ export function ClientsPage() {
             whatsapp_opt_in_versao: values.whatsapp_opt_in ? WHATSAPP_OPT_IN_VERSION : null,
             whatsapp_opt_out_em: null,
           }
-      const payload = {
-        clinica_id: activeClinicId,
-        nome: values.nome.trim(),
-        telefone: values.telefone.trim(),
-        email: values.email?.trim() || null,
-        data_nascimento: values.data_nascimento || null,
-        cpf: values.cpf?.trim() || null,
-        genero: values.genero?.trim() || null,
-        observacoes: values.observacoes?.trim() || null,
-        intervalo_retorno_dias: values.intervalo_retorno_dias === '' ? null : Number(values.intervalo_retorno_dias),
-        parceira: values.parceira,
-        aceita_marketing: values.aceita_marketing,
-        ...whatsappConsent,
-        ativo: values.ativo,
-        atualizado_em: now,
-      }
-
-      const request = editing
-        ? supabase.from('clientes').update(payload).eq('id', editing.id)
-        : supabase.from('clientes').insert(payload)
-      const { error } = await request
-      if (error) throw error
+      if (!activeClinicId) throw new Error('Clínica ativa não encontrada.')
+      await saveClientWithInterests({
+        p_cliente_id: editing?.id ?? null,
+        p_clinica_id: activeClinicId,
+        p_nome: values.nome.trim(),
+        p_telefone: values.telefone.trim(),
+        p_email: values.email?.trim() || null,
+        p_data_nascimento: values.data_nascimento || null,
+        p_cpf: values.cpf?.trim() || null,
+        p_genero: values.genero?.trim() || null,
+        p_observacoes: values.observacoes?.trim() || null,
+        p_intervalo_retorno_dias: values.intervalo_retorno_dias === '' ? null : Number(values.intervalo_retorno_dias),
+        p_parceira: values.parceira,
+        p_aceita_marketing: values.aceita_marketing,
+        p_whatsapp_opt_in_status: whatsappConsent.whatsapp_opt_in_status,
+        p_whatsapp_opt_in_em: whatsappConsent.whatsapp_opt_in_em,
+        p_whatsapp_opt_in_origem: whatsappConsent.whatsapp_opt_in_origem,
+        p_whatsapp_opt_in_versao: whatsappConsent.whatsapp_opt_in_versao,
+        p_whatsapp_opt_out_em: whatsappConsent.whatsapp_opt_out_em,
+        p_ativo: values.ativo,
+        p_servicos_interesse: values.servicos_interesse,
+      })
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['clients', activeClinicId] })
@@ -178,13 +199,15 @@ export function ClientsPage() {
 
   const clients = useMemo(() => {
     const term = search.trim().toLowerCase()
-    if (!term) return query.data ?? []
-    return (query.data ?? []).filter((client) =>
-      [client.nome, client.telefone, client.email, client.cpf]
+    return (query.data ?? []).filter((client) => {
+      const matchesService = !serviceFilter
+        || client.clientes_servicos_interesse?.some((interest) => interest.servico_id === serviceFilter)
+      const matchesTerm = !term || [client.nome, client.telefone, client.email, client.cpf]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term)),
-    )
-  }, [query.data, search])
+        .some((value) => String(value).toLowerCase().includes(term))
+      return matchesService && matchesTerm
+    })
+  }, [query.data, search, serviceFilter])
 
   function editClient(client: Client) {
     setEditing(client)
@@ -202,6 +225,9 @@ export function ClientsPage() {
       aceita_marketing: client.aceita_marketing,
       whatsapp_opt_in: client.whatsapp_opt_in_status === 'aceito',
       ativo: client.ativo,
+      servicos_interesse: client.clientes_servicos_interesse?.map((interest) => interest.servico_id)
+        ?? client.servicos_interesse
+        ?? [],
     })
   }
 
@@ -243,6 +269,15 @@ export function ClientsPage() {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </div>
+            <label className="compact-filter">
+              <span className="sr-only">Filtrar por serviço de interesse</span>
+              <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)}>
+                <option value="">Todos os interesses</option>
+                {(servicesQuery.data || []).map((service) => (
+                  <option key={service.id} value={service.id}>{service.nome}</option>
+                ))}
+              </select>
+            </label>
           </div>
 
           {query.isLoading ? (
@@ -257,6 +292,7 @@ export function ClientsPage() {
                     <th>E-mail</th>
                     <th>Nascimento</th>
                     <th>Retorno</th>
+                    <th>Interesses</th>
                     <th>Parceria</th>
                     <th>WhatsApp</th>
                     <th>Status</th>
@@ -274,6 +310,17 @@ export function ClientsPage() {
                       <td>{client.email || '-'}</td>
                       <td>{client.data_nascimento ? formatDate(client.data_nascimento) : '-'}</td>
                       <td>{client.intervalo_retorno_dias ? `${client.intervalo_retorno_dias} dias` : '-'}</td>
+                      <td>
+                        <div className="interest-badges">
+                          {client.clientes_servicos_interesse?.length
+                            ? client.clientes_servicos_interesse.map((interest) => (
+                                <span className="badge" key={interest.servico_id}>
+                                  {interest.servicos?.nome || 'Serviço arquivado'}
+                                </span>
+                              ))
+                            : <span className="muted-text">Nenhum</span>}
+                        </div>
+                      </td>
                       <td>
                         <span className={`badge ${client.parceira ? 'success' : ''}`}>
                           {client.parceira ? 'Parceira' : 'Nao'}
@@ -376,6 +423,28 @@ export function ClientsPage() {
               Retorno em dias
               <input type="number" min={0} placeholder="Usar regra do serviço" {...form.register('intervalo_retorno_dias')} />
             </label>
+            <fieldset className="interest-fieldset">
+              <legend>Serviços de interesse</legend>
+              <p className="field-help">Use estes interesses para segmentar ofertas e campanhas.</p>
+              <div className="interest-options">
+                {(servicesQuery.data || [])
+                  .filter((service) => service.ativo && !service.arquivado_em)
+                  .map((service) => (
+                    <label className="check-row interest-option" key={service.id}>
+                      <input type="checkbox" value={service.id} {...form.register('servicos_interesse')} />
+                      <span>{service.nome}{service.categoria ? <small>{service.categoria}</small> : null}</span>
+                    </label>
+                  ))}
+                {(editing?.clientes_servicos_interesse || [])
+                  .filter((interest) => interest.servicos && (!interest.servicos.ativo || interest.servicos.arquivado_em))
+                  .map((interest) => (
+                    <label className="check-row interest-option archived-interest" key={interest.servico_id}>
+                      <input type="checkbox" value={interest.servico_id} {...form.register('servicos_interesse')} />
+                      <span>{interest.servicos?.nome}<small>Arquivado</small></span>
+                    </label>
+                  ))}
+              </div>
+            </fieldset>
             <label className="check-row">
               <input type="checkbox" {...form.register('aceita_marketing')} />
               Aceita comunicações de marketing

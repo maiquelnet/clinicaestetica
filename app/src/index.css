@@ -4068,3 +4068,112 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* Client interests and segmented campaign audiences */
+.compact-filter {
+  min-width: min(220px, 100%);
+}
+
+.compact-filter select {
+  width: 100%;
+}
+
+.interest-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.campaign-targets {
+  margin-top: 10px;
+}
+
+.muted-text,
+.field-help {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.interest-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+  padding: 12px;
+}
+
+.interest-fieldset legend {
+  font-size: 13px;
+  font-weight: 850;
+  padding: 0 4px;
+}
+
+.field-help {
+  margin: 0;
+}
+
+.interest-options {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.interest-option {
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 9px;
+}
+
+.interest-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.interest-option small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.archived-interest {
+  opacity: 0.72;
+}
+
+.warning-alert {
+  align-items: flex-start;
+  background: rgba(170, 122, 45, 0.1);
+  border-color: rgba(170, 122, 45, 0.24);
+  color: #765416;
+  display: flex;
+  gap: 8px;
+}
+
+.warning-alert svg {
+  flex: 0 0 auto;
+}
+
+.audience-preview {
+  align-items: center;
+  background: var(--mist);
+  border-radius: 8px;
+  color: var(--sage-dark);
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 680px) {
+  .compact-filter {
+    width: 100%;
+  }
+
+  .interest-options {
+    grid-template-columns: 1fr;
+  }
+}
