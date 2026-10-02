@@ -77,7 +77,7 @@ export function PrivacyPolicyPage() {
                 </p>
                 <p>
                   Para dúvidas sobre privacidade ou para exercer seus direitos, entre em contato pelo e-mail
-                  <a href="mailto:contato@esteticaschneider.com.br"> contato@esteticaschneider.com.br</a>.
+                  <a href="mailto:tcschneiderster@gmail.com"> tcschneiderster@gmail.com</a>.
                 </p>
               </div>
             </section>
@@ -191,7 +191,7 @@ export function PrivacyPolicyPage() {
                   <li>portabilidade, observados os limites regulamentares e a proteção de segredos comerciais.</li>
                 </ul>
                 <p>
-                  Para solicitar algo, envie uma mensagem para <a href="mailto:contato@esteticaschneider.com.br">contato@esteticaschneider.com.br</a>.
+                  Para solicitar algo, envie uma mensagem para <a href="mailto:tcschneiderster@gmail.com">tcschneiderster@gmail.com</a>.
                   Podemos pedir informações adicionais para confirmar sua identidade e proteger seus dados.
                 </p>
               </div>
@@ -225,9 +225,9 @@ export function PrivacyPolicyPage() {
                 <h2 id="contato-title">Privacidade também é cuidado.</h2>
                 <p>Se algo não ficou claro ou você precisa exercer um direito, escreva para nossa equipe.</p>
               </div>
-              <a className="privacy-contact-link" href="mailto:contato@esteticaschneider.com.br">
+              <a className="privacy-contact-link" href="mailto:tcschneiderster@gmail.com">
                 <Mail size={19} aria-hidden="true" />
-                contato@esteticaschneider.com.br
+                tcschneiderster@gmail.com
               </a>
             </section>
           </article>
@@ -240,7 +240,7 @@ export function PrivacyPolicyPage() {
               <p>CNPJ 17.228.454/0001-17</p>
               <address>Rua Paulino Chaves, 437<br />Santo Antônio · Porto Alegre–RS<br />CEP 90640-200</address>
               <a href="tel:+5551985910322">+55 51 98591-0322</a>
-              <a href="mailto:contato@esteticaschneider.com.br">contato@esteticaschneider.com.br</a>
+              <a href="mailto:tcschneiderster@gmail.com">tcschneiderster@gmail.com</a>
             </div>
             <div className="privacy-aside-note">
               <strong>Uma política clara</strong>
