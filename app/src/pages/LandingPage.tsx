@@ -523,6 +523,7 @@ export function LandingPage() {
             <span>CNPJ 17.228.454/0001-17</span>
             <span>Atendimento somente com hora marcada</span>
             <a href="/login">Área de gestão</a>
+            <a href="/politica-de-privacidade">Política de privacidade</a>
             {hasAnalytics ? <button type="button" onClick={resetConsent}>Revisar privacidade</button> : null}
           </div>
         </div>

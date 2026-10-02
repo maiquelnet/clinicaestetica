@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ClientSignupPage } from './pages/ClientSignupPage'
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((module) => ({ default: module.ClientsPage })))
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then((module) => ({ default: module.ServicesPage })))
@@ -141,6 +142,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Suspense fallback={<FullPageStatus title="Carregando" />}><LandingPage /></Suspense>} />
       <Route path="/cadastro-cliente" element={<ClientSignupPage />} />
+      <Route path="/politica-de-privacidade" element={<Suspense fallback={<FullPageStatus title="Carregando" />}><PrivacyPolicyPage /></Suspense>} />
       <Route
         path="/login"
         element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
