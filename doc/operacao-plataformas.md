@@ -1,6 +1,6 @@
 # Operação, acessos e plataformas
 
-Atualizado em: 2026-08-13.
+Atualizado em: 2026-10-08.
 
 Este documento é o runbook de operação da aplicação Estética Schneider. Ele registra os identificadores que podem ser versionados, as variáveis necessárias e onde recuperar credenciais. Valores secretos não devem ser gravados no Git, em chamados ou em mensagens.
 
@@ -98,19 +98,23 @@ O Supabase recomenda publishable keys (`sb_publishable_...`) no navegador e secr
 
 ### Edge Functions implantadas
 
-Snapshot confirmado em 2026-08-11:
+Snapshot remoto verificado em 2026-09-12, em consulta somente leitura:
 
 | Função | Versão remota | `verify_jwt` | URL |
 | --- | ---: | --- | --- |
-| `google-calendar-sync` | 32 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
-| `google-reviews` | 2 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
-| `whatsapp-messages` | 4 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
+| `google-calendar-sync` | 40 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
+| `google-reviews` | 10 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
+| `whatsapp-messages` | 29 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
+| `ycloud-webhook` | 1 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
+| `meta-whatsapp-webhook` | publicada | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
 
 `verify_jwt=false` não significa acesso irrestrito por si só:
 
 - Google Calendar valida callback OAuth, webhook Google, secret de cron e JWT/papel para ações administrativas.
 - WhatsApp valida JWT/papel de administrador nas ações de configuração e `WHATSAPP_CRON_SECRET` no processamento automático.
 - Google Reviews é um GET público e retorna somente dados de avaliações públicas da clínica.
+
+O snapshot atual usa a implementação Meta direta para envio e webhook. `ycloud-webhook` permanece no projeto como contingência legada até a retirada planejada.
 
 ### Secrets do Google Calendar
 
@@ -155,8 +159,10 @@ A função atualmente implantada usa estes nomes exatos:
 | `WHATSAPP_GRAPH_VERSION` | Não | Versão Graph; a função atual usa `v23.0` se ausente. |
 | `WHATSAPP_CRON_SECRET` | Para automação | Secret enviado no header `x-whatsapp-cron-secret`. |
 | `WHATSAPP_FUNCTION_URL` | Para status do agendador | URL completa da Edge Function. |
+| `META_APP_SECRET` | Para webhook | App Secret usado para validar `X-Hub-Signature-256`. |
+| `META_WEBHOOK_VERIFY_TOKEN` | Para webhook | Token escolhido no cadastro do callback da Meta. |
 
-O número pessoal pode ser destinatário verificado durante a homologação. Para produção, o remetente deve ser um número controlado pela Estética Schneider e habilitado na Meta.
+O número pessoal pode ser destinatário autorizado durante a homologação. Para produção, o remetente deve ser o número controlado pela Estética Schneider e habilitado na WABA `5523215167904668`. Consulte os IDs completos no [guia Meta](./meta-whatsapp-app-review.md).
 
 ### Estado do agendador WhatsApp
 
@@ -175,7 +181,7 @@ x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
 }
 ```
 
-O job retornou HTTP `200` no teste e o painel exibiu `Agendador ativo`. A fila `public.fila_mensagens` e as RPCs de claim/complete/fail estão no banco. O envio de produção ainda depende da aprovação dos templates Meta e da ativação das regras.
+O job retornou HTTP `200` no teste e o painel exibiu `Agendador ativo`. A fila `public.fila_mensagens` e as RPCs de claim/complete/fail estão no banco. O envio de teste pela Meta foi validado; o automático depende de consentimento, regra ativa e template individualmente aprovado.
 
 Para monitorar, consulte o histórico em Integrations > Cron > Jobs, os logs de `whatsapp-messages` e, quando necessário, `net._http_response`. Foram observados erros transitórios `JWT issued at future`, seguidos de execução normal sem alteração de configuração.
 
@@ -191,15 +197,14 @@ Em 2026-08-11:
 - extensões confirmadas no snapshot inicial: `citext 1.6` e `supabase_vault 0.3.1`;
 - `pg_cron` e `pg_net` instalados posteriormente, em 2026-08-13.
 
-As migrations remotas registradas terminam em:
+As migrations remotas relacionadas ao WhatsApp incluem:
 
 ```text
-20260807185358_whatsapp_automation
-20260807190318_fix_whatsapp_rpc_security
-20260810173548_whatsapp_message_queue
+20260907202917_ycloud_coexistence_outbound_status
+20260907203731_ycloud_worker_status
 ```
 
-Algumas migrations foram aplicadas por ferramentas remotas e receberam timestamps diferentes dos arquivos locais. Antes de usar `supabase db push`, compare `supabase migration list --local` e `--linked`; não aplique a pasta inteira às cegas.
+As migrations anteriores continuam no histórico remoto; estas são as últimas relacionadas ao fluxo YCloud verificadas. A migration local `20260912090000_meta_whatsapp_cloud_direct` foi aplicada remotamente em 2026-09-22 e recebeu o registro `20260922074529_meta_whatsapp_cloud_direct`. Algumas migrations foram aplicadas por ferramentas remotas e receberam timestamps diferentes dos arquivos locais. Antes de usar `supabase db push`, compare `supabase migration list --local` e `--linked`; não aplique a pasta inteira às cegas.
 
 ## Segurança: correção de `integracoes_google`
 

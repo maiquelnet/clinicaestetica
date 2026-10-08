@@ -70,4 +70,6 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
 
 Comece em [doc/README.md](./doc/README.md) e consulte principalmente [operação, acessos e plataformas](./doc/operacao-plataformas.md).
 
+Para reiniciar o projeto ou transferir a manutenção, siga primeiro o [runbook de retomada](./doc/retomada-projeto.md). Ele registra o estado publicado da Meta, os segredos, IDs, migrations e validações necessários.
+
 O runbook registra as URLs, os nomes exatos dos Secrets, as Edge Functions implantadas, as pendências de segurança e o estado real do agendador WhatsApp sem versionar credenciais.

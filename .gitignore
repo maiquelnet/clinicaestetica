@@ -28,3 +28,4 @@ supabase/.branches/
 supabase/.temp/
 .vercel
 .env*
+!supabase/functions/.env.example

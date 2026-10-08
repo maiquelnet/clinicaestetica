@@ -1,6 +1,6 @@
 # Histórico de Implementação
 
-Atualizado em: 2026-08-13.
+Atualizado em: 2026-09-07.
 
 ## 2026-06
 
@@ -97,6 +97,17 @@ Atualizado em: 2026-08-13.
 - templates `confirmacao_agendamento_v1` e `lembrete_agendamento_v1` criados como `UTILITY`/`pt_BR`, ainda em análise pela Meta;
 - verificação do portfólio do desenvolvedor pausada até existir documentação empresarial apropriada.
 
+### Evolução da aplicação em 2026-08-14/21
+
+- telas de mensagens separadas entre controle operacional e cadastro de modelos/regras;
+- planos de tratamento passaram a gerar cronograma recorrente na Agenda, com frequências diária, semanal, mensal e intervalo personalizado;
+- cronograma permite considerar sábado/domingo, preservar passado e ajustes manuais e controlar reagendamentos/cancelamentos;
+- telas administrativas de serviços, fila de espera, equipamentos, financeiro, estoque e fornecedores foram padronizadas, incluindo navegação mobile;
+- landing page de conversão foi reestruturada, com logo, CTAs contextuais para WhatsApp e analytics opcional;
+- interesses de serviços de clientes passaram a ter relação normalizada em `clientes_servicos_interesse`, mantendo o array legado por compatibilidade;
+- campanhas passaram a segmentar por interesse em serviços, com alvos em `campanhas_servicos_alvo` e previsão de público;
+- migrations locais adicionadas: `20260815024033_treatment_plan_scheduling`, `20260815031136_treatment_plan_reference_indexes`, `20260815031322_fix_treatment_plan_rpc_coalesce`, `20260822024932_client_service_campaign_segmentation` e `20260822025101_add_interest_relation_fk_indexes`.
+
 ### Documentação e auditoria de 2026-08-11
 
 - tecnologias, rotas, plataformas e variáveis consolidadas;
@@ -107,6 +118,39 @@ Atualizado em: 2026-08-13.
 - Security Advisor apontou RLS desabilitado em `integracoes_google`; em 2026-08-13 o RLS foi habilitado, os grants públicos foram revogados e o erro crítico desapareceu;
 - auditoria confirmou `integracoes_google` vazia e sem consumidores no banco ou no código; a tabela foi removida sem `CASCADE` em 2026-08-14;
 - código remoto WhatsApp foi posteriormente consolidado em `supabase/`.
+
+## 2026-09
+
+### Disponibilidade comercial
+
+- disponibilidade semanal e exceções pontuais por data adicionadas em `/configuracoes/horarios`;
+- exceções modeladas em `disponibilidade_excecoes` e `disponibilidade_excecao_periodos`, com suporte a múltiplos intervalos, dia inteiro sem atendimento e observação;
+- RPCs transacionais com validação de clínica, profissional, permissões e sobreposição;
+- RLS/grants aplicados e migration de exceções confirmada no projeto Supabase `xucttzuthznqwlhushmg`;
+- capacidade comercial canônica passou a unir disponibilidade, exceções, bloqueios e atendimentos válidos no fuso da clínica;
+- Radar server-side consolidado com horizonte de sete dias a partir de amanhã e regra de atenção abaixo de 65%/120 minutos;
+- Home e Secretária passaram a consumir as RPCs sem alterar o layout existente nem duplicar regra no frontend;
+- motor de oportunidades V1 adicionado para lista de espera ativa e retorno devido, somente leitura e sem envio, reserva, agendamento, IA ou persistência;
+- migration remota `20260907183341_canonical_commercial_capacity_radar_opportunities` confirmada no projeto Supabase `xucttzuthznqwlhushmg`;
+- testes de contrato cobrem capacidade, Radar, compatibilidade de janelas, retorno, cancelamento, prioridade e ausência de capacidade.
+
+### Secretária assistida V1
+
+- plano de ação persistido somente por ação explícita da equipe, com snapshot da data, clínica, profissional e Radar;
+- tabelas `secretaria_planos_acao`, `secretaria_plano_itens` e `secretaria_atividades` com RLS, grants mínimos e estados simples;
+- seleção determinística limitada a cinco clientes únicos, seguida de revisão humana mobile;
+- RPCs de preparação, consulta, revalidação, atualização, remoção, adição, aprovação e cancelamento;
+- aprovação revalida capacidade, Radar e oportunidades e não envia mensagens, cria agendamentos, reserva horários ou altera a fila;
+- auditoria dos eventos de plano/candidato implementada sem criar um log genérico de mensagens;
+- migration local `20260907210000_assisted_secretary_action_plans` criada e migration remota `20260907200519_assisted_secretary_action_plans` confirmada; smoke test transacional validado.
+
+### Integração direta Meta — preparação local
+
+- transporte de saída da fila ajustado para a Meta WhatsApp Cloud API oficial;
+- validação de templates feita pela WABA e WAMID registrado em fila, logs e testes;
+- Edge Function `meta-whatsapp-webhook` adicionada com verificação de desafio, assinatura e WABA/número;
+- migration local `20260912090000_meta_whatsapp_cloud_direct` adicionada para estados `sent`, `delivered`, `read` e `failed`;
+- publicação da migration, da Edge Function e dos Secrets permanece pendente para homologação controlada.
 
 ## Pendências abertas
 

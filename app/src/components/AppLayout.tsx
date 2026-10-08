@@ -5,7 +5,6 @@ import {
   ChevronDown,
   CircleDollarSign,
   ClipboardPlus,
-  CreditCard,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -48,7 +47,7 @@ const navGroups: NavigationGroup[] = [
       { to: '/financeiro/fluxo-caixa', label: 'Financeiro', icon: CircleDollarSign, children: [{ to: '/financeiro/contas-a-receber', label: 'Contas a receber' }, { to: '/financeiro/contas-a-pagar', label: 'Contas a pagar' }] },
       { to: '/estoque/itens', label: 'Estoque', icon: Package, children: [{ to: '/estoque/fornecedores', label: 'Fornecedores' }] },
       { to: '/equipamentos', label: 'Equipamentos', icon: Settings2 },
-      { to: '/mensagens', label: 'Mensagens', icon: MessageCircle, children: [{ to: '/mensagens/modelos', label: 'Modelos e automações' }] },
+      { to: '/mensagens', label: 'Secretária', icon: MessageCircle, children: [{ to: '/mensagens/modelos', label: 'Modelos de mensagens' }] },
     ],
   },
   {
@@ -60,15 +59,15 @@ const navGroups: NavigationGroup[] = [
   },
   {
     label: 'Configurações',
-    items: [{ to: '/configuracoes/parametros', label: 'Parâmetros', icon: Settings, children: [{ to: '/configuracoes/usuarios', label: 'Usuários e acessos' }] }],
+    items: [{ to: '/configuracoes/parametros', label: 'Parâmetros', icon: Settings, children: [{ to: '/configuracoes/horarios', label: 'Horários de atendimento' }, { to: '/configuracoes/usuarios', label: 'Usuários e acessos' }] }],
   },
 ]
 
 const mobileNav = [
+  { to: '/dashboard', match: '/dashboard', label: 'Início', icon: LayoutDashboard },
   { to: '/agenda', match: '/agenda', label: 'Agenda', icon: CalendarDays },
   { to: '/clientes', match: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/financeiro/fluxo-caixa', match: '/financeiro', label: 'Financeiro', icon: CreditCard },
-  { to: '/mensagens', match: '/mensagens', label: 'Mensagens', icon: MessageCircle },
+  { to: '/mensagens', match: '/mensagens', label: 'Secretária', icon: MessageCircle },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -82,7 +81,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const displayName = profile?.nome?.split(' ')[0] || 'Thais'
   const messagingQuery = useQuery(messagingQueryOptions(activeClinicId))
   const pendingMessageCount = useMemo(() => (messagingQuery.data ? buildAlerts(messagingQuery.data).length : 0), [messagingQuery.data])
-  const notificationLabel = pendingMessageCount ? `${pendingMessageCount} ${pendingMessageCount === 1 ? 'mensagem pendente' : 'mensagens pendentes'}` : 'Abrir controle de mensagens'
+  const notificationLabel = pendingMessageCount ? `${pendingMessageCount} ${pendingMessageCount === 1 ? 'item pendente' : 'itens pendentes'} da secretária` : 'Abrir atividade da secretária'
   const moreIsActive = !mobileNav.some((item) => location.pathname.startsWith(item.match))
 
   useEffect(() => {

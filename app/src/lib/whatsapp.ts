@@ -4,6 +4,28 @@ export type WhatsAppStatus = {
   configured: boolean
   sendReady: boolean
   missingSecrets: string[]
+  provider: {
+    name: 'Meta WhatsApp Cloud API'
+    apiConfigured: boolean
+    senderConfigured: boolean
+    wabaConfigured: boolean
+  }
+  template: {
+    configured: boolean
+    name: string | null
+    language: string | null
+    internalName: string | null
+    approval: 'requires_meta_validation'
+  }
+  lastTest: {
+    id: string
+    recipient: string
+    providerMessageId: string | null
+    whatsappMessageId: string | null
+    status: string
+    error: string | null
+    createdAt: string
+  } | null
   automaticRules: number
   pendingMessages: number
   failedMessages: number
@@ -15,6 +37,12 @@ export type WhatsAppStatus = {
     error: string | null
   }>
   scheduler: {
+    cronActive: boolean
+    vaultConfigured: boolean
+    lastRunStatus: string | null
+    lastRunAt: string | null
+  }
+  worker: {
     cronActive: boolean
     vaultConfigured: boolean
     lastRunStatus: string | null
@@ -48,10 +76,10 @@ export const getWhatsAppStatus = (clinicId: string) =>
   invoke<WhatsAppStatus>('status', clinicId)
 
 export const sendWhatsAppTest = (clinicId: string, recipient: string) =>
-  invoke<{ sent: boolean; messageId: string }>('send-test', clinicId, { recipient })
+  invoke<{ sent: boolean; messageId: string; providerMessageId: string; testId: string; status: string }>('send-test', clinicId, { recipient })
 
 export const validateWhatsAppTemplate = (clinicId: string, templateName: string, language: string) =>
-  invoke<{ approved: true; category: 'UTILITY'; status: 'APPROVED' }>('validate-template', clinicId, {
+  invoke<{ approved: true; category: string; status: 'APPROVED'; provider: 'Meta' }>('validate-template', clinicId, {
     templateName,
     language,
   })

@@ -123,14 +123,17 @@ export function SettingsPage() {
           {whatsappStatus.isLoading
             ? 'Verificando configuracao...'
             : whatsappStatus.data?.configured
-              ? 'Secrets obrigatorios cadastrados no servidor.'
-              : 'Integracao ainda nao configurada no servidor.'}
+              ? 'Secrets obrigatorios da Meta encontrados no servidor.'
+              : 'Integracao Meta ainda nao configurada no servidor.'}
         </p>
         {whatsappStatus.data ? (
           <div className="record-meta">
             <span className={`badge ${whatsappStatus.data.configured ? 'success' : 'warning'}`}>
               {whatsappStatus.data.configured ? 'Configurado' : 'Pendente'}
             </span>
+            <span>Provedor: {whatsappStatus.data.provider.name}</span>
+            <span>API: {whatsappStatus.data.provider.apiConfigured ? 'configurada' : 'pendente'}</span>
+            <span>Template: {whatsappStatus.data.template.configured ? `${whatsappStatus.data.template.name} (${whatsappStatus.data.template.language})` : 'pendente'}</span>
             <span>{whatsappStatus.data.automaticRules} automacao(oes) ativa(s)</span>
             <span>{whatsappStatus.data.pendingMessages} mensagem(ns) na fila</span>
             <span>{whatsappStatus.data.failedMessages} falha(s) para revisar</span>
@@ -147,7 +150,7 @@ export function SettingsPage() {
         ) : null}
         {whatsappStatus.data?.missingSecrets.length ? (
           <div className="form-alert">
-            Configure em Supabase &gt; Edge Functions &gt; Secrets: {whatsappStatus.data.missingSecrets.join(', ')}.
+            Configure em Supabase &gt; Edge Functions &gt; Secrets: {whatsappStatus.data.missingSecrets.join(', ')}. Nunca informe esses valores no frontend.
           </div>
         ) : null}
         {whatsappStatus.data && (!whatsappStatus.data.scheduler.cronActive || !whatsappStatus.data.scheduler.vaultConfigured) ? (
@@ -159,11 +162,11 @@ export function SettingsPage() {
           Numero verificado para teste
           <input
             type="tel"
-            placeholder="(51) 99999-9999"
+            placeholder="+55 51 99999-9999"
             value={whatsappTestRecipient}
             onChange={(event) => setWhatsAppTestRecipient(event.target.value)}
           />
-          <small>Durante a homologacao, informe um dos destinatarios cadastrados no painel da Meta.</small>
+          <small>Use somente o telefone autorizado no painel da Meta para a homologacao, em formato internacional E.164. Nenhum cliente sera escolhido automaticamente.</small>
         </label>
         <div className="form-actions">
           <button
@@ -179,7 +182,7 @@ export function SettingsPage() {
             <MessageCircle size={16} /> Atualizar status
           </button>
         </div>
-        {testWhatsApp.isSuccess ? <div className="form-success">Mensagem de teste aceita pela Meta.</div> : null}
+        {testWhatsApp.isSuccess ? <div className="form-success">Mensagem de teste aceita pela Meta. WAMID: {testWhatsApp.data.providerMessageId || 'nao retornado'}.</div> : null}
         {testWhatsApp.error || whatsappStatus.error ? <div className="form-alert">{(testWhatsApp.error || whatsappStatus.error)?.message}</div> : null}
         {whatsappStatus.data?.recentFailures.length ? (
           <div className="record-list">

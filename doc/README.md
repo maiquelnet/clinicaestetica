@@ -2,12 +2,13 @@
 
 Projeto: Estética Schneider
 
-Última revisão geral: 2026-08-13.
+Última revisão geral: 2026-10-08.
 
 Esta pasta documenta a aplicação React em produção, o backend Supabase, a implantação Vercel e as integrações Google e WhatsApp. Atualize-a junto com qualquer mudança de arquitetura, banco, variáveis, Edge Functions ou fluxo de usuário.
 
 ## Comece por aqui
 
+- [Retomada do projeto](./retomada-projeto.md): checklist completo para reiniciar o desenvolvimento, recuperar configurações e continuar a publicação Meta com segurança.
 - [Operação, acessos e plataformas](./operacao-plataformas.md): identificadores, URLs, variáveis, Secrets, deploy, rotação e pendências verificadas.
 - [Arquitetura do sistema](./arquitetura.md): componentes, tecnologias e fluxos.
 - [Guia de instalação](./instalacao.md): desenvolvimento local e publicação.
@@ -22,6 +23,8 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - [Manual do usuário](./manual-usuario.md)
 - [Google Agenda bidirecional](./google-calendar.md)
 - [WhatsApp Cloud API](./whatsapp-cloud.md)
+- [Guia Meta: WhatsApp e análise do app](./meta-whatsapp-app-review.md)
+- [WhatsApp Business + YCloud / Coexistence — legado](./whatsapp-ycloud-coexistence.md)
 - [Especificações de IA](./ia.md)
 
 ## Estado atual resumido
@@ -31,9 +34,10 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - Supabase de produção `estetica_schneider`, ref `xucttzuthznqwlhushmg`, região `sa-east-1`, PostgreSQL 17.
 - Autenticação pelo Supabase Auth e isolamento por clínica com RLS/papéis.
 - Módulos de clientes, serviços, agenda, fila de espera, equipamentos, tratamentos, financeiro, estoque, mensagens, campanhas, avaliações e configurações.
+- Planos de tratamento com cronograma recorrente e campanhas segmentadas por interesses em serviços.
 - Google Agenda bidirecional conectado por OAuth e Edge Function.
 - Avaliações públicas do Google Places carregadas por Edge Function.
-- WhatsApp Cloud API implantado com consentimento, templates e fila; Supabase Cron está ativo a cada cinco minutos, e os dois templates transacionais aguardam aprovação da Meta.
+- WhatsApp Cloud API Meta publicada no Supabase, com consentimento, templates, fila e webhook; o acesso avançado do App Review ainda está pendente.
 - Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
 
 ## Regras de documentação

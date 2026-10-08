@@ -1,6 +1,20 @@
-# WhatsApp Cloud API
+# WhatsApp Cloud API — Meta
 
-Atualizado em: 2026-08-13.
+Atualizado em: 2026-10-08.
+
+> Esta é a implementação publicada da WhatsApp Cloud API oficial da Meta. A função YCloud mantida no checkout é legado/contingência e não deve ser confundida com o fluxo Meta atual.
+
+## Ativos oficiais da integração
+
+| Ativo | ID | Uso atual |
+| --- | --- | --- |
+| Portfólio empresarial `Thaís Schneider` | `958284598092300` | Proprietário dos ativos da clínica |
+| App `API Estética Schneider Auto` | `1637078911202031` | App Meta usado pela integração |
+| WABA `Thaís Schneider` | `5523215167904668` | Conta WhatsApp Business correta |
+| Phone Number ID | `1287807847751041` | Número remetente configurado na Meta |
+| System User `sistemaesteticawhatsapp` | `61594998936645` | Token server-side da integração |
+
+O app `Thaís Schneider Estética Whats` (`1369639224651650`) não é usado pelo backend atual. Não misture o WABA, templates, Phone Number ID ou token desse app com os ativos acima.
 
 ## Escopo da primeira versão
 
@@ -13,7 +27,8 @@ Pós-atendimento, aniversários, retorno e campanhas permanecem no fluxo manual.
 
 ## Estado implantado
 
-- Edge Function `whatsapp-messages`, versão remota `4`;
+- Edge Function `whatsapp-messages` para envio e consulta de templates;
+- Edge Function `meta-whatsapp-webhook` para verificação do callback e estados de entrega;
 - `verify_jwt=false`, com autorização própria para admin/cron;
 - templates/regras configuráveis no painel;
 - consentimento de WhatsApp por cliente;
@@ -26,31 +41,21 @@ Pós-atendimento, aniversários, retorno e campanhas permanecem no fluxo manual.
 - painel do sistema confirmou `Configurado` e `Agendador ativo`;
 - fila, automações e falhas estavam zeradas no último teste, antes da ativação dos templates.
 
-Desde 2026-08-13, a implementação experimental anterior foi removida. Existe uma única fonte canônica, correspondente à versão remota baseada em fila.
+O envio usa `POST /{PHONE_NUMBER_ID}/messages`; o webhook registra os estados assíncronos da Meta sem importar mensagens recebidas ou histórico de conversas.
 
-## Configuração Meta realizada em 2026-08-12/13
+## Estado Meta verificado em 2026-10-08
 
-- App `Thais Schneider Estética` configurado com o caso de uso do WhatsApp;
-- envio pelo número de teste da Meta concluído e recebido pelo destinatário permitido;
-- número remetente de homologação e WABA identificados;
-- System User criado no portfólio empresarial do desenvolvedor;
-- WABA `Estética Schneider` atribuída ao System User com permissões mínimas de mensagens e visualização de modelos/número;
-- app atribuído ao System User;
-- token sem expiração gerado com `whatsapp_business_messaging` e `whatsapp_business_management`;
-- `WHATSAPP_ACCESS_TOKEN` do Supabase substituído pelo token do System User;
-- nenhum token ou segredo deve ser registrado neste repositório.
+- O app correto é `API Estética Schneider Auto` (`1637078911202031`), propriedade do portfólio da Thaís.
+- A função Meta direta de envio está publicada no Supabase e o envio de teste foi validado.
+- O webhook está ativo para o tópico `whatsapp_business_account`, com os campos `messages` e `account_update`.
+- A política de privacidade, o ícone, a categoria `Business` e a verificação da empresa estão configurados.
+- O app ainda está em `dev_mode`/`is_live=false`.
+- O App Review está `UNSUBMITTED`; as permissões WhatsApp avançadas ainda não estão live.
+- O status de compliance verificado pelo Meta MCP é `compliant`, sem ações obrigatórias abertas.
+- O template `confirmacao_agendamento_v1` em `pt_BR` foi validado como `APPROVED` na WABA correta.
+- Outros templates precisam ser validados individualmente; não presuma que um template aprovado em outro WABA exista nesta conta.
 
-O portfólio empresarial atualmente aberto na Meta pertence ao desenvolvedor, não à clínica. A verificação desse portfólio foi pausada porque não há empresa/MEI formalizado para comprovação. Isso não impede a homologação individual da clínica, mas deve ser resolvido antes de apresentar a aplicação como Tech Provider.
-
-## Preparação Meta para produção
-
-1. Crie um app em Meta for Developers e adicione WhatsApp.
-2. Em homologação, use o número de teste da Meta.
-3. Adicione o número pessoal como destinatário permitido.
-4. Para produção, associe um número pertencente à clínica.
-5. Crie templates `UTILITY` em `pt_BR` e aguarde `APPROVED`.
-6. Substitua o número de teste por um número controlado pela clínica.
-7. Confirme propriedade, cobrança, nome de exibição e situação da WABA antes de atender clientes reais.
+O passo a passo detalhado, incluindo configuração do app, WABA, System User, callback, Secrets, testes e App Review, está em [Guia Meta: WhatsApp e análise do app](./meta-whatsapp-app-review.md).
 
 Sugestões:
 
@@ -66,9 +71,9 @@ Olá, {{1}}! Seu horário na Estética Thais Schneider está confirmado para {{2
 Olá, {{1}}! Passando para lembrar do seu horário na Estética Thais Schneider: {{2}} às {{3}}, para {{4}}. Te espero!
 ```
 
-Os dois templates foram enviados à Meta como `UTILITY`/`pt_BR` e permaneciam `Em análise` em 2026-08-13. Não editar nem recriar durante a análise, pois uma alteração inicia uma nova revisão.
+O template `confirmacao_agendamento_v1` foi confirmado como `APPROVED` na WABA correta. O estado de `lembrete_agendamento_v1` deve ser conferido separadamente antes de ativar uma regra que o utilize. Não recrie um template em outro WABA para corrigir erro de integração: primeiro confirme WABA, nome e idioma.
 
-A implementação atual monta parâmetros conforme os placeholders nomeados existentes em `modelos_mensagens.texto`, como `{nome}`, `{data}`, `{hora}`, `{servico}` e `{link_avaliacao_google}`. O texto cadastrado no sistema e o template Meta precisam ter a mesma ordem de parâmetros.
+A implementação atual monta parâmetros conforme os placeholders nomeados existentes em `modelos_mensagens.texto`, como `{nome}`, `{data}`, `{hora}`, `{servico}` e `{link_avaliacao_google}`, e também aceita placeholders numéricos `{{1}}` a `{{5}}`. O texto cadastrado no sistema e o template Meta precisam ter a mesma ordem de parâmetros.
 
 ## Edge Secrets da versão implantada
 
@@ -79,9 +84,13 @@ WHATSAPP_BUSINESS_ACCOUNT_ID
 WHATSAPP_GRAPH_VERSION=v23.0
 WHATSAPP_CRON_SECRET
 WHATSAPP_FUNCTION_URL=https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
+META_APP_SECRET
+META_WEBHOOK_VERIFY_TOKEN
 ```
 
-Os três primeiros são necessários para status pronto/envio. `WHATSAPP_CRON_SECRET` e `WHATSAPP_FUNCTION_URL` são necessários ao processamento periódico/status do agendador.
+Os três primeiros são necessários para status pronto/envio. `WHATSAPP_CRON_SECRET` e `WHATSAPP_FUNCTION_URL` são necessários ao processamento periódico/status do agendador. `META_APP_SECRET` e `META_WEBHOOK_VERIFY_TOKEN` são necessários somente para o webhook público.
+
+Para desenvolvimento local, copie `supabase/functions/.env.example` para `supabase/functions/.env` e preencha os valores reais. Esse arquivo é ignorado pelo Git; não use tokens em `VITE_*`.
 
 O token temporário do painel Meta foi substituído em 2026-08-13 por um token de System User sem expiração configurada. Ele continua revogável e deve ser rotacionado após suspeita de vazamento ou mudança de responsáveis. Permissões concedidas:
 
@@ -162,18 +171,20 @@ Desde 2026-08-13, o processamento usa Supabase Cron com `pg_net` e Vault:
 
 O retorno `{"enqueued":0,"processed":0,"sent":0,"failed":0,"skipped":0}` com HTTP `200` confirmou o funcionamento sem itens elegíveis. Ocorreram respostas transitórias `400` com `JWT issued at future`; uma execução posterior normalizou sem mudança de configuração. Monitorar recorrência antes de tratar como incidente.
 
-## Segurança da função atual
+## Segurança das funções
 
 - `status`, `send-test` e `validate-template` exigem JWT de usuário e papel proprietário/administrador;
 - `process` exige `x-whatsapp-cron-secret`;
 - o código usa service role apenas no servidor;
 - CORS remoto está como `*`, por isso a autorização de cada ação é essencial;
-- a versão implantada não valida webhook Meta e não mantém estados entregue/lido.
+- o webhook Meta responde ao desafio `hub.challenge` somente com o token configurado;
+- eventos POST do webhook exigem `X-Hub-Signature-256` válido com `META_APP_SECRET`;
+- estados são deduplicados em `whatsapp_webhook_events` antes de atualizar fila, logs e testes.
 
 ## Homologação
 
-1. Confirmar todos os Secrets. Concluído em 2026-08-13.
-2. Aguardar os dois modelos passarem de `Em análise` para `APPROVED`.
+1. Confirmar todos os Secrets no ambiente de publicação.
+2. Confirmar individualmente que o template usado está `APPROVED`.
 3. Enviar teste a destinatário permitido.
 4. Criar cliente de teste com consentimento explícito.
 5. Criar agendamento futuro e chamar manualmente `process`.
@@ -183,7 +194,7 @@ O retorno `{"enqueued":0,"processed":0,"sent":0,"failed":0,"skipped":0}` com HTT
 9. Revogar consentimento e confirmar bloqueio/cancelamento.
 10. Simular erro Meta e validar retry/`ultimo_erro`.
 
-Não homologue com clientes reais enquanto número, token e templates de produção não estiverem aprovados. Não afirme status entregue ou lido com a versão 4; ela registra o aceite retornado pela chamada de envio.
+Não ative regras automáticas para clientes reais enquanto o número, o token, o webhook e cada template usado não estiverem confirmados. O aceite da chamada não significa entrega; os estados entregue/lido só devem ser considerados após o webhook Meta atualizar os registros.
 
 ## Comercialização para outras clínicas
 
@@ -193,4 +204,4 @@ Para escalar como produto, o caminho recomendado é formalizar a empresa desenvo
 
 ## Evolução recomendada
 
-Webhook assinado, estados do provedor, CORS por allowlist, reservas mais rígidas e testes devem ser implementados incrementalmente sobre a versão canônica, com novas migrations e preservando compatibilidade com `fila_mensagens`, frontend e scheduler atuais.
+Como evolução, aplicar CORS por allowlist, reservas mais rígidas e testes dedicados, preservando compatibilidade com `fila_mensagens`, frontend e scheduler atuais.

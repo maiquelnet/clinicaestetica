@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.whatsapp-messages]
 verify_jwt = false
+
+[functions.meta-whatsapp-webhook]
+verify_jwt = false

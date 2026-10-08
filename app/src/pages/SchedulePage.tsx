@@ -35,12 +35,15 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { EmptyState, FieldError, LoadingBlock } from '../components/Ui'
+import { ScheduleActionSheet } from '../components/ScheduleActionSheet'
+import { ScheduleBlockForm } from '../components/ScheduleBlockForm'
 import { useClinic } from '../contexts/useClinic'
 import { currentPrice, formatMoney, formatTime, parseCurrency, toInputDate, toInputDateTime } from '../lib/format'
 import { saveAppointment as saveAppointmentRpc } from '../lib/rpc'
 import { requestGoogleCalendarSync } from '../lib/google-calendar'
+import { BLOCK_TYPE_LABELS, buildBlockOccurrences, type ScheduleBlockDraft } from '../lib/schedule-blocks'
 import { supabase } from '../lib/supabase'
-import type { Appointment, AppointmentStatus, Client, Service, WaitlistEntry } from '../lib/types'
+import type { Appointment, AppointmentStatus, Client, ScheduleBlock, Service, WaitlistEntry } from '../lib/types'
 
 const statusOptions: AppointmentStatus[] = ['agendado', 'confirmado', 'em_atendimento', 'concluido', 'cancelado']
 const hours = Array.from({ length: 13 }, (_, index) => index + 8)
@@ -67,9 +70,8 @@ type ScheduleData = {
   services: Service[]
   appointments: Appointment[]
   waitlist: WaitlistEntry[]
-  blocks: CalendarBlock[]
+  blocks: ScheduleBlock[]
 }
-type CalendarBlock = { id: string; titulo: string; motivo: string | null; inicio_em: string; fim_em: string; origem: string }
 type CalendarView = (typeof viewOptions)[number]['value']
 
 const defaultValues: AppointmentForm = {
@@ -81,6 +83,12 @@ const defaultValues: AppointmentForm = {
   status: 'agendado',
   observacoes: '',
 }
+
+type BlockScope = 'single' | 'following' | 'series'
+type BlockSaveOperation = { kind: 'save'; block: ScheduleBlock | null; draft: ScheduleBlockDraft; scope: BlockScope }
+type BlockDeleteOperation = { kind: 'delete'; block: ScheduleBlock; scope: BlockScope }
+type BlockOperation = BlockSaveOperation | BlockDeleteOperation
+type BlockConflict = { id: string; inicio_em: string; fim_em: string; clientes?: { nome: string } | null }
 
 async function fetchSchedule(clinicId: string, fromDate: string, toDate: string): Promise<ScheduleData> {
   const from = startOfDay(new Date(`${fromDate}T00:00:00`)).toISOString()
@@ -103,7 +111,7 @@ async function fetchSchedule(clinicId: string, fromDate: string, toDate: string)
       .eq('status', 'em_espera')
       .is('arquivado_em', null)
       .order('prioridade'),
-    supabase.from('bloqueios_agenda').select('id,titulo,motivo,inicio_em,fim_em,origem')
+    supabase.from('bloqueios_agenda').select('id,clinica_id,profissional_id,titulo,motivo,tipo,inicio_em,fim_em,dia_inteiro,serie_id,recorrencia,ocorrencia_numero,criado_em,atualizado_em,google_event_id,origem,google_atualizado_em')
       .eq('clinica_id', clinicId).lt('inicio_em', to).gt('fim_em', from).order('inicio_em'),
   ])
   if (clients.error) throw clients.error
@@ -116,7 +124,7 @@ async function fetchSchedule(clinicId: string, fromDate: string, toDate: string)
     services: (services.data || []) as Service[],
     appointments: (appointments.data || []) as Appointment[],
     waitlist: (waitlist.data || []) as WaitlistEntry[],
-    blocks: (blocks.data || []) as CalendarBlock[],
+    blocks: (blocks.data || []) as ScheduleBlock[],
   }
 }
 
@@ -143,6 +151,14 @@ export function SchedulePage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [waitlistOpen, setWaitlistOpen] = useState(false)
   const [durationNotice, setDurationNotice] = useState<number | null>(null)
+  const [actionSheetOpen, setActionSheetOpen] = useState(false)
+  const [blockFormOpen, setBlockFormOpen] = useState(false)
+  const [editingBlock, setEditingBlock] = useState<ScheduleBlock | null>(null)
+  const [blockSaving, setBlockSaving] = useState(false)
+  const [blockError, setBlockError] = useState<string | null>(null)
+  const [scopePrompt, setScopePrompt] = useState<{ block: ScheduleBlock; kind: 'save' | 'delete'; draft?: ScheduleBlockDraft } | null>(null)
+  const [blockOperation, setBlockOperation] = useState<BlockOperation | null>(null)
+  const [blockConflicts, setBlockConflicts] = useState<BlockConflict[] | null>(null)
   const dragStart = useRef<{ y: number; end: Date; appointment: Appointment } | null>(null)
 
   const form = useForm<AppointmentForm>({ resolver: zodResolver(appointmentSchema), defaultValues })
@@ -180,18 +196,15 @@ export function SchedulePage() {
   const services = query.data?.services || []
   const watchedServiceId = useWatch({ control: form.control, name: 'servico_id' })
   const startValue = useWatch({ control: form.control, name: 'inicio_em' })
+  const endValue = useWatch({ control: form.control, name: 'fim_em' })
   const selectedService = services.find((service) => service.id === watchedServiceId)
 
   useEffect(() => {
     if (!selectedService || !startValue || editing) return
     const start = new Date(startValue)
     if (Number.isNaN(start.getTime())) return
-    if (!form.getValues('fim_em')) {
-      form.setValue('fim_em', toInputDateTime(new Date(start.getTime() + selectedService.duracao_minutos * 60_000)))
-    }
-    if (!form.getValues('valor_aplicado')) {
-      form.setValue('valor_aplicado', selectedService.preco_sob_consulta ? '' : String(currentPrice(selectedService)).replace('.', ','))
-    }
+    form.setValue('fim_em', toInputDateTime(new Date(start.getTime() + selectedService.duracao_minutos * 60_000)), { shouldDirty: false })
+    form.setValue('valor_aplicado', selectedService.preco_sob_consulta ? '' : String(currentPrice(selectedService)).replace('.', ','), { shouldDirty: false })
   }, [editing, form, selectedService, startValue])
 
   const refresh = async () => {
@@ -201,6 +214,157 @@ export function SchedulePage() {
 
   const triggerCalendarSync = () => {
     if (activeClinicId) void requestGoogleCalendarSync(activeClinicId).catch(() => undefined)
+  }
+
+  function openBlockForm(block: ScheduleBlock | null = null, date = selectedDay) {
+    if (block?.origem === 'google') return
+    setBlockError(null)
+    setEditingBlock(block)
+    setBlockFormOpen(true)
+    setSelectedDate(format(new Date(block?.inicio_em || date), 'yyyy-MM-dd'))
+  }
+
+  function closeBlockForm() {
+    setBlockFormOpen(false)
+    setEditingBlock(null)
+    setBlockError(null)
+    setScopePrompt(null)
+    setBlockOperation(null)
+    setBlockConflicts(null)
+  }
+
+  function blockRowsForDraft(draft: ScheduleBlockDraft, serieId: string | null) {
+    if (!activeClinicId) return []
+    const occurrences = buildBlockOccurrences(new Date(draft.inicio_em), new Date(draft.fim_em), draft.recurrence)
+    return occurrences.map((occurrence) => ({
+      clinica_id: activeClinicId,
+      profissional_id: activeMembership?.perfil_id ?? null,
+      titulo: draft.titulo,
+      motivo: draft.titulo,
+      tipo: draft.tipo,
+      inicio_em: occurrence.start.toISOString(),
+      fim_em: occurrence.end.toISOString(),
+      dia_inteiro: draft.dia_inteiro,
+      serie_id: serieId,
+      recorrencia: draft.recurrence,
+      ocorrencia_numero: occurrence.occurrenceNumber,
+      origem: 'sistema' as const,
+    }))
+  }
+
+  async function findBlockConflicts(rows: ReturnType<typeof blockRowsForDraft>) {
+    if (!activeClinicId || !rows.length) return []
+    const firstRow = rows[0]
+    if (!firstRow) return []
+    const minStart = rows.reduce((value, row) => row.inicio_em < value ? row.inicio_em : value, firstRow.inicio_em)
+    const maxEnd = rows.reduce((value, row) => row.fim_em > value ? row.fim_em : value, firstRow.fim_em)
+    const result = await supabase
+      .from('agendamentos')
+      .select('id,inicio_em,fim_em,clientes(nome)')
+      .eq('clinica_id', activeClinicId)
+      .is('arquivado_em', null)
+      .neq('status', 'cancelado')
+      .lt('inicio_em', maxEnd)
+      .gt('fim_em', minStart)
+      .order('inicio_em')
+    if (result.error) throw result.error
+    return (result.data || []) as unknown as BlockConflict[]
+  }
+
+  function overlapsBlockConflict(row: { inicio_em: string; fim_em: string }, conflict: BlockConflict) {
+    return row.inicio_em < conflict.fim_em && row.fim_em > conflict.inicio_em
+  }
+
+  async function persistBlockOperation(operation: BlockOperation, ignoreConflicts = false) {
+    if (!activeClinicId) return
+    setBlockSaving(true)
+    setBlockError(null)
+    try {
+      if (operation.kind === 'delete') {
+        let request = supabase.from('bloqueios_agenda').delete().eq('clinica_id', activeClinicId)
+        if (operation.scope === 'single' || !operation.block.serie_id) {
+          request = request.eq('id', operation.block.id)
+        } else if (operation.scope === 'following') {
+          request = request.eq('serie_id', operation.block.serie_id).gte('inicio_em', operation.block.inicio_em)
+        } else {
+          request = request.eq('serie_id', operation.block.serie_id)
+        }
+        const result = await request
+        if (result.error) throw result.error
+        await refresh()
+        closeBlockForm()
+        return
+      }
+
+      const block = operation.block
+      const recurrence = block && operation.scope === 'single' ? null : operation.draft.recurrence
+      const draft = recurrence === operation.draft.recurrence
+        ? operation.draft
+        : { ...operation.draft, recurrence, repetition: 'none' as const }
+      const serieId = recurrence ? (block?.serie_id || crypto.randomUUID()) : null
+      const allRows = blockRowsForDraft(draft, serieId)
+      const conflicts = await findBlockConflicts(allRows)
+      if (conflicts.length && !ignoreConflicts) {
+        setBlockOperation(operation)
+        setBlockConflicts(conflicts)
+        return
+      }
+      const rows = ignoreConflicts
+        ? allRows.filter((row) => !conflicts.some((conflict) => overlapsBlockConflict(row, conflict)))
+        : allRows
+      if (!rows.length) throw new Error('Nenhuma data livre para criar este bloqueio.')
+
+      if (block) {
+        if (operation.scope === 'single' || !block.serie_id) {
+          const row = rows[0]
+          if (!row) throw new Error('Não foi possível preparar o bloqueio.')
+          const result = await supabase.from('bloqueios_agenda').update(row).eq('id', block.id).eq('clinica_id', activeClinicId)
+          if (result.error) throw result.error
+        } else {
+          let remove = supabase.from('bloqueios_agenda').delete().eq('clinica_id', activeClinicId).eq('serie_id', block.serie_id)
+          if (operation.scope === 'following') remove = remove.gte('inicio_em', block.inicio_em)
+          const removed = await remove
+          if (removed.error) throw removed.error
+          const inserted = await supabase.from('bloqueios_agenda').insert(rows)
+          if (inserted.error) throw inserted.error
+        }
+      } else {
+        const inserted = await supabase.from('bloqueios_agenda').insert(rows)
+        if (inserted.error) throw inserted.error
+      }
+      await refresh()
+      closeBlockForm()
+    } catch (error) {
+      setBlockError(error instanceof Error ? error.message : 'Não foi possível salvar o bloqueio.')
+    } finally {
+      setBlockSaving(false)
+    }
+  }
+
+  function handleBlockSubmit(draft: ScheduleBlockDraft) {
+    if (editingBlock?.serie_id) {
+      setScopePrompt({ block: editingBlock, kind: 'save', draft })
+      return
+    }
+    void persistBlockOperation({ kind: 'save', block: editingBlock, draft, scope: 'single' })
+  }
+
+  function handleBlockDelete() {
+    if (!editingBlock) return
+    if (editingBlock.serie_id) {
+      setScopePrompt({ block: editingBlock, kind: 'delete' })
+      return
+    }
+    void persistBlockOperation({ kind: 'delete', block: editingBlock, scope: 'single' })
+  }
+
+  function chooseBlockScope(scope: BlockScope) {
+    if (!scopePrompt) return
+    const operation: BlockOperation = scopePrompt.kind === 'save'
+      ? { kind: 'save', block: scopePrompt.block, draft: scopePrompt.draft!, scope }
+      : { kind: 'delete', block: scopePrompt.block, scope }
+    setScopePrompt(null)
+    void persistBlockOperation(operation)
   }
 
   const appointmentsByDayHour = useMemo(() => {
@@ -230,9 +394,11 @@ export function SchedulePage() {
   const blocksForHour = (day: Date, hour: number) => (query.data?.blocks || []).filter((block) => {
     const start = new Date(block.inicio_em)
     const end = new Date(block.fim_em)
+    const timelineStart = new Date(day); timelineStart.setHours(hours[0] ?? 8, 0, 0, 0)
     const slotStart = new Date(day); slotStart.setHours(hour, 0, 0, 0)
     const slotEnd = new Date(slotStart.getTime() + 60 * 60_000)
-    return start < slotEnd && end > slotStart
+    const firstVisibleStart = start < timelineStart ? timelineStart : start
+    return start < slotEnd && end > slotStart && firstVisibleStart >= slotStart && firstVisibleStart < slotEnd
   })
 
   const saveAppointment = useMutation({
@@ -310,8 +476,8 @@ export function SchedulePage() {
       cliente_id: waitlist?.cliente_id || '',
       servico_id: waitlist?.servico_id || '',
       inicio_em: toInputDateTime(start),
-      fim_em: toInputDateTime(end),
-      valor_aplicado: service ? String(currentPrice(service)).replace('.', ',') : '',
+      fim_em: service ? toInputDateTime(end) : '',
+      valor_aplicado: service && !service.preco_sob_consulta ? String(currentPrice(service)).replace('.', ',') : '',
       observacoes: waitlist?.observacoes || '',
     })
     setSheetOpen(true)
@@ -381,7 +547,7 @@ export function SchedulePage() {
         <div>
           <h1>{periodLabel}</h1>
         </div>
-        <button className="gold-button desktop-new-appointment" type="button" onClick={() => openNewAt()}>
+        <button className="gold-button desktop-new-appointment" type="button" onClick={() => setActionSheetOpen(true)}>
           <Plus size={18} /> Novo agendamento
         </button>
       </header>
@@ -423,7 +589,7 @@ export function SchedulePage() {
         <button type="button" aria-label="Próximo dia" onClick={() => setSelectedDate(format(addDays(selectedDay, 1), 'yyyy-MM-dd'))}><ChevronRight /></button>
       </nav> : null}
 
-      {query.isLoading ? <LoadingBlock label="Preparando sua agenda" /> : (
+      {query.isError ? <div className="form-alert">Não foi possível carregar sua agenda agora. Tente novamente em instantes.</div> : query.isLoading ? <LoadingBlock label="Preparando sua agenda" /> : (
         calendarView === 'month' ? (
           <section className="month-calendar" aria-label="Visualização mensal">
             <div className="month-weekdays">
@@ -475,7 +641,17 @@ export function SchedulePage() {
                       ))}
                       {appointments.length > 3 ? <small>+{appointments.length - 3} agendamentos</small> : null}
                       {blocks.slice(0, Math.max(0, 3 - appointments.length)).map((block) => (
-                        <span className="month-chip cancelado" key={`block-${block.id}`}>{formatTime(block.inicio_em)} {block.titulo}</span>
+                        <button
+                          className="month-chip schedule-block-chip"
+                          key={`block-${block.id}`}
+                          type="button"
+                          onClick={() => openBlockForm(block, day)}
+                          disabled={block.origem === 'google'}
+                          title={block.origem === 'google' ? 'Evento importado da agenda externa' : 'Editar bloqueio'}
+                        >
+                          <span className="mini-status schedule-block-status" />
+                          {block.dia_inteiro ? 'Dia inteiro' : formatTime(block.inicio_em)} {block.titulo}
+                        </button>
                       ))}
                     </div>
                     {!appointments.length && !blocks.length ? (
@@ -521,11 +697,16 @@ export function SchedulePage() {
                         </button>
                       ) : null}
                       {blocks.map((block) => (
-                        <article className="focus-appointment cancelado" key={`block-${block.id}`} title={block.motivo || block.titulo}>
-                          <div className="appointment-main">
-                            <span className="appointment-time">{formatTime(block.inicio_em)}<small>{formatTime(block.fim_em)}</small></span>
-                            <span className="appointment-info"><strong>{block.titulo}</strong><span>{block.origem === 'google' ? 'Google Agenda' : 'Bloqueio'}</span></span>
-                          </div>
+                        <article className="schedule-block" key={`block-${block.id}`} title={block.motivo || block.titulo}>
+                          <button
+                            className="schedule-block-main"
+                            type="button"
+                            onClick={() => openBlockForm(block, day)}
+                            disabled={block.origem === 'google'}
+                          >
+                            <span className="appointment-time">{block.dia_inteiro ? 'Dia inteiro' : <>{formatTime(block.inicio_em)}<small>{formatTime(block.fim_em)}</small></>}</span>
+                            <span className="appointment-info"><strong>{block.titulo}</strong><span>{block.origem === 'google' ? 'Google Agenda' : BLOCK_TYPE_LABELS[block.tipo] || 'Bloqueio'}</span>{block.serie_id ? <small>Recorrente</small> : null}</span>
+                          </button>
                         </article>
                       ))}
                       {appointments.map((appointment) => (
@@ -609,7 +790,7 @@ export function SchedulePage() {
         </>
       ) : null}
 
-      <button className="floating-add" type="button" aria-label="Novo agendamento" onClick={() => openNewAt()}><Plus size={25} /></button>
+      <button className="floating-add" type="button" aria-label="Adicionar à agenda" onClick={() => setActionSheetOpen(true)}><Plus size={25} /></button>
 
       {sheetOpen ? (
         <div className="sheet-layer" role="presentation">
@@ -637,15 +818,25 @@ export function SchedulePage() {
                 </select>
                 <FieldError message={form.formState.errors.servico_id?.message} />
               </label>
-              <div className="form-grid">
-                <label>Início<input type="datetime-local" {...form.register('inicio_em')} /></label>
-                <label>Fim<input type="datetime-local" {...form.register('fim_em')} /></label>
-              </div>
-              <div className="form-grid">
-                <label>Valor<input inputMode="decimal" placeholder="R$ 0,00" {...form.register('valor_aplicado')} /></label>
-                <label>Status<select {...form.register('status')}>{statusOptions.map((status) => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}</select></label>
-              </div>
-              <label>Observações<textarea rows={2} placeholder="Preferências, cuidados ou observações clínicas" {...form.register('observacoes')} /></label>
+              <label>Quando<input type="datetime-local" {...form.register('inicio_em')} /></label>
+              {selectedService ? (
+                <div className="derived-appointment-summary">
+                  <Clock3 size={17} />
+                  <span><strong>{selectedService.duracao_minutos} min de atendimento</strong><small>O horário termina às {endValue ? format(new Date(endValue), 'HH:mm') : '—'}.</small></span>
+                </div>
+              ) : <p className="field-help">Escolha um serviço para calcular automaticamente o horário final.</p>}
+              <details className="advanced-appointment-options">
+                <summary>Opções avançadas</summary>
+                <div className="form-grid">
+                  {editing ? <label>Fim<input type="datetime-local" {...form.register('fim_em')} /></label> : null}
+                  <label>Valor<input inputMode="decimal" placeholder="R$ 0,00" {...form.register('valor_aplicado')} /></label>
+                  {editing ? <label>Status<select {...form.register('status')}>{statusOptions.map((status) => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}</select></label> : null}
+                </div>
+              </details>
+              <details className="appointment-notes">
+                <summary>+ Adicionar observação</summary>
+                <textarea rows={2} placeholder="Preferências, cuidados ou observações clínicas" {...form.register('observacoes')} />
+              </details>
             </div>
             {saveAppointment.error ? <div className="form-alert">{saveAppointment.error.message}</div> : null}
             <button className="gold-button sheet-submit" type="submit" disabled={saveAppointment.isPending}>
@@ -653,6 +844,55 @@ export function SchedulePage() {
               {saveAppointment.isPending ? 'Salvando…' : editing ? 'Salvar alterações' : 'Confirmar agendamento'}
             </button>
           </form>
+        </div>
+      ) : null}
+
+      {actionSheetOpen ? (
+        <ScheduleActionSheet
+          onClose={() => setActionSheetOpen(false)}
+          onNewAppointment={() => { setActionSheetOpen(false); openNewAt() }}
+          onBlockAgenda={() => { setActionSheetOpen(false); openBlockForm() }}
+        />
+      ) : null}
+
+      {blockFormOpen ? (
+        <ScheduleBlockForm
+          block={editingBlock}
+          date={selectedDay}
+          onClose={closeBlockForm}
+          onSubmit={handleBlockSubmit}
+          {...(editingBlock ? { onDelete: handleBlockDelete } : {})}
+          saving={blockSaving}
+          error={blockError}
+        />
+      ) : null}
+
+      {scopePrompt ? (
+        <div className="sheet-layer" role="presentation">
+          <button className="sheet-overlay" type="button" aria-label="Fechar opções de recorrência" onClick={() => setScopePrompt(null)} />
+          <section className="bottom-sheet schedule-scope-sheet" role="dialog" aria-modal="true" aria-labelledby="schedule-scope-title">
+            <div className="sheet-handle" />
+            <header><div><p className="eyebrow">Bloqueio recorrente</p><h2 id="schedule-scope-title">Aplicar a alteração em…</h2></div><button className="icon-button" type="button" onClick={() => setScopePrompt(null)}><X size={18} /></button></header>
+            <div className="schedule-action-options">
+              <button className="schedule-action-option" type="button" onClick={() => chooseBlockScope('single')}><span><strong>Somente este dia</strong><small>Altera ou remove apenas esta ocorrência.</small></span></button>
+              <button className="schedule-action-option" type="button" onClick={() => chooseBlockScope('following')}><span><strong>Este e os próximos</strong><small>Mantém o histórico e atualiza o restante da série.</small></span></button>
+              <button className="schedule-action-option" type="button" onClick={() => chooseBlockScope('series')}><span><strong>Toda a série</strong><small>Aplica a alteração em todas as ocorrências.</small></span></button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {blockConflicts && blockOperation?.kind === 'save' ? (
+        <div className="sheet-layer" role="presentation">
+          <button className="sheet-overlay" type="button" aria-label="Fechar conflitos" onClick={() => setBlockConflicts(null)} />
+          <section className="bottom-sheet schedule-conflict-sheet" role="dialog" aria-modal="true" aria-labelledby="schedule-conflict-title">
+            <div className="sheet-handle" />
+            <header><div><p className="eyebrow">Agenda protegida</p><h2 id="schedule-conflict-title">Há atendimentos nestes horários</h2></div><button className="icon-button" type="button" onClick={() => setBlockConflicts(null)}><X size={18} /></button></header>
+            <p>Os atendimentos serão preservados. Revise as datas ou ignore os conflitos para bloquear somente os outros períodos.</p>
+            <div className="conflict-list">{blockConflicts.slice(0, 8).map((conflict) => <div className="conflict-item" key={conflict.id}><strong>{formatTime(conflict.inicio_em)} — {formatTime(conflict.fim_em)}</strong><span>{conflict.clientes?.nome || 'Atendimento agendado'}</span></div>)}</div>
+            {blockConflicts.length > 8 ? <small>+ {blockConflicts.length - 8} outros horários</small> : null}
+            <div className="popover-actions"><button className="ghost-button" type="button" onClick={() => setBlockConflicts(null)}>Revisar bloqueio</button><button className="gold-button" type="button" onClick={() => blockOperation && void persistBlockOperation(blockOperation, true)} disabled={blockSaving}>Ignorar conflitos</button></div>
+          </section>
         </div>
       ) : null}
 

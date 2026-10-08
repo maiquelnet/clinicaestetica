@@ -27,6 +27,102 @@ export type Database = {
         }
         Returns: string
       }
+      salvar_disponibilidade_semanal: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_periodos: Json
+        }
+        Returns: undefined
+      }
+      salvar_disponibilidade_excecao: {
+        Args: {
+          p_excecao_id: string | null
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data: string
+          p_nao_atende: boolean
+          p_observacao: string | null
+          p_periodos: Json
+        }
+        Returns: string
+      }
+      calcular_capacidade_comercial_periodo: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data_inicio: string
+          p_data_fim: string
+        }
+        Returns: Array<{
+          data: string
+          profissional_id: string
+          capacidade_minutos: number
+          ocupado_minutos: number
+          livre_minutos: number
+          bloqueado_minutos: number
+          ocupacao_percentual: number | null
+          possui_capacidade: boolean
+          periodos_livres: Json
+          fonte_disponibilidade: string
+        }>
+      }
+      calcular_radar_ocupacao_periodo: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data_inicio: string
+          p_data_fim: string
+        }
+        Returns: Array<{
+          data: string
+          profissional_id: string
+          capacidade_minutos: number
+          ocupado_minutos: number
+          livre_minutos: number
+          bloqueado_minutos: number
+          ocupacao_percentual: number | null
+          possui_capacidade: boolean
+          periodos_livres: Json
+          fonte_disponibilidade: string
+          classificacao: string
+          merece_atencao: boolean
+        }>
+      }
+      calcular_oportunidades_comerciais_periodo: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data_inicio: string
+          p_data_fim: string
+        }
+        Returns: Array<{
+          data: string
+          profissional_id: string
+          capacidade_minutos: number
+          ocupado_minutos: number
+          livre_minutos: number
+          ocupacao_percentual: number | null
+          possui_capacidade: boolean
+          periodos_livres: Json
+          fonte_disponibilidade: string
+          classificacao: string
+          merece_atencao: boolean
+          oportunidades: Json
+          total_oportunidades: number
+          lista_espera_count: number
+          retorno_count: number
+          clientes_unicos_count: number
+        }>
+      }
+      excluir_disponibilidade_excecao: {
+        Args: {
+          p_excecao_id: string
+          p_clinica_id: string
+          p_profissional_id: string
+        }
+        Returns: undefined
+      }
       salvar_plano_tratamento_com_cronograma: {
         Args: {
           p_plano_id: string | null
@@ -129,6 +225,81 @@ export type Database = {
           p_servicos_alvo: string[]
         }
         Returns: number
+      }
+      listar_secretaria_planos_acao_periodo: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data_inicio: string
+          p_data_fim: string
+        }
+        Returns: Json
+      }
+      buscar_secretaria_plano_acao: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+        }
+        Returns: Json
+      }
+      preparar_secretaria_plano: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_data_alvo: string
+        }
+        Returns: string
+      }
+      revalidar_secretaria_plano: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+        }
+        Returns: Json
+      }
+      atualizar_secretaria_plano: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+        }
+        Returns: Json
+      }
+      remover_secretaria_plano_item: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+          p_item_id: string
+        }
+        Returns: Json
+      }
+      adicionar_secretaria_plano_item: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+          p_oportunidade_id: string
+        }
+        Returns: Json
+      }
+      aprovar_secretaria_plano: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+        }
+        Returns: Json
+      }
+      cancelar_secretaria_plano: {
+        Args: {
+          p_clinica_id: string
+          p_profissional_id: string
+          p_plano_id: string
+        }
+        Returns: Json
       }
     }
     Enums: Record<string, never>

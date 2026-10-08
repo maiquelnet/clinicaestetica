@@ -12,21 +12,32 @@ type Appointment = { id: string; cliente_id: string; servico_id: string | null; 
 type Client = { id: string; nome: string; telefone: string; whatsapp_opt_in_status: string; ativo: boolean }
 type Service = { id: string; nome: string }
 type QueueItem = { id: string; modelo_mensagem_id: string; cliente_id: string; agendamento_id: string | null; ciclo: string; payload: Record<string, string>; tentativas: number }
+type MetaMessageResponse = { messages?: Array<{ id?: string }> }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
 function env(name: string) { return Deno.env.get(name)?.trim() || '' }
+
 function requiredSecrets() {
   return ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID']
 }
+
 function missingSecrets() { return requiredSecrets().filter((name) => !env(name)) }
-function graphVersion() { return env('WHATSAPP_GRAPH_VERSION') || 'v23.0' }
+
+function graphVersion() {
+  const version = env('WHATSAPP_GRAPH_VERSION') || 'v23.0'
+  return version.startsWith('v') ? version : `v${version}`
+}
 
 function normalizePhone(value: string) {
   const digits = value.replace(/\D/g, '')
-  return digits.startsWith('55') ? digits : `55${digits}`
+  let normalized = digits.startsWith('00') ? digits.slice(2) : digits
+  if (normalized.length < 8 || normalized.length > 15) throw new Error('Informe um telefone em formato internacional E.164, por exemplo +5511999999999.')
+  // A base aceita telefones brasileiros sem DDI; converta-os antes de chamar a Meta.
+  if ((normalized.length === 10 || normalized.length === 11) && !normalized.startsWith('55')) normalized = `55${normalized}`
+  return normalized
 }
 
 function dateValue(date: Date) {
@@ -38,8 +49,11 @@ function timeValue(date: Date) {
 }
 
 function templateParameters(templateText: string, values: Record<string, string>) {
-  const matches = [...templateText.matchAll(/\{([a-z0-9_]+)\}/gi)].map((match) => match[1]?.toLowerCase()).filter((value): value is string => Boolean(value))
-  return matches.map((name) => ({ type: 'text', text: values[name] || '' }))
+  const matches = [...templateText.matchAll(/\{\{?\s*([a-z0-9_]+)\s*\}?\}/gi)]
+  return matches.map((match, index) => {
+    const name = match[1]?.toLowerCase() || ''
+    return { type: 'text', text: values[name] ?? values[String(index + 1)] ?? '' }
+  })
 }
 
 async function graphRequest(path: string, init: RequestInit = {}) {
@@ -49,8 +63,9 @@ async function graphRequest(path: string, init: RequestInit = {}) {
   })
   const body = await response.json().catch(() => ({})) as Record<string, unknown>
   if (!response.ok) {
-    const error = body.error as { message?: string } | undefined
-    throw new Error(error?.message || 'A Meta recusou a chamada do WhatsApp.')
+    const error = body.error as { message?: string; error_user_msg?: string } | string | undefined
+    const message = typeof error === 'string' ? error : error?.message
+    throw new Error(message || (typeof error === 'object' ? error?.error_user_msg : '') || (typeof body.message === 'string' ? body.message : 'A Meta recusou a chamada do WhatsApp.'))
   }
   return body
 }
@@ -128,8 +143,20 @@ async function processMessages(admin: SupabaseClient, clinicId: string) {
       const cycle = `${template.tipo}:agendamento:${appointment.id}`
       if (sent.has(cycle) || dismissed.has(cycle)) continue
       const appointmentDate = new Date(appointment.inicio_em)
-      const values = { nome: client.nome, data: dateValue(appointmentDate), hora: timeValue(appointmentDate), servico: services.get(appointment.servico_id || '')?.nome || 'atendimento', link_avaliacao_google: link, campanha: 'esta campanha' }
-      queueRows.push({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: appointment.id, modelo_mensagem_id: template.id, canal: 'whatsapp_business', tipo: template.tipo, ciclo: cycle, payload: values })
+      const values = {
+        nome: client.nome,
+        data: dateValue(appointmentDate),
+        hora: timeValue(appointmentDate),
+        servico: services.get(appointment.servico_id || '')?.nome || 'atendimento',
+        link_avaliacao_google: link,
+        campanha: 'esta campanha',
+        '1': client.nome,
+        '2': dateValue(appointmentDate),
+        '3': timeValue(appointmentDate),
+        '4': services.get(appointment.servico_id || '')?.nome || 'atendimento',
+        '5': link,
+      }
+      queueRows.push({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: appointment.id, modelo_mensagem_id: template.id, canal: 'whatsapp_business', tipo: template.tipo, ciclo: cycle, payload: values, provider: 'meta' })
     }
   }
 
@@ -141,10 +168,9 @@ async function processMessages(admin: SupabaseClient, clinicId: string) {
   const { data: claimed, error: claimError } = await admin.rpc('claim_whatsapp_message_queue', { p_clinica_id: clinicId, p_limit: 25 })
   if (claimError) throw claimError
   const queue = (claimed || []) as QueueItem[]
-  const templateById = templates
   let sentCount = 0; let failed = 0
   for (const item of queue) {
-    const template = templateById.get(item.modelo_mensagem_id)
+    const template = templates.get(item.modelo_mensagem_id)
     try {
       if (!template) throw new Error('Modelo de mensagem nao encontrado ou inativo.')
       const client = clients.get(item.cliente_id)
@@ -155,23 +181,37 @@ async function processMessages(admin: SupabaseClient, clinicId: string) {
         skipped++
         continue
       }
-      const response = await sendTemplate(client.telefone, template, item.payload || {}) as { messages?: Array<{ id?: string }> }
+      const response = await sendTemplate(client.telefone, template, item.payload || {}) as MetaMessageResponse
       const metaMessageId = response.messages?.[0]?.id || null
+      if (!metaMessageId) throw new Error('A Meta aceitou a chamada, mas nao retornou o WAMID da mensagem.')
+      const providerStatus = 'accepted'
       const { error: completeError } = await admin.rpc('complete_whatsapp_message_queue', { p_id: item.id, p_meta_message_id: metaMessageId })
       if (completeError) throw completeError
-      await admin.from('logs_mensagens').insert({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: item.agendamento_id, modelo_mensagem_id: template.id, canal: 'whatsapp_business', texto: template.texto, ciclo: item.ciclo, status: 'enviado', enviado_em: new Date().toISOString(), observacao: metaMessageId ? `Meta message id: ${metaMessageId}` : 'Enviado pela Meta Cloud API' })
+      const acceptedAt = new Date().toISOString()
+      const { error: metadataError } = await admin.from('fila_mensagens').update({ provider: 'meta', provider_message_id: metaMessageId, provider_status: providerStatus, provider_updated_at: acceptedAt, atualizado_em: acceptedAt }).eq('id', item.id).eq('status', 'enviado')
+      if (metadataError) console.error('whatsapp-messages metadata error', metadataError.message)
+      const { error: logError } = await admin.from('logs_mensagens').insert({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: item.agendamento_id, modelo_mensagem_id: template.id, fila_mensagem_id: item.id, canal: 'whatsapp_business', texto: template.texto, ciclo: item.ciclo, status: 'enviado', enviado_em: acceptedAt, provider: 'meta', provider_message_id: metaMessageId, meta_message_id: metaMessageId, provider_status: providerStatus, observacao: metaMessageId ? `Meta WAMID: ${metaMessageId}; aceite pela Cloud API.` : 'Aceito pela Meta Cloud API; WAMID nao retornado.' })
+      if (logError) console.error('whatsapp-messages log error', logError.message)
       sentCount++
     } catch (error) {
       failed++
-      const message = error instanceof Error ? error.message : 'Falha ao enviar pela Meta'
+      const message = error instanceof Error ? error.message : 'Falha de transporte ao enviar pela Meta Cloud API.'
       await admin.rpc('fail_whatsapp_message_queue', { p_id: item.id, p_error: message, p_retry_seconds: 300 })
       const client = clients.get(item.cliente_id)
-      if (client && templateById.get(item.modelo_mensagem_id)) {
-        await admin.from('logs_mensagens').insert({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: item.agendamento_id, modelo_mensagem_id: item.modelo_mensagem_id, canal: 'whatsapp_business', texto: templateById.get(item.modelo_mensagem_id)?.texto || '', ciclo: item.ciclo, status: 'erro', observacao: message })
+      if (client && templates.get(item.modelo_mensagem_id)) {
+        await admin.from('logs_mensagens').insert({ clinica_id: clinicId, cliente_id: client.id, agendamento_id: item.agendamento_id, modelo_mensagem_id: item.modelo_mensagem_id, fila_mensagem_id: item.id, canal: 'whatsapp_business', texto: templates.get(item.modelo_mensagem_id)?.texto || '', ciclo: item.ciclo, status: 'erro', provider: 'meta', provider_status: 'transport_error', observacao: message })
       }
     }
   }
   return { enqueued: queueRows.length, processed: queue.length, sent: sentCount, failed, skipped }
+}
+
+async function getSchedulerStatus(admin: SupabaseClient) {
+  const fallback = { cronActive: false, vaultConfigured: false, lastRunStatus: null, lastRunAt: null }
+  const { data, error } = await admin.rpc('get_whatsapp_worker_status')
+  if (error || !data || typeof data !== 'object') return fallback
+  const status = data as { cronActive?: boolean; vaultConfigured?: boolean; lastRunStatus?: string | null; lastRunAt?: string | null }
+  return { cronActive: status.cronActive === true, vaultConfigured: status.vaultConfigured === true, lastRunStatus: status.lastRunStatus || null, lastRunAt: status.lastRunAt || null }
 }
 
 Deno.serve(async (request) => {
@@ -183,37 +223,83 @@ Deno.serve(async (request) => {
   const body = await request.json().catch(() => ({})) as { action?: Action; clinicId?: string; recipient?: string; templateName?: string; language?: string }
   const action = body.action
   if (!action || !['status', 'send-test', 'validate-template', 'process'].includes(action)) return json({ error: 'Acao do WhatsApp invalida.' }, 400)
-  const cronAuthorized = action === 'process' && Boolean(env('WHATSAPP_CRON_SECRET')) && request.headers.get('x-whatsapp-cron-secret') === env('WHATSAPP_CRON_SECRET')
+  const cronAction = action === 'process'
+  const cronAuthorized = cronAction && Boolean(env('WHATSAPP_CRON_SECRET')) && request.headers.get('x-whatsapp-cron-secret') === env('WHATSAPP_CRON_SECRET')
   try {
     if (action === 'process' && !cronAuthorized) throw new Error('Processamento automatico nao autorizado.')
     if (!body.clinicId) throw new Error('Clinica nao informada.')
     if (!cronAuthorized) await assertAdmin(admin, request, body.clinicId)
     const missing = missingSecrets()
     if (action === 'status') {
-      const automaticRules = await admin.from('regras_mensagens').select('id', { count: 'exact', head: true }).eq('clinica_id', body.clinicId).eq('ativo', true).eq('canal_padrao', 'whatsapp_business')
-      const pendingMessages = await admin.from('fila_mensagens').select('id', { count: 'exact', head: true }).eq('clinica_id', body.clinicId).in('status', ['pendente', 'processando', 'erro'])
-      const failures = await admin.from('logs_mensagens').select('id,criado_em,observacao').eq('clinica_id', body.clinicId).eq('canal', 'whatsapp_business').eq('status', 'erro').order('criado_em', { ascending: false }).limit(10)
-      return json({ configured: missing.length === 0, sendReady: missing.length === 0, missingSecrets: missing, automaticRules: automaticRules.count || 0, pendingMessages: pendingMessages.count || 0, failedMessages: failures.data?.length || 0, recentFailures: (failures.data || []).map((failure) => ({ id: failure.id, type: 'WhatsApp', scheduledAt: failure.criado_em, attempts: 1, error: failure.observacao })), scheduler: { cronActive: Boolean(env('WHATSAPP_FUNCTION_URL') && env('WHATSAPP_CRON_SECRET')), vaultConfigured: Boolean(env('WHATSAPP_FUNCTION_URL') && env('WHATSAPP_CRON_SECRET')), lastRunStatus: null, lastRunAt: null } })
+      const [automaticRules, pendingMessages, failures, activeTemplate, latestTest] = await Promise.all([
+        admin.from('regras_mensagens').select('id', { count: 'exact', head: true }).eq('clinica_id', body.clinicId).eq('ativo', true).eq('canal_padrao', 'whatsapp_business'),
+        admin.from('fila_mensagens').select('id', { count: 'exact', head: true }).eq('clinica_id', body.clinicId).in('status', ['pendente', 'processando', 'erro']),
+        admin.from('logs_mensagens').select('id,criado_em,observacao,provider_status').eq('clinica_id', body.clinicId).eq('canal', 'whatsapp_business').eq('status', 'erro').order('criado_em', { ascending: false }).limit(10),
+        admin.from('modelos_mensagens').select('id,nome,whatsapp_template_name,whatsapp_template_language').eq('clinica_id', body.clinicId).eq('ativo', true).in('tipo', ['confirmacao_agendamento', 'lembrete_agendamento']).order('prioridade').limit(1).maybeSingle(),
+        admin.from('whatsapp_testes').select('id,destinatario,provider_message_id,meta_message_id,provider_status,erro,criado_em').eq('clinica_id', body.clinicId).order('criado_em', { ascending: false }).limit(1).maybeSingle(),
+      ])
+      const scheduler = await getSchedulerStatus(admin)
+      const template = activeTemplate.data as { id?: string; nome?: string; whatsapp_template_name?: string | null; whatsapp_template_language?: string } | null
+      return json({
+        configured: missing.length === 0,
+        sendReady: missing.length === 0 && Boolean(template?.whatsapp_template_name),
+        missingSecrets: missing,
+        provider: { name: 'Meta WhatsApp Cloud API', apiConfigured: missing.length === 0, senderConfigured: Boolean(env('WHATSAPP_PHONE_NUMBER_ID')), wabaConfigured: Boolean(env('WHATSAPP_BUSINESS_ACCOUNT_ID')) },
+        template: { configured: Boolean(template?.whatsapp_template_name), name: template?.whatsapp_template_name || null, language: template?.whatsapp_template_language || null, internalName: template?.nome || null, approval: 'requires_meta_validation' },
+        automaticRules: automaticRules.count || 0,
+        pendingMessages: pendingMessages.count || 0,
+        failedMessages: failures.data?.length || 0,
+        recentFailures: (failures.data || []).map((failure) => ({ id: failure.id, type: 'WhatsApp/Meta', scheduledAt: failure.criado_em, attempts: 1, error: failure.observacao, providerStatus: failure.provider_status || null })),
+        lastTest: latestTest.data ? { id: latestTest.data.id, recipient: latestTest.data.destinatario, providerMessageId: latestTest.data.provider_message_id, whatsappMessageId: latestTest.data.meta_message_id, status: latestTest.data.provider_status, error: latestTest.data.erro, createdAt: latestTest.data.criado_em } : null,
+        worker: scheduler,
+        scheduler,
+      })
     }
-    if (missing.length) return json({ error: `Configure no Supabase Secrets: ${missing.join(', ')}.` }, 503)
+    if (missing.length) return json({ error: `Configure no Supabase Edge Function Secrets: ${missing.join(', ')}.` }, 503)
     if (action === 'validate-template') {
       if (!body.templateName || !body.language) throw new Error('Informe o nome e o idioma do template.')
-      const result = await graphRequest(`/${env('WHATSAPP_BUSINESS_ACCOUNT_ID')}/message_templates?name=${encodeURIComponent(body.templateName)}&language=${encodeURIComponent(body.language)}`) as { data?: Array<{ name?: string; language?: string; status?: string; category?: string }> }
+      const result = await graphRequest(`/${encodeURIComponent(env('WHATSAPP_BUSINESS_ACCOUNT_ID'))}/message_templates?name=${encodeURIComponent(body.templateName)}&language=${encodeURIComponent(body.language)}`) as { data?: Array<{ name?: string; language?: string; status?: string; category?: string }> }
       const template = result.data?.find((item) => item.name === body.templateName && item.language === body.language)
-      if (!template || template.status !== 'APPROVED') throw new Error('O template ainda nao esta aprovado pela Meta.')
-      return json({ approved: true, category: template.category || 'UTILITY', status: template.status })
+      if (!template || template.status !== 'APPROVED') throw new Error(`O template ${body.templateName} ainda nao esta aprovado pela Meta.`)
+      return json({ approved: true, category: template.category || 'UTILITY', status: template.status, provider: 'Meta' })
     }
     if (action === 'send-test') {
-      if (!body.recipient) throw new Error('Informe o numero verificado para o teste.')
-      const { data: template } = await admin.from('modelos_mensagens').select('id,tipo,nome,texto,ativo,prioridade,whatsapp_template_name,whatsapp_template_language').eq('clinica_id', body.clinicId).eq('ativo', true).in('tipo', ['confirmacao_agendamento', 'lembrete_agendamento']).order('prioridade').limit(1).maybeSingle()
+      if (!body.recipient) throw new Error('Informe o numero autorizado para o teste.')
+      const { data: template, error: templateError } = await admin.from('modelos_mensagens').select('id,tipo,nome,texto,ativo,prioridade,whatsapp_template_name,whatsapp_template_language').eq('clinica_id', body.clinicId).eq('ativo', true).in('tipo', ['confirmacao_agendamento', 'lembrete_agendamento']).order('prioridade').limit(1).maybeSingle()
+      if (templateError) throw templateError
       if (!template) throw new Error('Ative um modelo de confirmacao ou lembrete antes de enviar o teste.')
-      const values = { nome: 'Cliente de teste', data: dateValue(new Date()), hora: timeValue(new Date()), servico: 'atendimento', link_avaliacao_google: '', campanha: 'esta campanha' }
-      const response = await sendTemplate(body.recipient, template as Template, values) as { messages?: Array<{ id?: string }> }
-      return json({ sent: true, messageId: response.messages?.[0]?.id || '' })
+      const testId = crypto.randomUUID()
+      const recipient = normalizePhone(body.recipient)
+      await admin.from('whatsapp_testes').insert({ id: testId, clinica_id: body.clinicId, destinatario: recipient, provider: 'meta', provider_status: 'pending' })
+      const testDate = new Date()
+      const values = {
+        nome: 'Cliente de teste',
+        data: dateValue(testDate),
+        hora: timeValue(testDate),
+        servico: 'atendimento',
+        link_avaliacao_google: '',
+        campanha: 'esta campanha',
+        '1': 'Cliente de teste',
+        '2': dateValue(testDate),
+        '3': timeValue(testDate),
+        '4': 'atendimento',
+        '5': '',
+      }
+      try {
+        const response = await sendTemplate(recipient, template as Template, values) as MetaMessageResponse
+        const metaMessageId = response.messages?.[0]?.id || null
+        if (!metaMessageId) throw new Error('A Meta aceitou a chamada, mas nao retornou o WAMID da mensagem.')
+        await admin.from('whatsapp_testes').update({ provider_message_id: metaMessageId, meta_message_id: metaMessageId, provider_status: 'accepted', atualizado_em: new Date().toISOString() }).eq('id', testId)
+        return json({ sent: true, messageId: metaMessageId, providerMessageId: metaMessageId, testId, status: 'accepted' })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Falha de transporte ao enviar o teste pela Meta Cloud API.'
+        await admin.from('whatsapp_testes').update({ provider: 'meta', provider_status: 'transport_error', erro: message, atualizado_em: new Date().toISOString() }).eq('id', testId)
+        throw error
+      }
     }
     return json(await processMessages(admin, body.clinicId))
   } catch (error) {
-    console.error('whatsapp-messages error', error)
+    console.error('whatsapp-messages error', error instanceof Error ? error.message : error)
     return json({ error: error instanceof Error ? error.message : 'Nao foi possivel concluir a operacao do WhatsApp.' }, 400)
   }
 })

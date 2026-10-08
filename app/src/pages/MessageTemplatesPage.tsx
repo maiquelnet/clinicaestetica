@@ -94,7 +94,7 @@ export function MessageTemplatesPage() {
       const templateLanguage = templateDraft.whatsapp_template_language.trim() || 'pt_BR'
       if (!tipo || !templateDraft.nome.trim() || !templateDraft.texto.trim()) throw new Error('Informe tipo, nome e texto da mensagem.')
       if (isAutomatic && !['confirmacao_agendamento', 'lembrete_agendamento'].includes(tipo)) throw new Error('Apenas confirmação e lembrete de agendamento podem ser automáticos nesta versão.')
-      if (isAutomatic && !/^[a-z0-9_]+$/.test(templateName)) throw new Error('Informe o nome exato aprovado pela Meta, com letras minÚsculas, nÚmeros e sublinhado.')
+      if (isAutomatic && !/^[a-z0-9_]+$/.test(templateName)) throw new Error('Informe o nome exato aprovado na Meta, com letras minúsculas, números e sublinhado.')
       if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) throw new Error('Informe um idioma válido, por exemplo pt_BR.')
       if (isAutomatic && tipo === 'confirmacao_agendamento' && templateDraft.gatilho !== 'agendamento_criado') throw new Error('A confirmação automática deve usar “Ao criar agendamento”.')
       if (isAutomatic && tipo === 'lembrete_agendamento' && templateDraft.gatilho !== 'inicio_agendamento') throw new Error('O lembrete automático deve usar “Próximo ao agendamento”.')
@@ -133,7 +133,7 @@ export function MessageTemplatesPage() {
 
   return (
     <main className="content-page message-templates-page">
-      <PageHeader eyebrow="Mensagens" title="Modelos e automações" description="Cadastre textos, defina quando enviar e conecte modelos aprovados pela Meta." actions={<button className="primary-button" type="button" onClick={() => focusForm()}><Plus size={17} /> Novo modelo</button>} />
+      <PageHeader eyebrow="Secretária" title="Modelos e automações" description="Cadastre textos e defina como sua secretária acompanha cada atendimento." actions={<button className="primary-button" type="button" onClick={() => focusForm()}><Plus size={17} /> Novo modelo</button>} />
       <MessageSectionNav pendingCount={alerts.length} />
       {query.error ? <div className="form-alert">{query.error.message}</div> : null}
       {query.isLoading ? <LoadingBlock /> : <>
@@ -176,7 +176,7 @@ export function MessageTemplatesPage() {
 
             <fieldset><legend>Canal e automação</legend>
               <div className="form-grid"><label>Modo de envio<select value={draft.canal_padrao} disabled={!canConfigureAutomation} onChange={(event) => setDraft({ ...draft, canal_padrao: event.target.value as TemplateDraft['canal_padrao'] })}><option value="whatsapp_manual">Manual pelo WhatsApp</option><option value="whatsapp_business">Automático pela Meta</option></select></label><label className="check-row template-active-check"><input type="checkbox" checked={draft.ativo} onChange={(event) => setDraft({ ...draft, ativo: event.target.checked })} /> Disponível para uso</label></div>
-              {draft.canal_padrao === 'whatsapp_business' ? <><div className="form-grid"><label>Nome aprovado na Meta<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_name} onChange={(event) => setDraft({ ...draft, whatsapp_template_name: event.target.value })} placeholder="confirmacao_agendamento_v1" /></label><label>Idioma<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_language} onChange={(event) => setDraft({ ...draft, whatsapp_template_language: event.target.value })} placeholder="pt_BR" /></label></div><div className="form-alert">A automação começa ao salvar. O sistema valida se o modelo está aprovado pela Meta.</div></> : null}
+              {draft.canal_padrao === 'whatsapp_business' ? <><div className="form-grid"><label>Nome aprovado na Meta<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_name} onChange={(event) => setDraft({ ...draft, whatsapp_template_name: event.target.value })} placeholder="nome_aprovado_na_meta" /></label><label>Idioma<input disabled={!canConfigureAutomation} value={draft.whatsapp_template_language} onChange={(event) => setDraft({ ...draft, whatsapp_template_language: event.target.value })} placeholder="pt_BR" /></label></div><div className="form-alert">A automação começa ao salvar. O modelo é validado na Meta antes do uso.</div></> : null}
             </fieldset>
             {saveTemplate.error ? <div className="form-alert">{saveTemplate.error.message}</div> : null}
             {!canConfigureAutomation && draft.canal_padrao === 'whatsapp_business' ? <div className="form-alert">Apenas proprietários e administradores podem alterar automações.</div> : null}

@@ -32,6 +32,39 @@ export type ClinicMembership = {
   clinica: Clinic
 }
 
+export type WeeklyAvailabilityPeriod = {
+  id: string
+  clinica_id: string
+  profissional_id: string
+  dia_semana: number
+  inicio: string
+  fim: string
+  criado_em: string
+  atualizado_em: string
+}
+
+export type AvailabilityException = {
+  id: string
+  clinica_id: string
+  profissional_id: string
+  data: string
+  nao_atende: boolean
+  observacao: string | null
+  criado_em: string
+  atualizado_em: string
+  periodos?: AvailabilityExceptionPeriod[]
+}
+
+export type AvailabilityExceptionPeriod = {
+  id: string
+  clinica_id: string
+  excecao_id: string
+  inicio: string
+  fim: string
+  criado_em: string
+  atualizado_em: string
+}
+
 export type WhatsAppOptInStatus = 'pendente' | 'aceito' | 'recusado' | 'revogado'
 
 export type Client = {
@@ -131,6 +164,37 @@ export type Appointment = {
       total_sessoes: number
     } | null
   }>
+}
+
+export type ScheduleBlockType = 'particular' | 'externo' | 'administrativo' | 'intervalo' | 'outro'
+
+export type ScheduleBlockRecurrence = {
+  unit: 'day' | 'week' | 'month'
+  interval: number
+  weekdays: number[]
+  ends: 'never' | 'date' | 'occurrences'
+  endDate: string | null
+  occurrenceCount: number | null
+}
+
+export type ScheduleBlock = {
+  id: string
+  clinica_id: string
+  profissional_id: string | null
+  titulo: string
+  motivo: string | null
+  tipo: ScheduleBlockType
+  inicio_em: string
+  fim_em: string
+  dia_inteiro: boolean
+  serie_id: string | null
+  recorrencia: ScheduleBlockRecurrence | null
+  ocorrencia_numero: number | null
+  criado_em: string
+  atualizado_em: string
+  google_event_id: string | null
+  origem: 'sistema' | 'google' | string
+  google_atualizado_em: string | null
 }
 
 export type Supplier = {

@@ -33,6 +33,7 @@ const DispatchesPage = lazy(() => import('./pages/admin/marketing/DispatchesPage
 const SatisfactionPage = lazy(() => import('./pages/admin/marketing/SatisfactionPage').then((module) => ({ default: module.SatisfactionPage })))
 const SettingsPage = lazy(() => import('./pages/admin/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })))
 const UsersPage = lazy(() => import('./pages/admin/settings/UsersPage').then((module) => ({ default: module.UsersPage })))
+const AvailabilityPage = lazy(() => import('./pages/admin/settings/AvailabilityPage').then((module) => ({ default: module.AvailabilityPage })))
 
 function ProtectedApp() {
   const { user, loading } = useAuth()
@@ -114,6 +115,7 @@ function ClinicGate() {
           <Route path="/marketing/disparos" element={<DispatchesPage />} />
           <Route path="/marketing/satisfacao" element={<SatisfactionPage />} />
           <Route path="/configuracoes/parametros" element={<SettingsPage />} />
+          <Route path="/configuracoes/horarios" element={<AvailabilityPage />} />
           <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

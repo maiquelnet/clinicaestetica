@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react'
 import { MessageSectionNav } from '../components/MessageSectionNav'
 import { PageHeader } from '../components/PageHeader'
 import { EmptyState, LoadingBlock } from '../components/Ui'
+import { OpportunityRadarSection } from '../components/OpportunityRadarSection'
 import { useClinic } from '../contexts/useClinic'
+import { nextSevenClinicDates } from '../lib/capacity'
 import { formatDateTime } from '../lib/format'
 import {
   activeRule,
@@ -14,11 +16,12 @@ import {
   messagesQueryKey,
   renderMessageText,
 } from '../lib/messaging'
+import { fetchCommercialOpportunitiesPeriod } from '../lib/rpc'
 import type { MessageAlert } from '../lib/messaging'
 import { supabase } from '../lib/supabase'
 
 export function MessagesPage() {
-  const { activeClinicId } = useClinic()
+  const { activeClinicId, activeClinic, profile } = useClinic()
   const queryClient = useQueryClient()
   const [view, setView] = useState<'pending' | 'history'>('pending')
   const [historySearch, setHistorySearch] = useState('')
@@ -27,6 +30,18 @@ export function MessagesPage() {
   const [manualTemplateId, setManualTemplateId] = useState('')
   const [manualAppointmentId, setManualAppointmentId] = useState('')
   const query = useQuery(messagingQueryOptions(activeClinicId))
+  const now = new Date()
+  const radarDates = activeClinic?.fuso_horario ? nextSevenClinicDates(activeClinic.fuso_horario, now) : null
+  const opportunitiesQuery = useQuery({
+    queryKey: ['commercial-opportunities', activeClinicId, profile?.id, radarDates?.inicio, radarDates?.fim],
+    enabled: Boolean(activeClinicId && profile?.id && radarDates),
+    queryFn: () => fetchCommercialOpportunitiesPeriod({
+      p_clinica_id: activeClinicId!,
+      p_profissional_id: profile!.id,
+      p_data_inicio: radarDates!.inicio,
+      p_data_fim: radarDates!.fim,
+    }),
+  })
   const data = query.data
   const alerts = useMemo(() => (data ? buildAlerts(data) : []), [data])
   const groupedAlerts = useMemo(() => alerts.reduce<Record<string, MessageAlert[]>>((groups, alert) => {
@@ -53,7 +68,10 @@ export function MessagesPage() {
       return matchesStatus && (!term || haystack.includes(term))
     })
   }, [clientNames, data?.logs, historySearch, historyStatus, templateNames])
-  const sentCount = data?.logs.filter((log) => ['enviado', 'entregue', 'lido'].includes(log.status)).length || 0
+  const reminderTemplateIds = new Set((data?.templates || [])
+    .filter((template) => ['confirmacao_agendamento', 'lembrete_agendamento'].includes(template.tipo))
+    .map((template) => template.id))
+  const sentCount = data?.logs.filter((log) => reminderTemplateIds.has(log.modelo_mensagem_id || '') && ['enviado', 'entregue', 'lido'].includes(log.status)).length || 0
   const errorCount = data?.logs.filter((log) => log.status === 'erro').length || 0
   const invalidateMessages = () => queryClient.invalidateQueries({ queryKey: messagesQueryKey(activeClinicId) })
 
@@ -122,16 +140,18 @@ export function MessagesPage() {
 
   return (
     <main className="content-page message-control-page">
-      <PageHeader eyebrow="Mensagens" title="Controle de envios" description="Veja o que precisa ser enviado e acompanhe o histórico em um só lugar." />
+      <PageHeader eyebrow="Secretária" title="Sua secretária em ação" description="Acompanhe confirmações, lembretes e clientes que precisam de retorno." />
       <MessageSectionNav pendingCount={alerts.length} />
       {query.error ? <div className="form-alert">{query.error.message}</div> : null}
       {registerMessage.error || dismissAlert.error ? <div className="form-alert">{(registerMessage.error || dismissAlert.error)?.message}</div> : null}
+      {opportunitiesQuery.error ? <div className="form-alert">{opportunitiesQuery.error.message}</div> : null}
+      {opportunitiesQuery.isLoading ? <LoadingBlock /> : opportunitiesQuery.data ? <OpportunityRadarSection days={opportunitiesQuery.data} activeClinicId={activeClinicId} professionalId={profile?.id || null} /> : null}
       {query.isLoading ? <LoadingBlock /> : <>
-        <section className="metric-grid message-metrics" aria-label="Resumo das mensagens">
-          <article className="metric-card"><MessageCircle size={20} /><span>Pendentes</span><strong>{alerts.length}</strong></article>
+        <section className="metric-grid message-metrics" aria-label="Resumo da secretária">
+          <article className="metric-card"><MessageCircle size={20} /><span>Aguardando sua atenção</span><strong>{alerts.length}</strong></article>
           <article className="metric-card"><Users size={20} /><span>Clientes aguardando</span><strong>{Object.keys(groupedAlerts).length}</strong></article>
-          <article className="metric-card"><Check size={20} /><span>Envios registrados</span><strong>{sentCount}</strong></article>
-          <article className="metric-card"><CircleAlert size={20} /><span>Com erro</span><strong>{errorCount}</strong></article>
+          <article className="metric-card"><Check size={20} /><span>Lembretes enviados</span><strong>{sentCount}</strong></article>
+          <article className="metric-card"><CircleAlert size={20} /><span>Precisa revisar</span><strong>{errorCount}</strong></article>
         </section>
 
         <details className="panel message-composer">
@@ -150,26 +170,26 @@ export function MessagesPage() {
           </div>
         </details>
 
-        <div className="message-view-switch" role="tablist" aria-label="Visualização das mensagens">
+        <div className="message-view-switch" role="tablist" aria-label="Visualização da secretária">
           <button className={view === 'pending' ? 'active' : ''} type="button" role="tab" aria-selected={view === 'pending'} onClick={() => setView('pending')}>Pendentes <span>{alerts.length}</span></button>
           <button className={view === 'history' ? 'active' : ''} type="button" role="tab" aria-selected={view === 'history'} onClick={() => setView('history')}>Histórico</button>
         </div>
 
         {view === 'pending' ? <section className="panel list-panel messages-pending-panel">
-          <div className="panel-header"><div><h2>Próximas ações</h2><p>Organizadas por cliente e vencimento.</p></div></div>
+          <div className="panel-header"><div><h2>O que precisa da sua atenção</h2><p>Organizado por cliente e momento.</p></div></div>
           {alerts.length ? <div className="client-alert-list">{Object.entries(groupedAlerts).map(([clientId, clientAlerts]) => {
             const firstAlert = clientAlerts[0]
             if (!firstAlert) return null
             return <section className="client-alert-group" key={clientId}>
-              <div className="group-header"><h3>{firstAlert.clienteNome}</h3><span>Última mensagem: {firstAlert.ultimaMensagem ? formatDateTime(firstAlert.ultimaMensagem.enviado_em || firstAlert.ultimaMensagem.criado_em) : 'sem registro'}</span></div>
+              <div className="group-header"><h3>{firstAlert.clienteNome}</h3><span>Último contato: {firstAlert.ultimaMensagem ? formatDateTime(firstAlert.ultimaMensagem.enviado_em || firstAlert.ultimaMensagem.criado_em) : 'sem registro'}</span></div>
               <div className="record-list">{clientAlerts.map((alert) => <article className="record-card message-alert-card" key={alert.id}>
                 <div><h3>{alert.tipoLabel}</h3><div className="record-meta"><span className={`badge ${alert.status === 'atrasado' ? 'cancelado' : 'warning'}`}>{alert.status === 'atrasado' ? 'Atrasada' : 'Pendente'}</span><span>Venceu {formatDateTime(alert.dataVencimento)}</span>{alert.servicoNome ? <span>{alert.servicoNome}</span> : null}</div><p className="message-preview">{alert.texto}</p></div>
                 <div className="record-actions"><button className="primary-button" type="button" onClick={() => openWhatsApp(alert.whatsappUrl)}><Send size={16} /> WhatsApp</button><button className="ghost-button" type="button" disabled={registerMessage.isPending} onClick={() => void registerAlert(alert)}><Check size={16} /> Marcar enviada</button><button className="danger-button" type="button" disabled={dismissAlert.isPending} onClick={() => void dismissAlert.mutateAsync(alert)}><Trash2 size={16} /> Dispensar</button></div>
               </article>)}</div>
             </section>
-          })}</div> : <EmptyState title="Tudo em dia">Não há mensagens pendentes para enviar.</EmptyState>}
+          })}</div> : <EmptyState title="Tudo em dia">Não há clientes aguardando a sua atenção.</EmptyState>}
         </section> : <section className="panel message-history-panel">
-          <div className="panel-header"><div><h2>Histórico de mensagens</h2><p>Envios registrados, aceitos ou com falha.</p></div></div>
+          <div className="panel-header"><div><h2>Histórico da secretária</h2><p>Acompanhe o que foi enviado, entregue ou precisa ser revisado.</p></div></div>
           <div className="message-history-filters">
             <label className="search-field"><Search size={17} /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Buscar cliente ou mensagem" /></label>
             <label><span className="sr-only">Filtrar por status</span><select value={historyStatus} onChange={(event) => setHistoryStatus(event.target.value)}><option value="todos">Todos os status</option><option value="enviado">Enviadas</option><option value="entregue">Entregues</option><option value="lido">Lidas</option><option value="erro">Com erro</option></select></label>

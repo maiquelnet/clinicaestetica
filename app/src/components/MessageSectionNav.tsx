@@ -3,15 +3,15 @@ import { NavLink } from 'react-router-dom'
 
 export function MessageSectionNav({ pendingCount = 0 }: { pendingCount?: number }) {
   return (
-    <nav className="message-section-nav" aria-label="Seções de mensagens">
+    <nav className="message-section-nav" aria-label="Seções da secretária">
       <NavLink to="/mensagens" end>
         <MessagesSquare size={18} />
-        <span>Controle de envios</span>
+        <span>Atividade da secretária</span>
         {pendingCount > 0 ? <strong aria-label={`${pendingCount} pendentes`}>{pendingCount}</strong> : null}
       </NavLink>
       <NavLink to="/mensagens/modelos">
         <ListChecks size={18} />
-        <span>Modelos e automações</span>
+        <span>Modelos de mensagens</span>
       </NavLink>
     </nav>
   )
