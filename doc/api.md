@@ -243,7 +243,7 @@ Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates pe
 - o GET valida `META_WEBHOOK_VERIFY_TOKEN` e o POST valida `X-Hub-Signature-256` com `META_APP_SECRET`;
 - CORS está como `*` na implementação implantada;
 - o processamento lê no máximo 500 agendamentos e 2.000 logs/dispensas por execução;
-- mensagens recebidas, mídia e sincronização de histórico não são processadas nesta fase.
+- mensagens recebidas agora são persistidas em `whatsapp_conversas` e `whatsapp_mensagens`; mídia é registrada como tipo e payload, sem download do arquivo nesta fase.
 
 ## OpenAPI
 

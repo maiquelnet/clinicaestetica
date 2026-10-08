@@ -15,6 +15,7 @@ const ServicesPage = lazy(() => import('./pages/ServicesPage').then((module) => 
 const ServiceFormPage = lazy(() => import('./pages/ServicesPage').then((module) => ({ default: module.ServiceFormPage })))
 const SchedulePage = lazy(() => import('./pages/SchedulePage').then((module) => ({ default: module.SchedulePage })))
 const MessagesPage = lazy(() => import('./pages/MessageControlPage').then((module) => ({ default: module.MessagesPage })))
+const WhatsAppInboxPage = lazy(() => import('./pages/WhatsAppInboxPage').then((module) => ({ default: module.WhatsAppInboxPage })))
 const MessageTemplatesPage = lazy(() => import('./pages/MessageTemplatesPage').then((module) => ({ default: module.MessageTemplatesPage })))
 const WaitlistPage = lazy(() => import('./pages/admin/agenda/WaitlistPage').then((module) => ({ default: module.WaitlistPage })))
 const WaitlistFormPage = lazy(() => import('./pages/admin/agenda/WaitlistPage').then((module) => ({ default: module.WaitlistFormPage })))
@@ -110,6 +111,7 @@ function ClinicGate() {
           <Route path="/estoque/fornecedores/novo" element={<SupplierFormPage />} />
           <Route path="/estoque/fornecedores/:id/editar" element={<SupplierFormPage />} />
           <Route path="/mensagens" element={<MessagesPage />} />
+          <Route path="/mensagens/whatsapp" element={<WhatsAppInboxPage />} />
           <Route path="/mensagens/modelos" element={<MessageTemplatesPage />} />
           <Route path="/marketing/campanhas" element={<CampaignsPage />} />
           <Route path="/marketing/disparos" element={<DispatchesPage />} />

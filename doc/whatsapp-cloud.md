@@ -179,7 +179,22 @@ O retorno `{"enqueued":0,"processed":0,"sent":0,"failed":0,"skipped":0}` com HTT
 - CORS remoto está como `*`, por isso a autorização de cada ação é essencial;
 - o webhook Meta responde ao desafio `hub.challenge` somente com o token configurado;
 - eventos POST do webhook exigem `X-Hub-Signature-256` válido com `META_APP_SECRET`;
-- estados são deduplicados em `whatsapp_webhook_events` antes de atualizar fila, logs e testes.
+- estados e mensagens recebidas são deduplicados em `whatsapp_webhook_events` e pelo WAMID antes de atualizar os registros.
+
+## Recebimento de mensagens
+
+O callback `meta-whatsapp-webhook` agora processa eventos `messages` de entrada, além dos estados de mensagens enviadas:
+
+- cria ou reutiliza o cliente pelo telefone normalizado;
+- não concede automaticamente consentimento de marketing: o cliente fica com `whatsapp_opt_in_status='pendente'`;
+- cria uma conversa em `whatsapp_conversas` por telefone e clínica;
+- grava cada mensagem em `whatsapp_mensagens`, incluindo tipo, texto, WAMID, horário e payload original;
+- abre/renova a janela de atendimento de 24 horas a partir da mensagem recebida;
+- ignora duplicidades sem criar novo cliente, conversa ou mensagem.
+
+As tabelas de conversa e mensagem possuem RLS: o painel autenticado pode ler somente registros da clínica à qual o usuário tem acesso. As escritas ficam restritas ao webhook via `service_role`.
+
+O painel administrativo exibe as conversas em **Secretária > Conversas WhatsApp**. A tela atualiza automaticamente, mas ainda não envia respostas livres: o próximo passo é implementar o compositor de resposta respeitando a janela de 24 horas e os modelos aprovados da Meta.
 
 ## Homologação
 
@@ -193,6 +208,7 @@ O retorno `{"enqueued":0,"processed":0,"sent":0,"failed":0,"skipped":0}` com HTT
 8. Cancelar antes do processamento e confirmar ausência de envio.
 9. Revogar consentimento e confirmar bloqueio/cancelamento.
 10. Simular erro Meta e validar retry/`ultimo_erro`.
+11. Enviar uma mensagem real ao número oficial, abrir **Secretária > Conversas WhatsApp** e confirmar cliente, conversa, texto e janela de atendimento.
 
 Não ative regras automáticas para clientes reais enquanto o número, o token, o webhook e cada template usado não estiverem confirmados. O aceite da chamada não significa entrega; os estados entregue/lido só devem ser considerados após o webhook Meta atualizar os registros.
 
@@ -204,4 +220,4 @@ Para escalar como produto, o caminho recomendado é formalizar a empresa desenvo
 
 ## Evolução recomendada
 
-Como evolução, aplicar CORS por allowlist, reservas mais rígidas e testes dedicados, preservando compatibilidade com `fila_mensagens`, frontend e scheduler atuais.
+Como evolução, implementar respostas pelo painel, automações de triagem, CORS por allowlist, reservas mais rígidas e testes dedicados, preservando compatibilidade com `fila_mensagens`, frontend e scheduler atuais.

@@ -36,8 +36,39 @@ function eventTime(timestamp: string | undefined) {
 
 type MetaError = { code?: number | string; title?: string; message?: string; error_data?: { details?: string } }
 type MetaStatus = { id?: string; status?: string; timestamp?: string; errors?: MetaError[] }
-type MetaChangeValue = { metadata?: { phone_number_id?: string }; statuses?: MetaStatus[] }
+type MetaContact = { wa_id?: string; profile?: { name?: string } }
+type MetaIncomingMessage = {
+  id?: string
+  from?: string
+  timestamp?: string
+  type?: string
+  text?: { body?: string }
+  button?: { text?: string; payload?: string }
+  interactive?: { type?: string; button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string; description?: string } }
+  image?: { caption?: string; id?: string; mime_type?: string; sha256?: string }
+  video?: { caption?: string; id?: string; mime_type?: string; sha256?: string }
+  audio?: { id?: string; mime_type?: string; sha256?: string; voice?: boolean }
+  document?: { filename?: string; caption?: string; id?: string; mime_type?: string; sha256?: string }
+  location?: { latitude?: number; longitude?: number; name?: string; address?: string }
+}
+type MetaChangeValue = { metadata?: { phone_number_id?: string }; contacts?: MetaContact[]; statuses?: MetaStatus[]; messages?: MetaIncomingMessage[] }
 type MetaWebhook = { object?: string; entry?: Array<{ id?: string; changes?: Array<{ field?: string; value?: MetaChangeValue }> }> }
+
+function incomingMessageText(message: MetaIncomingMessage) {
+  const text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title
+  if (text?.trim()) return text.trim()
+  const type = message.type || 'unknown'
+  if (type === 'image') return '[Imagem recebida]'
+  if (type === 'video') return '[Vídeo recebido]'
+  if (type === 'audio') return '[Áudio recebido]'
+  if (type === 'document') return `[Documento recebido${message.document?.filename ? `: ${message.document.filename}` : ''}]`
+  if (type === 'location') return '[Localização recebida]'
+  return `[Mensagem ${type} recebida]`
+}
+
+function contactName(value: MetaChangeValue, from: string) {
+  return value.contacts?.find((contact) => contact.wa_id === from)?.profile?.name || null
+}
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers })
@@ -81,8 +112,50 @@ Deno.serve(async (request) => {
 
       const phoneNumberId = change.value?.metadata?.phone_number_id
       if (phoneNumberId && env('WHATSAPP_PHONE_NUMBER_ID') && phoneNumberId !== env('WHATSAPP_PHONE_NUMBER_ID')) {
-        ignored += change.value?.statuses?.length || 0
+        ignored += (change.value?.statuses?.length || 0) + (change.value?.messages?.length || 0)
         continue
+      }
+
+      const { data: clinic, error: clinicError } = await admin
+        .from('clinicas')
+        .select('id')
+        .eq('ativo', true)
+        .is('arquivado_em', null)
+        .order('criado_em', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (clinicError || !clinic?.id) {
+        console.error('meta-whatsapp-webhook clinic resolution error', clinicError?.message || 'Clinica ativa nao encontrada.')
+        return json({ error: 'Nao foi possivel identificar a clinica do WhatsApp.' }, 500)
+      }
+
+      const contacts = change.value?.contacts || []
+      for (const message of change.value?.messages || []) {
+        const messageId = message.id?.trim()
+        const from = message.from?.trim()
+        if (!messageId || !from) {
+          ignored++
+          continue
+        }
+        const eventId = `meta:${entry.id || 'unknown'}:${messageId}:inbound`
+        const { error } = await admin.rpc('record_meta_whatsapp_inbound', {
+          p_event_id: eventId,
+          p_clinica_id: clinic.id,
+          p_phone_number_id: phoneNumberId || null,
+          p_from: from,
+          p_wa_id: contacts.find((contact) => contact.wa_id === from)?.wa_id || from,
+          p_contact_name: contactName(change.value || {}, from),
+          p_message_id: messageId,
+          p_message_type: message.type || 'unknown',
+          p_message_text: incomingMessageText(message),
+          p_payload: message,
+          p_event_time: eventTime(message.timestamp),
+        })
+        if (error) {
+          console.error('meta-whatsapp-webhook inbound processing error', error.message)
+          return json({ error: 'Nao foi possivel registrar a mensagem recebida.' }, 500)
+        }
+        processed++
       }
 
       for (const status of change.value?.statuses || []) {

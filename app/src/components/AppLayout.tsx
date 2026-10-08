@@ -47,7 +47,7 @@ const navGroups: NavigationGroup[] = [
       { to: '/financeiro/fluxo-caixa', label: 'Financeiro', icon: CircleDollarSign, children: [{ to: '/financeiro/contas-a-receber', label: 'Contas a receber' }, { to: '/financeiro/contas-a-pagar', label: 'Contas a pagar' }] },
       { to: '/estoque/itens', label: 'Estoque', icon: Package, children: [{ to: '/estoque/fornecedores', label: 'Fornecedores' }] },
       { to: '/equipamentos', label: 'Equipamentos', icon: Settings2 },
-      { to: '/mensagens', label: 'Secretária', icon: MessageCircle, children: [{ to: '/mensagens/modelos', label: 'Modelos de mensagens' }] },
+      { to: '/mensagens', label: 'Secretária', icon: MessageCircle, children: [{ to: '/mensagens/modelos', label: 'Modelos de mensagens' }, { to: '/mensagens/whatsapp', label: 'Conversas WhatsApp' }] },
     ],
   },
   {

@@ -1,3 +1,5 @@
+import type { Json } from './database.types'
+
 export type Clinic = {
   id: string
   nome: string
@@ -402,6 +404,40 @@ export type MessageLog = {
   observacao: string | null
   criado_em: string
   atualizado_em: string
+}
+
+export type WhatsAppConversation = {
+  id: string
+  clinica_id: string
+  telefone: string
+  wa_id: string | null
+  nome_contato: string | null
+  cliente_id: string | null
+  status: 'aberta' | 'aguardando' | 'encerrada' | string
+  janela_atendimento_ate: string | null
+  ultima_mensagem_em: string | null
+  ultima_mensagem_direcao: 'entrada' | 'saida' | null
+  ultima_mensagem_tipo: string | null
+  ultima_mensagem_preview: string | null
+  criado_em: string
+  atualizado_em: string
+  clientes?: Pick<Client, 'id' | 'nome' | 'telefone'> | null
+}
+
+export type WhatsAppMessage = {
+  id: string
+  clinica_id: string
+  conversa_id: string
+  cliente_id: string | null
+  provider: string
+  provider_message_id: string
+  direcao: 'entrada' | 'saida'
+  tipo: string
+  texto: string | null
+  payload: Json
+  status: string
+  evento_em: string
+  criado_em: string
 }
 
 export type Campaign = {

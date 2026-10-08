@@ -1,4 +1,4 @@
-import { ListChecks, MessagesSquare } from 'lucide-react'
+import { Inbox, ListChecks, MessagesSquare } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 export function MessageSectionNav({ pendingCount = 0 }: { pendingCount?: number }) {
@@ -12,6 +12,10 @@ export function MessageSectionNav({ pendingCount = 0 }: { pendingCount?: number 
       <NavLink to="/mensagens/modelos">
         <ListChecks size={18} />
         <span>Modelos de mensagens</span>
+      </NavLink>
+      <NavLink to="/mensagens/whatsapp">
+        <Inbox size={18} />
+        <span>Conversas WhatsApp</span>
       </NavLink>
     </nav>
   )
