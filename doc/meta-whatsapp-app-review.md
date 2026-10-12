@@ -130,6 +130,24 @@ https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
 
 Nunca coloque `WHATSAPP_ACCESS_TOKEN`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `service_role` ou secret key em variáveis `VITE_*`.
 
+### 5.1 Sandbox separado para a gravação do App Review
+
+O branch `meta-review-sandbox` usa `VITE_APP_ENV=preview` e exibe, em Configurações > Parâmetros, um painel separado chamado **Sandbox do App Review**. Esse painel chama a Edge Function `whatsapp-review-test` e nunca reutiliza o remetente da produção.
+
+Cadastre no Supabase os Secrets abaixo usando os dados exibidos pelo número de teste do app Meta `1637078911202031`:
+
+```text
+WHATSAPP_REVIEW_ACCESS_TOKEN
+WHATSAPP_REVIEW_PHONE_NUMBER_ID
+WHATSAPP_REVIEW_GRAPH_VERSION=v23.0
+WHATSAPP_REVIEW_TEMPLATE_NAME=hello_world
+WHATSAPP_REVIEW_TEMPLATE_LANGUAGE=en_US
+```
+
+`WHATSAPP_REVIEW_ACCESS_TOKEN` e os IDs do número de teste ficam somente no servidor. O painel aceita apenas usuários administradores da clínica e grava o WAMID do teste em `whatsapp_testes` com o provedor `meta_review_sandbox`.
+
+O sandbox não altera `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` ou `WHATSAPP_BUSINESS_ACCOUNT_ID` da produção. Depois da gravação, o branch pode ser removido ou mantido apenas para homologação; a branch `main` continua sendo o ambiente de produção.
+
 ## 6. Teste completo
 
 ### Teste manual no sistema

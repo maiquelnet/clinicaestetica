@@ -5,8 +5,10 @@ import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/PageHeader'
 import { useClinic } from '../../../contexts/useClinic'
 import { supabase } from '../../../lib/supabase'
+import { appEnv } from '../../../lib/env'
 import { connectGoogleCalendar, getGoogleCalendarStatus, requestGoogleCalendarSync } from '../../../lib/google-calendar'
 import { getWhatsAppStatus, sendWhatsAppTest } from '../../../lib/whatsapp'
+import { getWhatsAppReviewStatus, sendWhatsAppReviewTest } from '../../../lib/whatsapp-review'
 import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
@@ -33,6 +35,17 @@ export function SettingsPage() {
   const [whatsappTestRecipient, setWhatsAppTestRecipient] = useState('')
   const testWhatsApp = useMutation({
     mutationFn: () => sendWhatsAppTest(activeClinicId!, whatsappTestRecipient),
+  })
+  const reviewStatus = useQuery({
+    queryKey: ['whatsapp-review-status', activeClinicId],
+    enabled: Boolean(activeClinicId) && !appEnv.isProduction,
+    queryFn: () => getWhatsAppReviewStatus(activeClinicId!),
+    refetchInterval: 60_000,
+  })
+  const [reviewTestRecipient, setReviewTestRecipient] = useState('')
+  const reviewTest = useMutation({
+    mutationFn: () => sendWhatsAppReviewTest(activeClinicId!, reviewTestRecipient),
+    onSuccess: () => reviewStatus.refetch(),
   })
   const [draft, setDraft] = useState(() => ({
     nome: activeClinic?.nome || '',
@@ -172,7 +185,7 @@ export function SettingsPage() {
           <button
             className="primary-button"
             type="button"
-            disabled={!activeClinicId || !whatsappStatus.data?.sendReady || !whatsappTestRecipient.trim() || testWhatsApp.isPending}
+            disabled={!appEnv.isProduction || !activeClinicId || !whatsappStatus.data?.sendReady || !whatsappTestRecipient.trim() || testWhatsApp.isPending}
             onClick={() => testWhatsApp.mutate()}
           >
             {testWhatsApp.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
@@ -201,6 +214,59 @@ export function SettingsPage() {
           </div>
         ) : null}
       </section>
+      {!appEnv.isProduction ? (
+        <section className="panel form-panel">
+          <PageHeader
+            eyebrow="Homologacao Meta"
+            title="Sandbox do App Review"
+            description="Este ambiente envia somente pelo número de teste da Meta configurado nos Secrets WHATSAPP_REVIEW_*. A produção permanece protegida."
+          />
+          <div className="form-alert">
+            O teste abaixo não usa o número real da Thaís nem os Secrets de produção. Use um destinatário autorizado no painel da Meta.
+          </div>
+          {reviewStatus.isLoading ? <p>Verificando as credenciais de homologação...</p> : null}
+          {reviewStatus.data ? (
+            <div className="record-meta">
+              <span className={`badge ${reviewStatus.data.configured ? 'success' : 'warning'}`}>
+                {reviewStatus.data.configured ? 'Sandbox configurado' : 'Secrets pendentes'}
+              </span>
+              <span>Modelo: {reviewStatus.data.template.name} ({reviewStatus.data.template.language})</span>
+              <span>Remetente: {reviewStatus.data.senderConfigured ? 'configurado' : 'pendente'}</span>
+            </div>
+          ) : null}
+          {reviewStatus.data?.missingSecrets.length ? (
+            <div className="form-alert">
+              Cadastre no Supabase: {reviewStatus.data.missingSecrets.join(', ')}. Nunca informe esses valores no frontend.
+            </div>
+          ) : null}
+          <label>
+            Destinatário autorizado para o App Review
+            <input
+              type="tel"
+              placeholder="+55 51 99999-9999"
+              value={reviewTestRecipient}
+              onChange={(event) => setReviewTestRecipient(event.target.value)}
+            />
+            <small>Use formato internacional E.164 e o mesmo telefone autorizado no painel de teste da Meta.</small>
+          </label>
+          <div className="form-actions">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={!activeClinicId || !reviewStatus.data?.sendReady || !reviewTestRecipient.trim() || reviewTest.isPending}
+              onClick={() => reviewTest.mutate()}
+            >
+              {reviewTest.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
+              {reviewTest.isPending ? 'Enviando...' : 'Enviar teste da Meta'}
+            </button>
+            <button className="ghost-button" type="button" onClick={() => void reviewStatus.refetch()}>
+              <MessageCircle size={16} /> Atualizar sandbox
+            </button>
+          </div>
+          {reviewTest.isSuccess ? <div className="form-success">Mensagem de homologação aceita pela Meta. WAMID: {reviewTest.data.messageId}.</div> : null}
+          {reviewTest.error || reviewStatus.error ? <div className="form-alert">{(reviewTest.error || reviewStatus.error)?.message}</div> : null}
+        </section>
+      ) : null}
     </main>
   )
 }

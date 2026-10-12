@@ -162,6 +162,20 @@ A função atualmente implantada usa estes nomes exatos:
 | `META_APP_SECRET` | Para webhook | App Secret usado para validar `X-Hub-Signature-256`. |
 | `META_WEBHOOK_VERIFY_TOKEN` | Para webhook | Token escolhido no cadastro do callback da Meta. |
 
+### Secrets temporários do Sandbox de App Review
+
+A Edge Function `whatsapp-review-test` é usada somente pela branch `meta-review-sandbox` para demonstrar o envio com o número de teste da Meta. Ela não substitui as credenciais reais:
+
+| Nome | Obrigatório | Origem/uso |
+| --- | --- | --- |
+| `WHATSAPP_REVIEW_ACCESS_TOKEN` | Sim | Token do número de teste exibido no Try it out da Meta. |
+| `WHATSAPP_REVIEW_PHONE_NUMBER_ID` | Sim | Phone Number ID do número de teste da Meta. |
+| `WHATSAPP_REVIEW_GRAPH_VERSION` | Não | Versão Graph; usa `v23.0` se ausente. |
+| `WHATSAPP_REVIEW_TEMPLATE_NAME` | Não | Usa `hello_world` por padrão. |
+| `WHATSAPP_REVIEW_TEMPLATE_LANGUAGE` | Não | Usa `en_US` por padrão. |
+
+Esses Secrets não devem ser colocados em `VITE_*`. O valor `VITE_APP_ENV=preview` é aplicado pelo `vercel.json` da branch de homologação. A branch `main` continua com o build de produção original.
+
 O número pessoal pode ser destinatário autorizado durante a homologação. Para produção, o remetente deve ser o número controlado pela Estética Schneider e habilitado na WABA `5523215167904668`. Consulte os IDs completos no [guia Meta](./meta-whatsapp-app-review.md).
 
 ### Estado do agendador WhatsApp
