@@ -212,7 +212,7 @@ async function verifyReviewBinding(integration: ReviewIntegration) {
       issues.push(`O modelo exige ${expectedBodyParameterCount} parâmetro(s) no corpo, mas foram configurados ${configuredBodyParameterCount ?? 'parâmetros inválidos'}.`)
     }
     if (template && !templateStructureSupported) {
-      issues.push('Este teste aceita modelo de texto simples; cabeçalho de mídia/variável e botão com URL dinâmica não são suportados.')
+      issues.push('Este teste exige um corpo de texto; aceita cabeçalho textual estático e botões URL estáticos/telefone, mas bloqueia mídia, cabeçalho variável, resposta rápida e componentes não suportados.')
     }
   } catch {
     issues.push('A Meta não confirmou o modelo, idioma e parâmetros no WABA configurado.')

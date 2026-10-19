@@ -53,10 +53,15 @@ test('review sender cannot be the known real clinic WABA or phone number', () =>
 })
 
 test('review text sender rejects media or variable headers and dynamic URL buttons', () => {
-  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'TEXT', text: 'Confirmação' }]), true)
-  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'IMAGE' }]), false)
-  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'TEXT', text: 'Olá {{1}}' }]), false)
-  assert.equal(templateSupportsBodyTextSend([{ type: 'BUTTONS', buttons: [{ type: 'URL', url: 'https://example.com/{{1}}' }] }]), false)
+  const body = [{ type: 'BODY', text: 'Confirmação {{1}}' }]
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'HEADER', format: 'TEXT', text: 'Confirmação' }]), true)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'HEADER', format: 'IMAGE' }]), false)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'HEADER', format: 'TEXT', text: 'Olá {{1}}' }]), false)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'BUTTONS', buttons: [{ type: 'URL', url: 'https://example.com' }] }]), true)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'BUTTONS', buttons: [{ type: 'PHONE_NUMBER' }] }]), true)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'BUTTONS', buttons: [{ type: 'URL', url: 'https://example.com/{{1}}' }] }]), false)
+  assert.equal(templateSupportsBodyTextSend([...body, { type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY' }] }]), false)
+  assert.equal(templateSupportsBodyTextSend([{ type: 'CAROUSEL' }]), false)
 })
 
 test('accepted Meta send followed by audit failure is accepted but requires reconciliation', async () => {

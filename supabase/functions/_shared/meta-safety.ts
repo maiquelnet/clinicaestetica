@@ -67,14 +67,20 @@ export function templateSupportsBodyTextSend(components: Array<{
   text?: string
   buttons?: Array<{ type?: string; url?: string }>
 }>) {
+  if (!components.some((component) => component.type === 'BODY')) return false
+
   return components.every((component) => {
     if (component.type === 'HEADER') {
       return component.format === 'TEXT' && countTemplateBodyParameters(component.text || '') === 0
     }
+    if (component.type === 'BODY' || component.type === 'FOOTER') return true
     if (component.type === 'BUTTONS') {
-      return !component.buttons?.some((button) => button.type === 'URL' && countTemplateBodyParameters(button.url || '') > 0)
+      return Boolean(component.buttons?.length) && component.buttons!.every((button) =>
+        button.type === 'PHONE_NUMBER' ||
+        (button.type === 'URL' && countTemplateBodyParameters(button.url || '') === 0)
+      )
     }
-    return true
+    return false
   })
 }
 

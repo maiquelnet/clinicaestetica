@@ -74,7 +74,7 @@ Se a auditoria não puder ser criada antes da chamada, nada é enviado. Depois d
 
 ### Estado remoto do teste
 
-Em 2026-10-19, o MCP Supabase confirmou `whatsapp-review-test` v1 e publicou as versões endurecidas v2 e v3. A versão atual também valida a estrutura do modelo e só aceita corpo textual e cabeçalho textual estático; bloqueia mídia, cabeçalho dinâmico e botão de URL variável. O MCP não permite ler os valores nem confirmar a presença dos Secrets `WHATSAPP_REVIEW_*`; ainda não foi confirmado qual app/token/remetente eles representam. A função falha fechada e não libera envio até a Meta confirmar o app, permissões, remetente, template, idioma, parâmetros e estrutura suportada. O envio pelo sistema e a gravação do vídeo ainda não foram validados.
+Em 2026-10-19, o MCP Supabase confirmou `whatsapp-review-test` v1 e publicou as versões endurecidas v2, v3 e v4. A v4 exige corpo textual e só aceita cabeçalho textual estático, botão URL estático ou botão de telefone; bloqueia mídia, cabeçalho dinâmico, resposta rápida e componentes desconhecidos. O MCP não permite ler os valores nem confirmar a presença dos Secrets `WHATSAPP_REVIEW_*`; ainda não foi confirmado qual app/token/remetente eles representam. A função falha fechada e não libera envio até a Meta confirmar o app, permissões, remetente, template, idioma, parâmetros e estrutura suportada. O envio pelo sistema e a gravação do vídeo ainda não foram validados.
 
 ## 5. Correções locais da fila e do webhook
 
