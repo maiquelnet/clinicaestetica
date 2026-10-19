@@ -135,7 +135,9 @@ Não troque `GOOGLE_TOKEN_ENCRYPTION_KEY` sem aceitar a necessidade de reconecta
 
 ## Configuração Meta necessária
 
-O usuário informa que o app `1369639224651650` (“Thaís Schneider Estética Whats”) é o pretendido para o número real. O MCP Meta lista esse app, mas não recebeu acesso ao portfólio e não expôs a associação app–WABA–telefone. O app `1637078911202031` (“API Estética Schneider Auto”) foi o contexto de um teste direto da Meta. Não assumir que um deles está conectado ao número real sem confirmação.
+O usuário informa que o app `1369639224651650` (“Thaís Schneider Estética Whats”) é o pretendido para o número real. O MCP Meta lista esse app, mas não confirma acesso/vínculo a um portfólio nem expõe a associação app–WABA–telefone. O app `1637078911202031` (“API Estética Schneider Auto”) foi o contexto de um teste direto da Meta. Não assumir que um deles está conectado ao número real sem confirmação.
+
+Consulta MCP de 2026-10-19: os dois apps estão em `dev_mode` e têm o caso de uso WhatsApp. O app 163 tem categoria, ícone e política de privacidade, mas contato não verificado e URLs padrão `facebook.com` para termos/exclusão; o estado de App Review retornou `UNSUBMITTED` junto de `is_approved=true`. O app 136 ainda não tem política de privacidade, categoria ou ícone e consta `NO_SUBMISSION`. A lista de negócios veio vazia e ambos aparecem sem `owning_business_id`; vínculo do app ao portfólio, WABA e telefone continua sem confirmação do MCP.
 
 Dados informados pelo usuário/telas, não confirmados pelo MCP:
 

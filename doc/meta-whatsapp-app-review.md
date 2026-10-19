@@ -8,8 +8,8 @@ Há dois apps Meta com nomes parecidos no portfólio empresarial `95828459809230
 
 | App | App ID | O que está confirmado neste registro |
 | --- | --- | --- |
-| API Estética Schneider Auto | `1637078911202031` | O MCP Meta listou o app em 2026-10-19. Um payload fornecido pelo usuário para um teste direto da Meta registrou `app_id=1637078911202031`. O estado de App Review retornado pelo MCP foi contraditório (`UNSUBMITTED` junto de `is_approved=true`); não tratar como aprovado. |
-| Thaís Schneider Estética Whats | `1369639224651650` | O usuário identificou este como o app pretendido para o número real. O MCP listou o app, mas não confirmou a relação app–WABA–telefone. O snapshot do MCP indicou `dev_mode`, sem URL de privacidade, categoria ou ícone, e `NO_SUBMISSION`. |
+| API Estética Schneider Auto | `1637078911202031` | O MCP lista o app como `dev_mode`, com caso de uso WhatsApp, categoria `BUSINESS`, ícone e política `https://www.esteticaschneider.com.br/politica-de-privacidade`. O contato aparece não verificado; termos e exclusão de dados estão como `facebook.com`. Um payload do teste direto da Meta registrou este `app_id`. O estado de revisão é contraditório (`UNSUBMITTED` junto de `is_approved=true`); não tratar como aprovado. |
+| Thaís Schneider Estética Whats | `1369639224651650` | O usuário identifica este como o app pretendido para o número real. O MCP lista o app como `dev_mode` e com caso de uso WhatsApp, mas sem URL de privacidade, categoria ou ícone e com `NO_SUBMISSION`. O MCP não confirmou a relação app–WABA–telefone. |
 
 O usuário informou que o número real `+55 51 8591-0322` está no WABA `5523215167904668`, no portfólio `958284598092300`; a tela também mostrou Phone Number ID `1287807847751041`. O usuário afirmou que o app `1369639224651650` é o correto para esse número. **Essa associação continua não verificada pela Meta/MCP.** O acesso MCP disponível listou apps, mas não expôs a relação entre app, WABA e número. Não usar os IDs do teste como prova dessa relação.
 
@@ -27,9 +27,10 @@ Isso comprova que aquele teste do painel Meta foi aceito e entregue. Não é o W
 
 ## 2. Snapshot Meta MCP — 2026-10-19
 
-- Portfólios retornados pelo MCP: nenhum (`businesses: []`); os detalhes dos apps eram visíveis, mas o portfólio/ativos empresariais não estavam autorizados para consulta nesse MCP.
-- `1637078911202031`: modo de desenvolvimento; privacidade, categoria e ícone apareciam configurados no snapshot. O estado de revisão retornado foi inconsistente, portanto permanece **não confirmado**.
-- `1369639224651650`: modo de desenvolvimento, sem URL de privacidade, categoria ou ícone no snapshot; App Review `NO_SUBMISSION`.
+- Portfólios retornados pelo MCP: nenhum (`businesses: []`). A lista de apps mostra `owning_business_id: null`; portanto, o MCP não confirmou acesso/vínculo a um portfólio nem aos ativos WhatsApp.
+- Ambos os apps estão em `dev_mode` e têm o caso de uso “Conectar-se com clientes pelo WhatsApp”, com permissões requeridas `whatsapp_business_messaging`, `whatsapp_business_management` e `public_profile`.
+- `1637078911202031`: categoria `BUSINESS`, ícone e política de privacidade configurados; contato `maiquelnet@gmail.com` não verificado e URLs de termos/exclusão apontam para `facebook.com`. Revisão retornou `UNSUBMITTED` e `is_approved=true` ao mesmo tempo, estado contraditório e **não confirmado**.
+- `1369639224651650`: sem URL de privacidade, categoria ou ícone; App Review `NO_SUBMISSION`.
 - Nenhuma operação de escrita foi feita na Meta nesta etapa.
 
 Para confirmar qual app pertence ao número real, é necessário reautorizar o Meta MCP com acesso ao portfólio `958284598092300` e consultar os ativos WhatsApp do portfólio, ou verificar manualmente no Business Settings/WhatsApp Manager. Até lá, mantenha a relação registrada como “informada pelo usuário, não confirmada pela Meta”.
