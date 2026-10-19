@@ -1,14 +1,14 @@
 # Guia de Instalação e Desenvolvimento
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-10-17.
 
 ## Pré-requisitos
 
 - Git;
 - Node.js compatível com Vite 8 e npm;
 - acesso ao repositório GitHub `maiquelnet/clinicaestetica`;
-- acesso ao projeto Supabase `xucttzuthznqwlhushmg`;
-- acesso à equipe/projeto Vercel para publicar;
+- acesso a um projeto Supabase de desenvolvimento/homologação, se a tarefa precisar de backend;
+- acesso à equipe/projeto Vercel somente quando a tarefa envolver publicação;
 - Deno ou Supabase CLI para validar Edge Functions;
 - acesso Google Cloud/Meta apenas quando a tarefa envolver essas integrações.
 
@@ -24,11 +24,11 @@ Crie `app/.env.local` a partir de `app/.env.example`:
 
 ```text
 VITE_APP_ENV=development
-VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
+VITE_SUPABASE_URL=<URL_DO_SUPABASE_DE_DESENVOLVIMENTO>
 VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
 ```
 
-A publishable key é encontrada em Supabase > Settings > API Keys. Ela pode estar no frontend porque o acesso efetivo é protegido por Auth/RLS. Nunca use secret key ou service role nesse arquivo.
+A documentação deste checkout identifica `xucttzuthznqwlhushmg` como produção e não confirma um projeto separado de staging. **Não copie a URL de produção para desenvolvimento/testes.** Confirme um backend de desenvolvimento autorizado antes de conectar a aplicação; sem ele, limite-se a verificações que não façam chamadas nem gravações remotas. A publishable key é encontrada em Supabase > Settings > API Keys. Ela pode estar no frontend porque o acesso efetivo é protegido por Auth/RLS. Nunca use secret key ou service role nesse arquivo.
 
 Executar:
 
@@ -41,6 +41,7 @@ Validação obrigatória antes de commit:
 ```bash
 npm run typecheck
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -48,8 +49,8 @@ npm run build
 
 | Ambiente | `VITE_APP_ENV` | Observação |
 | --- | --- | --- |
-| Local | `development` | Normalmente usa `app/.env.local`. |
-| Vercel Preview | `preview` | Idealmente deve apontar para staging. |
+| Local | `development` | Use backend dedicado de desenvolvimento; não use produção para testes. |
+| Vercel Preview | `preview` | Só é isolado se suas variáveis e Edge Functions apontarem para um backend de homologação. Isso ainda precisa ser confirmado. |
 | Vercel Production | `production` | Usa o Supabase de produção documentado. |
 
 Todos os nomes iniciados por `VITE_` são incorporados ao bundle e devem ser considerados públicos.
@@ -67,9 +68,9 @@ Output: app/dist
 Passos:
 
 1. Confirme que o projeto Vercel está ligado ao repositório e que `main` é a Production Branch.
-2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes corretos.
-3. Faça push da branch para obter Preview.
-4. Depois de revisar, integre à `main` para gerar Production.
+2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes corretos. Neste checkout, Preview e Production usam o mesmo Supabase de produção; não trate Preview como staging.
+3. Faça push da branch de homologação para obter Preview somente depois de validar a restrição do Sandbox App Review. O painel comum de envio fica oculto em Preview; a auditoria do Sandbox ainda escreve no banco de produção.
+4. Não integre esta configuração à `main` enquanto `vercel.json` fixar `VITE_APP_ENV=preview`. Antes da retomada de produção, reverta/ajuste o build e revalide os destinos.
 5. Teste `https://www.esteticaschneider.com.br`, `/login`, `/dashboard` e `/cadastro-cliente`.
 
 Se usar CLI:

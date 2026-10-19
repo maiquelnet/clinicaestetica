@@ -28,7 +28,7 @@ export function SettingsPage() {
   })
   const whatsappStatus = useQuery({
     queryKey: ['whatsapp-status', activeClinicId],
-    enabled: Boolean(activeClinicId),
+    enabled: Boolean(activeClinicId) && appEnv.isProduction,
     queryFn: () => getWhatsAppStatus(activeClinicId!),
     refetchInterval: 60_000,
   })
@@ -38,11 +38,11 @@ export function SettingsPage() {
   })
   const reviewStatus = useQuery({
     queryKey: ['whatsapp-review-status', activeClinicId],
-    enabled: Boolean(activeClinicId) && !appEnv.isProduction,
+    enabled: Boolean(activeClinicId) && appEnv.isPreview,
     queryFn: () => getWhatsAppReviewStatus(activeClinicId!),
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   })
-  const [reviewTestRecipient, setReviewTestRecipient] = useState('')
+  const reviewTestRecipient = '+55 51 98660-3385'
   const reviewTest = useMutation({
     mutationFn: () => sendWhatsAppReviewTest(activeClinicId!, reviewTestRecipient),
     onSuccess: () => reviewStatus.refetch(),
@@ -126,7 +126,7 @@ export function SettingsPage() {
         </div>
         {connectCalendar.error || syncCalendar.error || calendarStatus.error ? <div className="form-alert">{(connectCalendar.error || syncCalendar.error || calendarStatus.error)?.message}</div> : null}
       </section>
-      <section className="panel form-panel">
+      {appEnv.isProduction ? <section className="panel form-panel">
         <PageHeader
           eyebrow="Integracao"
           title="WhatsApp Cloud API"
@@ -213,25 +213,28 @@ export function SettingsPage() {
             ))}
           </div>
         ) : null}
-      </section>
-      {!appEnv.isProduction ? (
+      </section> : null}
+      {appEnv.isPreview ? (
         <section className="panel form-panel">
           <PageHeader
             eyebrow="Homologacao Meta"
             title="Sandbox do App Review"
-            description="Este ambiente envia somente pelo número de teste da Meta configurado nos Secrets WHATSAPP_REVIEW_*. A produção permanece protegida."
+            description="O Preview usa credenciais dedicadas ao teste e confirma app, permissões, WABA, remetente, modelo, idioma e parâmetros com a Meta antes do envio."
           />
           <div className="form-alert">
-            O teste abaixo não usa o número real da Thaís nem os Secrets de produção. Use um destinatário autorizado no painel da Meta.
+            O Preview ainda usa o projeto Supabase compartilhado. O envio fica restrito ao remetente de teste verificado e ao destinatário +55 51 98660-3385; nunca use aqui o número real da clínica.
           </div>
           {reviewStatus.isLoading ? <p>Verificando as credenciais de homologação...</p> : null}
           {reviewStatus.data ? (
             <div className="record-meta">
-              <span className={`badge ${reviewStatus.data.configured ? 'success' : 'warning'}`}>
-                {reviewStatus.data.configured ? 'Sandbox configurado' : 'Secrets pendentes'}
+              <span className={`badge ${reviewStatus.data.sendReady ? 'success' : 'warning'}`}>
+                {reviewStatus.data.sendReady ? 'Vínculo verificado e pronto' : 'Verificação/configuração pendente'}
               </span>
-              <span>Modelo: {reviewStatus.data.template.name} ({reviewStatus.data.template.language})</span>
-              <span>Remetente: {reviewStatus.data.senderConfigured ? 'configurado' : 'pendente'}</span>
+              <span>App informado: {reviewStatus.data.integration.appId || 'pendente'}</span>
+              <span>WABA de teste: {reviewStatus.data.integration.wabaId || 'pendente'}</span>
+              <span>Remetente: {reviewStatus.data.integration.senderPhoneNumber || reviewStatus.data.integration.phoneNumberId || 'pendente'}</span>
+              <span>Modelo: {reviewStatus.data.integration.templateName || 'pendente'} ({reviewStatus.data.integration.templateLanguage || 'idioma pendente'})</span>
+              <span>Modelo na Meta: {reviewStatus.data.integration.templateVerified ? `aprovado; ${reviewStatus.data.integration.expectedBodyParameterCount} parâmetro(s)` : reviewStatus.data.integration.templateStatus || 'não confirmado'}</span>
             </div>
           ) : null}
           {reviewStatus.data?.missingSecrets.length ? (
@@ -239,21 +242,30 @@ export function SettingsPage() {
               Cadastre no Supabase: {reviewStatus.data.missingSecrets.join(', ')}. Nunca informe esses valores no frontend.
             </div>
           ) : null}
+          {reviewStatus.data?.integration.verificationIssues.length ? (
+            <div className="form-alert" role="status">
+              A Meta ainda não confirmou a configuração: {reviewStatus.data.integration.verificationIssues.join(' ')}
+            </div>
+          ) : null}
+          {reviewStatus.data?.manualCheckRequired ? (
+            <div className="form-alert" role="alert">
+              O último teste pode ter sido aceito sem confirmação completa. Não reenvie. Confira o WhatsApp e o registro {reviewStatus.data.lastTest?.id || ''} antes de liberar outra tentativa.
+            </div>
+          ) : null}
           <label>
             Destinatário autorizado para o App Review
             <input
               type="tel"
-              placeholder="+55 51 99999-9999"
               value={reviewTestRecipient}
-              onChange={(event) => setReviewTestRecipient(event.target.value)}
+              readOnly
             />
-            <small>Use formato internacional E.164 e o mesmo telefone autorizado no painel de teste da Meta.</small>
+            <small>Este número já recebeu o teste direto da Meta. O backend rejeita qualquer outro destinatário.</small>
           </label>
           <div className="form-actions">
             <button
               className="primary-button"
               type="button"
-              disabled={!activeClinicId || !reviewStatus.data?.sendReady || !reviewTestRecipient.trim() || reviewTest.isPending}
+              disabled={!activeClinicId || !reviewStatus.data?.sendReady || reviewStatus.data.manualCheckRequired || reviewTest.isPending}
               onClick={() => reviewTest.mutate()}
             >
               {reviewTest.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
@@ -263,7 +275,13 @@ export function SettingsPage() {
               <MessageCircle size={16} /> Atualizar sandbox
             </button>
           </div>
-          {reviewTest.isSuccess ? <div className="form-success">Mensagem de homologação aceita pela Meta. WAMID: {reviewTest.data.messageId}.</div> : null}
+          {reviewTest.isSuccess ? (
+            <div className={reviewTest.data.outcome === 'accepted' && reviewTest.data.auditPersisted && reviewTest.data.messageId ? 'form-success' : 'form-alert'} role="status">
+              {reviewTest.data.outcome === 'accepted' && reviewTest.data.auditPersisted && reviewTest.data.messageId
+                ? `A Meta aceitou a mensagem e a auditoria foi gravada. WAMID: ${reviewTest.data.messageId}. Isso não confirma a entrega.`
+                : `${reviewTest.data.detail} Resultado: ${reviewTest.data.outcome}; auditoria ${reviewTest.data.auditPersisted ? 'gravada' : 'não confirmada'}. Não tente novamente até reconciliar o teste.`}
+            </div>
+          ) : null}
           {reviewTest.error || reviewStatus.error ? <div className="form-alert">{(reviewTest.error || reviewStatus.error)?.message}</div> : null}
         </section>
       ) : null}

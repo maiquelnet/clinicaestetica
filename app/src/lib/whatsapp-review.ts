@@ -5,8 +5,34 @@ export type WhatsAppReviewStatus = {
   configured: boolean
   sendReady: boolean
   missingSecrets: string[]
-  senderConfigured: boolean
-  template: { name: string; language: string }
+  integration: {
+    appId: string | null
+    wabaId: string | null
+    phoneNumberId: string | null
+    templateName: string | null
+    templateLanguage: string | null
+    bindingVerifiedByMeta: boolean
+    senderPhoneNumber: string | null
+    templateVerified: boolean
+    templateStatus: string | null
+    expectedBodyParameterCount: number | null
+    configuredBodyParameterCount: number | null
+    verificationIssues: string[]
+  }
+  allowedRecipient: string
+  manualCheckRequired: boolean
+  lastTest: { id: string; recipient: string; status: string; messageId: string | null; error: string | null; createdAt: string } | null
+}
+
+export type WhatsAppReviewTestResult = {
+  outcome: 'not_sent' | 'accepted' | 'rejected' | 'unknown'
+  sendAttempted: boolean
+  auditPersisted: boolean
+  messageId: string | null
+  detail: string
+  sent?: boolean
+  testId: string | null
+  provider: 'meta_review_sandbox'
 }
 
 async function invoke<T>(action: string, clinicId: string, body: Record<string, unknown> = {}) {
@@ -33,4 +59,4 @@ export const getWhatsAppReviewStatus = (clinicId: string) =>
   invoke<WhatsAppReviewStatus>('status', clinicId)
 
 export const sendWhatsAppReviewTest = (clinicId: string, recipient: string) =>
-  invoke<{ sent: boolean; status: string; provider: string; testId: string; messageId: string }>('send-test', clinicId, { recipient })
+  invoke<WhatsAppReviewTestResult>('send-test', clinicId, { recipient })

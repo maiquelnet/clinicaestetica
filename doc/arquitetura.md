@@ -1,6 +1,6 @@
 # Arquitetura do Sistema
 
-Atualizado em: 2026-09-12.
+Atualizado em: 2026-10-17. Estado de serviços remotos não foi revalidado nesta data.
 
 ## Visão geral
 
@@ -25,13 +25,13 @@ flowchart LR
 
 ## Tecnologias e versões
 
-As versões abaixo vêm de `app/package.json` e do projeto remoto; o estado Meta/Supabase foi revisado em 2026-10-08.
+As versões do frontend abaixo são do `app/package-lock.json` observado em 2026-10-19. Snapshots remotos de funções Supabase e Meta são listados separadamente em [operação das plataformas](./operacao-plataformas.md); não inferir versões remotas a partir do lockfile.
 
 | Camada | Tecnologia | Versão/faixa |
 | --- | --- | --- |
 | Interface | React / React DOM | `19.2.7` |
-| Linguagem | TypeScript | `~6.0.2` |
-| Build/dev server | Vite | `8.1.1` |
+| Linguagem | TypeScript | `6.0.3` (lockfile) |
+| Build/dev server | Vite | `8.1.3` (lockfile) |
 | Rotas | React Router DOM | `7.18.1` |
 | Estado assíncrono/cache | TanStack React Query | `5.101.2` |
 | Formulários | React Hook Form | `7.80.0` |
@@ -39,8 +39,8 @@ As versões abaixo vêm de `app/package.json` e do projeto remoto; o estado Meta
 | Datas | date-fns | `4.4.0` |
 | Ícones | lucide-react | `1.23.0` |
 | Cliente backend | `@supabase/supabase-js` | `2.110.0` |
-| Lint | Oxlint | `1.71.0` |
-| Banco | PostgreSQL | `17.6.1.127` |
+| Lint | Oxlint | `1.72.0` (lockfile) |
+| Banco | PostgreSQL | `17.6.1.127` (snapshot remoto de 2026-08-11; não revalidado em 2026-10-19) |
 | Backend gerenciado | Supabase | Auth, PostgREST, RLS, RPC, Edge Functions, Vault |
 | Runtime serverless | Deno/Supabase Edge Runtime | Gerenciado pelo Supabase |
 | Hospedagem web | Vercel | SPA estática em `app/dist` |
@@ -48,7 +48,7 @@ As versões abaixo vêm de `app/package.json` e do projeto remoto; o estado Meta
 | Avaliações | Google Places API (New) | Edge Function pública |
 | Mensagens | Meta WhatsApp Cloud API | Bearer token server-side; templates aprovados e webhook assinado |
 
-O `package-lock.json` deve ser commitado e a Vercel usa `npm ci` para builds reproduzíveis.
+As versões instaladas no frontend vêm do lockfile; o manifesto mantém faixas compatíveis. Use `npm ci` para builds reproduzíveis. Elas não comprovam versões implantadas na Vercel, Supabase ou Meta.
 
 ## Estrutura do repositório
 
@@ -62,7 +62,9 @@ O `package-lock.json` deve ser commitado e a Vercel usa `npm ci` para builds rep
 └── README.md                    visão rápida do projeto
 ```
 
-Desde 2026-08-13, não há fontes Supabase duplicadas. `supabase/functions/whatsapp-messages` corresponde à versão simplificada implantada, com fila e processamento periódico. A implementação experimental anterior foi removida para evitar redeploy acidental.
+Desde 2026-08-13, `supabase/` é a fonte local canônica. O snapshot remoto consultado em 2026-10-19 reportou `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8; o código local está divergindo após esta tarefa e ainda não substitui as versões remotas. Não publicar a pasta inteira sem revisar migration, Secrets e versões.
+
+Para WhatsApp, o modelo local é um app Meta e uma WABA por clínica. A migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` mantém IDs/nomes de secrets em schema privado e libera valores do Vault somente por RPC `service_role`. Ela ainda não foi aplicada remotamente. O Preview do frontend continua ligado ao projeto Supabase de produção; ele não representa staging isolado.
 
 O frontend mantém interesses de serviços em relação normalizada, sem remover o array legado de `clientes`. Campanhas podem usar esse relacionamento para prever e gerar públicos segmentados.
 

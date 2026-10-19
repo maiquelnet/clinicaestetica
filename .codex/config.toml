@@ -1,0 +1,4 @@
+# Context7 fornece documentação pública; não enviar código privado, segredos ou dados de clientes.
+# A configuração de projeto só é carregada após confiar no checkout e iniciar nova sessão.
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"

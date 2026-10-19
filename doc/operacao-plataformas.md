@@ -1,6 +1,6 @@
 # Operação, acessos e plataformas
 
-Atualizado em: 2026-10-08.
+Atualizado em: 2026-10-19. Os snapshots de estado remoto abaixo mantêm as datas de consulta registradas; não foram consultados novamente nesta revisão.
 
 Este documento é o runbook de operação da aplicação Estética Schneider. Ele registra os identificadores que podem ser versionados, as variáveis necessárias e onde recuperar credenciais. Valores secretos não devem ser gravados no Git, em chamados ou em mensagens.
 
@@ -20,6 +20,12 @@ Este documento é o runbook de operação da aplicação Estética Schneider. El
 | Supabase Organization ID | `pxzhdgsggtrncluifije` | Identificador da organização; não é credencial. |
 | Região Supabase | `sa-east-1` | South America (São Paulo). |
 | Banco | PostgreSQL `17.6.1.127` | Engine principal `17`, canal GA. |
+
+### Isolamento de desenvolvimento e Preview
+
+Snapshot consultado em 2026-10-19: `xucttzuthznqwlhushmg` está `ACTIVE_HEALTHY`; o projeto antigo `olmspqsciwoxbpgslsoz` está `INACTIVE`. Não há staging Supabase ativo confirmado. O Preview usa o mesmo Supabase de produção: a flag `VITE_APP_ENV=preview` não isola banco, Auth, Secrets, Edge Functions, cron ou webhook.
+
+Exceção temporária e restrita para a gravação App Review: o Preview mostra o Sandbox, que chama apenas `whatsapp-review-test`, grava auditoria em `whatsapp_testes` no banco de produção e aceita apenas credenciais dedicadas `WHATSAPP_REVIEW_*` e o destinatário `+55 51 98660-3385`. O painel comum de WhatsApp/produção fica oculto em Preview e desenvolvimento. Não use em Preview ações que alterem cadastro/agenda nem o fluxo de fila automática. Não é um ambiente isolado.
 
 O ID interno e o slug da equipe/projeto Vercel não estão versionados: não existe `.vercel/project.json` no checkout e a CLI Vercel não está instalada. Para confirmá-los, abra o projeto que atende os dois domínios acima no Dashboard da Vercel ou execute `vercel link` em uma máquina autorizada. Não invente `VERCEL_ORG_ID` ou `VERCEL_PROJECT_ID`.
 
@@ -67,10 +73,12 @@ O arquivo `vercel.json` da raiz é a fonte versionada:
 ```json
 {
   "installCommand": "cd app && npm ci",
-  "buildCommand": "cd app && npm run build",
+  "buildCommand": "cd app && VITE_APP_ENV=preview npm run build",
   "outputDirectory": "app/dist"
 }
 ```
+
+Esse comando Preview está versionado no branch de homologação. Se o mesmo `vercel.json` for mesclado em `main`, também forçará `preview` no build de produção; não mescle sem restaurar a configuração de produção.
 
 A rewrite envia todas as rotas para `app/dist/index.html`, permitindo que o React Router trate `/login`, `/dashboard` e as demais URLs da SPA.
 
@@ -98,15 +106,16 @@ O Supabase recomenda publishable keys (`sb_publishable_...`) no navegador e secr
 
 ### Edge Functions implantadas
 
-Snapshot remoto verificado em 2026-09-12, em consulta somente leitura:
+Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
 
 | Função | Versão remota | `verify_jwt` | URL |
 | --- | ---: | --- | --- |
-| `google-calendar-sync` | 40 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
-| `google-reviews` | 10 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
+| `google-calendar-sync` | 48 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
+| `google-reviews` | 18 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
 | `whatsapp-messages` | 29 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
-| `ycloud-webhook` | 1 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
-| `meta-whatsapp-webhook` | publicada | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
+| `ycloud-webhook` | 9 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
+| `meta-whatsapp-webhook` | 8 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
+| `whatsapp-review-test` | 2 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
 
 `verify_jwt=false` não significa acesso irrestrito por si só:
 
@@ -114,7 +123,7 @@ Snapshot remoto verificado em 2026-09-12, em consulta somente leitura:
 - WhatsApp valida JWT/papel de administrador nas ações de configuração e `WHATSAPP_CRON_SECRET` no processamento automático.
 - Google Reviews é um GET público e retorna somente dados de avaliações públicas da clínica.
 
-O snapshot atual usa a implementação Meta direta para envio e webhook. `ycloud-webhook` permanece no projeto como contingência legada até a retirada planejada.
+Snapshot consultado por MCP em 2026-10-19: `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8 permanecem remotos e sem os fixes locais. `whatsapp-review-test` v2 foi publicado nesta data com validação Meta de App ID/token/permissões/WABA/remetente/template/tradução/parâmetros, destinatário fixo e auditoria obrigatória. Não houve alteração de Secrets nem envio de mensagem; o fluxo v2 deve permanecer bloqueado até os Secrets de revisão estarem configurados e validados. `ycloud-webhook` permanece como legado. A migration remota mais recente listada foi `20260922074529_meta_whatsapp_cloud_direct`; a nova migration local por clínica ainda não aparece no banco.
 
 ### Secrets do Google Calendar
 
@@ -164,19 +173,23 @@ A função atualmente implantada usa estes nomes exatos:
 
 ### Secrets temporários do Sandbox de App Review
 
-A Edge Function `whatsapp-review-test` é usada somente pela branch `meta-review-sandbox` para demonstrar o envio com o número de teste da Meta. Ela não substitui as credenciais reais:
+A versão remota v2 de `whatsapp-review-test` usa apenas credenciais dedicadas. Não substitui as credenciais reais e não aceita destinatários arbitrários:
 
 | Nome | Obrigatório | Origem/uso |
 | --- | --- | --- |
-| `WHATSAPP_REVIEW_ACCESS_TOKEN` | Sim | Token do número de teste exibido no Try it out da Meta. |
-| `WHATSAPP_REVIEW_PHONE_NUMBER_ID` | Sim | Phone Number ID do número de teste da Meta. |
-| `WHATSAPP_REVIEW_GRAPH_VERSION` | Não | Versão Graph; usa `v23.0` se ausente. |
-| `WHATSAPP_REVIEW_TEMPLATE_NAME` | Não | Usa `hello_world` por padrão. |
-| `WHATSAPP_REVIEW_TEMPLATE_LANGUAGE` | Não | Usa `en_US` por padrão. |
+| `WHATSAPP_REVIEW_ACCESS_TOKEN` | Sim | Token de teste emitido para o app que será submetido. |
+| `WHATSAPP_REVIEW_APP_ID` | Sim | App ID que o endpoint de debug da Meta deve retornar para esse token. |
+| `WHATSAPP_REVIEW_APP_SECRET` | Sim | App Secret do mesmo app; usado somente no backend para validar o token. |
+| `WHATSAPP_REVIEW_WABA_ID` | Sim | WABA que contém o remetente de teste. |
+| `WHATSAPP_REVIEW_PHONE_NUMBER_ID` | Sim | Remetente de teste listado pela Meta dentro desse WABA. |
+| `WHATSAPP_REVIEW_GRAPH_VERSION` | Sim | Versão mostrada/definida no painel Meta do app; sem fallback presumido. |
+| `WHATSAPP_REVIEW_TEMPLATE_NAME` | Sim | Nome exato do template disponível no WABA de teste. |
+| `WHATSAPP_REVIEW_TEMPLATE_LANGUAGE` | Sim | Código exato do idioma do template. |
+| `WHATSAPP_REVIEW_TEMPLATE_PARAMETERS_JSON` | Sim | Array JSON com parâmetros de texto do corpo na ordem dos placeholders (`[]` se não houver variáveis). |
 
-Esses Secrets não devem ser colocados em `VITE_*`. O valor `VITE_APP_ENV=preview` é aplicado pelo `vercel.json` da branch de homologação. A branch `main` continua com o build de produção original.
+Esses Secrets nunca devem ser colocados em `VITE_*`. A função local confirma com a Meta o vínculo do token ao App ID, a permissão `whatsapp_business_messaging` e a presença do Phone Number ID no WABA antes de habilitar envio. O vínculo entre app real e WABA/número real ainda não foi confirmado pelo MCP. `vercel.json` nesta branch fixa `VITE_APP_ENV=preview`; mesclar esse arquivo em `main` também levaria `preview` ao build de produção. Rever esse comando antes de retomar produção.
 
-O número pessoal pode ser destinatário autorizado durante a homologação. Para produção, o remetente deve ser o número controlado pela Estética Schneider e habilitado na WABA `5523215167904668`. Consulte os IDs completos no [guia Meta](./meta-whatsapp-app-review.md).
+O único destinatário de teste permitido no código local é `+55 51 98660-3385`, que recebeu o teste direto da Meta. O remetente de teste e o app que serão analisados precisam ser confirmados juntos; não usar o Phone Number ID real `1287807847751041` como remetente do sandbox. Consulte a distinção entre os apps no [guia Meta](./meta-whatsapp-app-review.md).
 
 ### Estado do agendador WhatsApp
 

@@ -2,7 +2,7 @@
 
 Projeto: Estética Schneider
 
-Última revisão geral: 2026-10-08.
+Última revisão do índice e do estado resumido: 2026-10-19. Os fatos remotos têm data e fonte em cada seção; nem todo serviço foi revalidado.
 
 Esta pasta documenta a aplicação React em produção, o backend Supabase, a implantação Vercel e as integrações Google e WhatsApp. Atualize-a junto com qualquer mudança de arquitetura, banco, variáveis, Edge Functions ou fluxo de usuário.
 
@@ -12,6 +12,9 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - [Operação, acessos e plataformas](./operacao-plataformas.md): identificadores, URLs, variáveis, Secrets, deploy, rotação e pendências verificadas.
 - [Arquitetura do sistema](./arquitetura.md): componentes, tecnologias e fluxos.
 - [Guia de instalação](./instalacao.md): desenvolvimento local e publicação.
+- [Produto](../PRODUCT.md): objetivo, usuários e limites do sistema atual.
+- [Design e acessibilidade](./design.md): tokens observados e verificações ainda pendentes.
+- [Setup de ferramentas e evidências](./setup.md): configuração do Codex, matriz do toolkit e checks desta revisão.
 - [Histórico de implementação](./historico-implementacao.md): linha do tempo do que foi realizado.
 
 ## Referências por assunto
@@ -37,8 +40,10 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - Planos de tratamento com cronograma recorrente e campanhas segmentadas por interesses em serviços.
 - Google Agenda bidirecional conectado por OAuth e Edge Function.
 - Avaliações públicas do Google Places carregadas por Edge Function.
-- WhatsApp Cloud API Meta publicada no Supabase, com consentimento, templates, fila e webhook; o acesso avançado do App Review ainda está pendente.
+- Há correções locais para roteamento Meta por clínica, cancelamento de agendamento e reconciliação; webhook e fila remotos não foram substituídos. `whatsapp-review-test` v2 foi publicado em 2026-10-19 com validação estrita e auditoria. Secrets de revisão não foram alterados nem validados, então o envio ainda está bloqueado.
 - Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
+
+O único projeto confirmado neste checkout é o Supabase de produção `xucttzuthznqwlhushmg`; não há staging isolado confirmado. A Preview usa o projeto compartilhado e os testes de App Review gravam auditoria no banco de produção, ainda que usem credenciais/número de teste. Não grave nem envie por outros fluxos em Preview.
 
 ## Regras de documentação
 

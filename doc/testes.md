@@ -1,6 +1,6 @@
 # Qualidade e Casos de Teste
 
-Atualizado em: 2026-10-08.
+Atualizado em: 2026-10-19.
 
 ## Automação existente
 
@@ -16,7 +16,9 @@ npm run build
 - `typecheck`: TypeScript project build sem emitir arquivos;
 - `lint`: Oxlint;
 - `build`: TypeScript + bundle Vite de produção.
-- `test`: testes Node dos geradores de cronograma, disponibilidade, capacidade comercial, Radar, oportunidades e utilitários da landing page.
+- `test`: testes Node dos geradores de cronograma, disponibilidade, capacidade comercial, Radar, oportunidades, utilitários da landing page e regras puras de segurança Meta.
+
+Registro histórico do setup de 2026-10-17: o typecheck passou e a suíte executou **76 testes aprovados**. O build também passou com saída direcionada a uma pasta temporária, sem sobrescrever `app/dist`; a tentativa de lint daquela sessão ficou sem saída e foi interrompida. As verificações atuais estão registradas no bloco de 2026-10-19 abaixo.
 
 Testes frontend existentes:
 
@@ -51,7 +53,7 @@ As exceções por data são persistidas por RPC transacional e devem ser validad
 - confirmar prioridade da lista de espera, maior atraso de retorno e ausência de duplicidade;
 - confirmar que o motor não envia mensagens, não reserva, não agenda e não altera dados.
 
-Smoke test remoto executado em transação com usuário autenticado: capacidade 480 minutos após bloqueio, ocupação 25%, Radar `AGENDA_COM_OPORTUNIDADES`, uma oportunidade de lista de espera e uma de retorno; todos os dados de teste foram revertidos com `rollback`.
+Registro histórico de smoke test remoto, revisto em 2026-10-19: a data original de execução não foi registrada. O relato descreveu teste em transação com usuário autenticado: capacidade 480 minutos após bloqueio, ocupação 25%, Radar `AGENDA_COM_OPORTUNIDADES`, uma oportunidade de lista de espera e uma de retorno; dados revertidos com `rollback`. Não contar como validação remota atual.
 
 ### Secretária assistida V1
 
@@ -74,6 +76,7 @@ deno check supabase/functions/google-calendar-sync/index.ts
 deno check supabase/functions/google-reviews/index.ts
 deno check supabase/functions/whatsapp-messages/index.ts
 deno check supabase/functions/meta-whatsapp-webhook/index.ts
+deno check supabase/functions/whatsapp-review-test/index.ts
 ```
 
 Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A integração Meta está em `supabase/functions/whatsapp-messages` e `supabase/functions/meta-whatsapp-webhook`; o envio de teste e a assinatura do webhook já foram validados, enquanto o teste automático completo depende de cliente com opt-in, regra ativa e template aprovado.
@@ -144,6 +147,10 @@ Antes do scheduler automático, chame `action=process` manualmente com cron secr
 A versão implantada recebe eventos Meta assinados e deduplicados; use `whatsapp_webhook_events`, fila e logs para confirmar os estados retornados pela Meta. Um aceite HTTP isolado ainda não comprova entrega ou leitura.
 
 ## Módulos administrativos
+
+Testes puros locais em `supabase/functions/_shared/meta-safety.test.ts` cobrem roteamento para duas clínicas, WABA incorreta, Phone Number ID desconhecido/ambíguo, agendamento cancelado/não encontrado, resultado incerto, aceite seguido de falha de auditoria e bloqueio do envio quando a auditoria inicial falha. Eles não fazem chamadas à Meta nem ao Supabase.
+
+Em 2026-10-19, `npm test` passou com os 76 testes preexistentes mais 12 testes Meta (88 no total). `npm run typecheck`, `npm run lint`, build Preview com saída temporária, `deno check` das três Edge Functions e `deno test` dos testes Meta passaram. `git diff --check` passou sem erros de whitespace (apenas avisos de conversão LF/CRLF). A função isolada `whatsapp-review-test` v2 foi publicada; os fixes de fila/webhook e a migration por clínica continuam locais e não aplicados. O envio real de teste ainda não foi validado.
 
 - serviço/preço salvos transacionalmente;
 - fila de espera impede conflito ao confirmar;
