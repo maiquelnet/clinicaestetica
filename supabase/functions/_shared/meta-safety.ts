@@ -61,6 +61,23 @@ export function countTemplateBodyParameters(text: string) {
   return indexes.length ? Math.max(...indexes) : 0
 }
 
+export function templateSupportsBodyTextSend(components: Array<{
+  type?: string
+  format?: string
+  text?: string
+  buttons?: Array<{ type?: string; url?: string }>
+}>) {
+  return components.every((component) => {
+    if (component.type === 'HEADER') {
+      return component.format === 'TEXT' && countTemplateBodyParameters(component.text || '') === 0
+    }
+    if (component.type === 'BUTTONS') {
+      return !component.buttons?.some((button) => button.type === 'URL' && countTemplateBodyParameters(button.url || '') > 0)
+    }
+    return true
+  })
+}
+
 export function reviewSenderIsAllowed(wabaId: string, phoneNumberId: string) {
   return wabaId !== '5523215167904668' && phoneNumberId !== '1287807847751041'
 }

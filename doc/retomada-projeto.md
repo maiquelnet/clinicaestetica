@@ -6,7 +6,7 @@ Este é o ponto de partida para reiniciar ou transferir o desenvolvimento da Est
 
 ## Estado atual em uma frase
 
-O Supabase remoto está ativo; `whatsapp-review-test` v2 foi publicado em 2026-10-19. A Meta ainda não confirmou pelo MCP qual app está ligado ao WABA/telefone real. O checkout contém correções locais e uma migration por clínica, mas fila, webhook e migration permanecem locais. O envio direto pelo painel da Meta foi entregue ao destinatário de teste; o envio pelo sistema ainda depende dos Secrets `WHATSAPP_REVIEW_*` corretos e da validação do template.
+O Supabase remoto está ativo; `whatsapp-review-test` v3 foi publicado em 2026-10-19. A Meta ainda não confirmou pelo MCP qual app está ligado ao WABA/telefone real. O checkout contém correções locais e uma migration por clínica, mas fila, webhook e migration permanecem locais. O envio direto pelo painel da Meta foi entregue ao destinatário de teste; o envio pelo sistema ainda depende dos Secrets `WHATSAPP_REVIEW_*` corretos e da validação do template.
 
 Nenhuma migration, Secret ou Edge Function remota deve ser removida durante o reinício. O YCloud permanece como contingência até a validação completa da Meta.
 
@@ -169,7 +169,7 @@ Arquivos relevantes:
 | --- | --- |
 | `supabase/functions/whatsapp-messages/index.ts` | Código local em edição: credenciais por clínica, verificação de cancelamento e reconciliação terminal; remoto continua v29. |
 | `supabase/functions/meta-whatsapp-webhook/index.ts` | Código local em edição: roteamento WABA + Phone Number ID e HMAC por app; remoto continua v8. |
-| `supabase/functions/whatsapp-review-test/index.ts` | Código implantado v2: confirmação de app/token/permissões/WABA/remetente/template/parâmetros, destinatário fixo e auditoria antes/depois; ainda sem Secrets confirmados. |
+| `supabase/functions/whatsapp-review-test/index.ts` | Código implantado v3: confirmação de app/token/permissões/WABA/remetente/template/parâmetros/estrutura suportada, destinatário fixo e auditoria antes/depois; ainda sem Secrets confirmados. |
 | `supabase/config.toml` | Mantém `verify_jwt = false` no webhook público; a função faz autenticação própria por token/assinatura. |
 | `supabase/migrations/20260912090000_meta_whatsapp_cloud_direct.sql` | Colunas, tabelas, índices e RPC de idempotência dos eventos Meta. |
 | `supabase/migrations/20261019153000_meta_clinic_integrations_and_reconciliation.sql` | Configuração por clínica no schema `private`, RPCs de Secrets Vault e estado `reconciliacao`; somente local, não aplicada. |

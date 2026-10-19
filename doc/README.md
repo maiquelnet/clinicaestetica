@@ -40,7 +40,7 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - Planos de tratamento com cronograma recorrente e campanhas segmentadas por interesses em serviços.
 - Google Agenda bidirecional conectado por OAuth e Edge Function.
 - Avaliações públicas do Google Places carregadas por Edge Function.
-- Há correções locais para roteamento Meta por clínica, cancelamento de agendamento e reconciliação; webhook e fila remotos não foram substituídos. `whatsapp-review-test` v2 foi publicado em 2026-10-19 com validação estrita e auditoria. Secrets de revisão não foram alterados nem validados, então o envio ainda está bloqueado.
+- Há correções locais para roteamento Meta por clínica, cancelamento de agendamento e reconciliação; webhook e fila remotos não foram substituídos. `whatsapp-review-test` v3 foi publicado em 2026-10-19 com validação estrita do vínculo, do template, do destinatário e da auditoria. Secrets de revisão não foram alterados nem validados, então o envio ainda está bloqueado.
 - Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
 
 O único projeto confirmado neste checkout é o Supabase de produção `xucttzuthznqwlhushmg`; não há staging isolado confirmado. A Preview usa o projeto compartilhado e os testes de App Review gravam auditoria no banco de produção, ainda que usem credenciais/número de teste. Não grave nem envie por outros fluxos em Preview.

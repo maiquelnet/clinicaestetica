@@ -15,6 +15,7 @@ export type WhatsAppReviewStatus = {
     senderPhoneNumber: string | null
     templateVerified: boolean
     templateStatus: string | null
+    templateStructureSupported: boolean
     expectedBodyParameterCount: number | null
     configuredBodyParameterCount: number | null
     verificationIssues: string[]

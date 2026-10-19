@@ -115,7 +115,7 @@ Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
 | `whatsapp-messages` | 29 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
 | `ycloud-webhook` | 9 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
 | `meta-whatsapp-webhook` | 8 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
-| `whatsapp-review-test` | 2 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
+| `whatsapp-review-test` | 3 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
 
 `verify_jwt=false` não significa acesso irrestrito por si só:
 
@@ -123,7 +123,7 @@ Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
 - WhatsApp valida JWT/papel de administrador nas ações de configuração e `WHATSAPP_CRON_SECRET` no processamento automático.
 - Google Reviews é um GET público e retorna somente dados de avaliações públicas da clínica.
 
-Snapshot consultado por MCP em 2026-10-19: `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8 permanecem remotos e sem os fixes locais. `whatsapp-review-test` v2 foi publicado nesta data com validação Meta de App ID/token/permissões/WABA/remetente/template/tradução/parâmetros, destinatário fixo e auditoria obrigatória. Não houve alteração de Secrets nem envio de mensagem; o fluxo v2 deve permanecer bloqueado até os Secrets de revisão estarem configurados e validados. `ycloud-webhook` permanece como legado. A migration remota mais recente listada foi `20260922074529_meta_whatsapp_cloud_direct`; a nova migration local por clínica ainda não aparece no banco.
+Snapshot consultado por MCP em 2026-10-19: `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8 permanecem remotos e sem os fixes locais. `whatsapp-review-test` v2 e depois v3 foram publicados nesta data; a v3 valida App ID/token/permissões/WABA/remetente/template/tradução/parâmetros e estrutura suportada, usa destinatário fixo e exige auditoria. Nenhum Secret foi alterado nem mensagem enviada; o fluxo permanece bloqueado até os Secrets de revisão corretos serem configurados e validados. `ycloud-webhook` permanece como legado. A migration remota mais recente listada foi `20260922074529_meta_whatsapp_cloud_direct`; a nova migration local por clínica ainda não aparece no banco.
 
 ### Secrets do Google Calendar
 
@@ -173,7 +173,7 @@ A função atualmente implantada usa estes nomes exatos:
 
 ### Secrets temporários do Sandbox de App Review
 
-A versão remota v2 de `whatsapp-review-test` usa apenas credenciais dedicadas. Não substitui as credenciais reais e não aceita destinatários arbitrários:
+A versão remota v3 de `whatsapp-review-test` usa apenas credenciais dedicadas. Não substitui as credenciais reais e não aceita destinatários arbitrários; valida ainda o formato do modelo e só suporta corpo textual, cabeçalho textual estático e botões sem URL dinâmica:
 
 | Nome | Obrigatório | Origem/uso |
 | --- | --- | --- |

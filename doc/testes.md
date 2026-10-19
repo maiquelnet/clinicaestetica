@@ -150,7 +150,7 @@ A versão implantada recebe eventos Meta assinados e deduplicados; use `whatsapp
 
 Testes puros locais em `supabase/functions/_shared/meta-safety.test.ts` cobrem roteamento para duas clínicas, WABA incorreta, Phone Number ID desconhecido/ambíguo, agendamento cancelado/não encontrado, resultado incerto, aceite seguido de falha de auditoria e bloqueio do envio quando a auditoria inicial falha. Eles não fazem chamadas à Meta nem ao Supabase.
 
-Em 2026-10-19, `npm test` passou com os 76 testes preexistentes mais 12 testes Meta (88 no total). `npm run typecheck`, `npm run lint`, build Preview com saída temporária, `deno check` das três Edge Functions e `deno test` dos testes Meta passaram. `git diff --check` passou sem erros de whitespace (apenas avisos de conversão LF/CRLF). A função isolada `whatsapp-review-test` v2 foi publicada; os fixes de fila/webhook e a migration por clínica continuam locais e não aplicados. O envio real de teste ainda não foi validado.
+Em 2026-10-19, `npm test` passou com os 76 testes preexistentes mais 13 testes Meta (89 no total). `npm run typecheck`, `npm run lint`, build Preview com saída temporária, `deno check` das três Edge Functions e `deno test` dos testes Meta passaram. `git diff --check` passou sem erros de whitespace (apenas avisos de conversão LF/CRLF). A função isolada `whatsapp-review-test` v3 foi publicada com verificação de estrutura do template. Os fixes de fila/webhook e a migration por clínica continuam locais e não aplicados. O envio real de teste ainda não foi validado.
 
 - serviço/preço salvos transacionalmente;
 - fila de espera impede conflito ao confirmar;

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { countTemplateBodyParameters, MetaRequestError, parseTemplateBodyParameters, performAuditedReviewSend, reviewSenderIsAllowed } from '../_shared/meta-safety.ts'
+import { countTemplateBodyParameters, MetaRequestError, parseTemplateBodyParameters, performAuditedReviewSend, reviewSenderIsAllowed, templateSupportsBodyTextSend } from '../_shared/meta-safety.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -145,6 +145,7 @@ async function verifyReviewBinding(integration: ReviewIntegration) {
   let templateStatus: string | null = null
   let expectedBodyParameterCount: number | null = null
   let configuredBodyParameterCount: number | null = null
+  let templateStructureSupported = false
 
   const reviewSenderAllowed = reviewSenderIsAllowed(integration.wabaId, integration.phoneNumberId)
   if (!reviewSenderAllowed) {
@@ -198,16 +199,20 @@ async function verifyReviewBinding(integration: ReviewIntegration) {
       integration,
       `/${encodeURIComponent(integration.wabaId)}/message_templates?name=${encodeURIComponent(integration.templateName)}&fields=name,language,status,category,components&limit=100`,
       { method: 'GET' },
-    ) as { data?: Array<{ name?: string; language?: string; status?: string; components?: Array<{ type?: string; text?: string }> }> }
+    ) as { data?: Array<{ name?: string; language?: string; status?: string; components?: Array<{ type?: string; format?: string; text?: string; buttons?: Array<{ type?: string; url?: string }> }> }> }
     const template = listing.data?.find((item) => item.name === integration.templateName && item.language === integration.templateLanguage)
     templateStatus = template?.status || null
     const bodyText = template?.components?.find((component) => component.type === 'BODY')?.text || ''
     expectedBodyParameterCount = countTemplateBodyParameters(bodyText)
-    templateVerified = Boolean(template && template.status === 'APPROVED' && expectedBodyParameterCount === configuredBodyParameterCount)
+    templateStructureSupported = templateSupportsBodyTextSend(template?.components || [])
+    templateVerified = Boolean(template && template.status === 'APPROVED' && expectedBodyParameterCount === configuredBodyParameterCount && templateStructureSupported)
     if (!template) issues.push('A Meta não encontrou o modelo com esse nome e idioma neste WABA; confira a tradução exata.')
     else if (template.status !== 'APPROVED') issues.push(`O modelo está com status ${template.status || 'desconhecido'}, não APPROVED.`)
     if (template && expectedBodyParameterCount !== configuredBodyParameterCount) {
       issues.push(`O modelo exige ${expectedBodyParameterCount} parâmetro(s) no corpo, mas foram configurados ${configuredBodyParameterCount ?? 'parâmetros inválidos'}.`)
+    }
+    if (template && !templateStructureSupported) {
+      issues.push('Este teste aceita modelo de texto simples; cabeçalho de mídia/variável e botão com URL dinâmica não são suportados.')
     }
   } catch {
     issues.push('A Meta não confirmou o modelo, idioma e parâmetros no WABA configurado.')
@@ -223,6 +228,7 @@ async function verifyReviewBinding(integration: ReviewIntegration) {
     displayPhoneNumber,
     templateVerified,
     templateStatus,
+    templateStructureSupported,
     expectedBodyParameterCount,
     configuredBodyParameterCount,
     issues,
@@ -297,6 +303,7 @@ Deno.serve(async (request) => {
           senderPhoneNumber: binding?.displayPhoneNumber || null,
           templateVerified: binding?.templateVerified === true,
           templateStatus: binding?.templateStatus || null,
+          templateStructureSupported: binding?.templateStructureSupported === true,
           expectedBodyParameterCount: binding?.expectedBodyParameterCount ?? null,
           configuredBodyParameterCount: binding?.configuredBodyParameterCount ?? null,
           verificationIssues: binding?.issues || [],

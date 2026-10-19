@@ -65,17 +65,17 @@ Leitura estática local, sem confirmar comportamento implantado:
 
 ## Revalidação de homologação — 2026-10-19
 
-- `npm test`: 88 testes passaram (76 preexistentes e 12 testes Meta puros).
+- `npm test`: 89 testes passaram (76 preexistentes e 13 testes Meta puros).
 - `npm run typecheck`, `npm run lint` e build Preview em diretório temporário passaram.
-- Deno `check` passou para `meta-whatsapp-webhook`, `whatsapp-messages` e `whatsapp-review-test`; Deno `test` passou para os 12 testes Meta.
+- Deno `check` passou para `meta-whatsapp-webhook`, `whatsapp-messages` e `whatsapp-review-test`; Deno `test` passou para os 13 testes Meta.
 - `git diff --check` passou sem erros; apenas avisos do Git sobre conversão de finais de linha.
-- Os testes automatizados não chamaram Meta nem Supabase. Nesta sessão, os MCPs consultaram os estados remotos e publicaram somente `whatsapp-review-test` v2; não leram nem alteraram Secrets. A verificação do envio ainda depende das credenciais Meta corretas e de uma tentativa manual posterior.
+- Os testes automatizados não chamaram Meta nem Supabase. Nesta sessão, os MCPs consultaram os estados remotos e publicaram somente `whatsapp-review-test` v3; não leram nem alteraram Secrets. A verificação do envio ainda depende das credenciais Meta corretas e de uma tentativa manual posterior.
 
 As correções locais não foram publicadas no webhook/fila e a migration não foi aplicada. Operações remotas continuam sujeitas a revisão e autorização.
 
 ## Próximos passos
 
-1. O Preview não é isolado do Supabase de produção. `whatsapp-review-test` v2 já está publicado e falha fechado; cadastre/valide os Secrets dedicados antes de tentar um único envio ao destinatário restrito.
+1. O Preview não é isolado do Supabase de produção. `whatsapp-review-test` v3 já está publicado e falha fechado; cadastre/valide os Secrets dedicados antes de tentar um único envio ao destinatário restrito.
 2. Em uma nova sessão Codex confiável, verificar o carregamento de `AGENTS.md` e Context7 e executar uma consulta pública de documentação.
 3. Resolver o bloqueio do instalador oficial de skills Vercel; instalar somente o conjunto web aprovado e registrar versões/lockfile.
 4. Reexecutar o lint e diagnosticar seu tempo de execução antes de usá-lo como gate.
@@ -84,8 +84,8 @@ As correções locais não foram publicadas no webhook/fila e a migration não f
 ## Implementação de homologação — 2026-10-19
 
 - Meta MCP consultado em leitura: `business_list` permaneceu vazio. O MCP lista os apps 136 e 163, mas não prova relação app–WABA–telefone. O usuário indica app 136 para o número real; vínculo não confirmado.
-- Supabase MCP consultado: projeto principal ativo; `whatsapp-messages` v29, `meta-whatsapp-webhook` v8 e `whatsapp-review-test` v2 (publicado em 2026-10-19). Secrets não são acessíveis pelo MCP.
+- Supabase MCP consultado: projeto principal ativo; `whatsapp-messages` v29, `meta-whatsapp-webhook` v8 e `whatsapp-review-test` v3 (publicado em 2026-10-19). Secrets não são acessíveis pelo MCP.
 - Código local: integração por clínica via Vault/RPC, roteamento webhook por WABA + Phone Number ID, verificação de cancelamento imediatamente antes do envio, estado de reconciliação sem retry automático e auditoria explícita do teste.
 - Preview: fluxo comum de envio oculto; painel de revisão exige validação de App ID/token/WABA/remetente via Meta e só aceita `+55 51 98660-3385`.
-- Migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` apenas local; não aplicada. `whatsapp-messages` e `meta-whatsapp-webhook` não foram publicados. `whatsapp-review-test` v2 foi publicado; nenhum Secret foi lido/alterado e nenhuma mensagem foi enviada nesta tarefa.
+- Migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` apenas local; não aplicada. `whatsapp-messages` e `meta-whatsapp-webhook` não foram publicados. `whatsapp-review-test` v3 foi publicado; nenhum Secret foi lido/alterado e nenhuma mensagem foi enviada nesta tarefa.
 - `npm test` incluiu os testes puros novos. Typecheck/build/lint e validação Deno são registrados após execução. A CLI Supabase não está instalada; tentativa `npx supabase@latest --version` ficou sem saída e foi cancelada, então o arquivo migration foi criado diretamente no repositório e não aplicado.

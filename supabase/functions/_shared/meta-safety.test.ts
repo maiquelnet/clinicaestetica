@@ -7,6 +7,7 @@ import {
   performAuditedReviewSend,
   queueFailureDisposition,
   reviewSenderIsAllowed,
+  templateSupportsBodyTextSend,
   resolveClinicIntegration,
   MetaRequestError,
   type ClinicMetaIntegration,
@@ -49,6 +50,13 @@ test('review sender cannot be the known real clinic WABA or phone number', () =>
   assert.equal(reviewSenderIsAllowed('test-waba', 'test-phone'), true)
   assert.equal(reviewSenderIsAllowed('5523215167904668', 'test-phone'), false)
   assert.equal(reviewSenderIsAllowed('test-waba', '1287807847751041'), false)
+})
+
+test('review text sender rejects media or variable headers and dynamic URL buttons', () => {
+  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'TEXT', text: 'Confirmação' }]), true)
+  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'IMAGE' }]), false)
+  assert.equal(templateSupportsBodyTextSend([{ type: 'HEADER', format: 'TEXT', text: 'Olá {{1}}' }]), false)
+  assert.equal(templateSupportsBodyTextSend([{ type: 'BUTTONS', buttons: [{ type: 'URL', url: 'https://example.com/{{1}}' }] }]), false)
 })
 
 test('accepted Meta send followed by audit failure is accepted but requires reconciliation', async () => {
