@@ -1,12 +1,12 @@
 # Retomada do projeto
 
-Atualizado em: 2026-10-08.
+Atualizado em: 2026-11-17. Estado Meta/Supabase/Vercel/GitHub revalidado por MCP; valores de Secrets não foram consultados.
 
 Este é o ponto de partida para reiniciar ou transferir o desenvolvimento da Estética Schneider. Ele reúne os identificadores, o estado real local/remoto, os nomes das configurações e a ordem segura para voltar a trabalhar.
 
 ## Estado atual em uma frase
 
-O checkout e o Supabase remoto usam a WhatsApp Cloud API oficial da Meta. O envio de teste e o callback foram publicados e validados. A pendência atual é concluir o App Review para liberar as permissões avançadas; YCloud permanece somente como legado/contingência.
+O Supabase remoto está ativo no plano Free; `whatsapp-messages` v41 e `whatsapp-onboarding` v1 foram publicados após as migrations de integração por clínica. O Vercel Preview do commit `ea50179` está READY e o PR `#13` está aberto. A Meta ainda precisa confirmar a elegibilidade/App Review e os Secrets necessários para concluir um onboarding real.
 
 Nenhuma migration, Secret ou Edge Function remota deve ser removida durante o reinício. O YCloud permanece como contingência até a validação completa da Meta.
 
@@ -72,11 +72,11 @@ O conjunto de testes validado em 2026-09-12 terminou com 76 testes aprovados. De
 
 ```text
 VITE_APP_ENV=development
-VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
+VITE_SUPABASE_URL=<URL_DO_SUPABASE_DE_DESENVOLVIMENTO>
 VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DO_SUPABASE>
 ```
 
-O arquivo `app/.env.local` não deve ser commitado. Após mudar qualquer `VITE_*`, é necessário executar um novo build/deploy.
+O checkout documenta `xucttzuthznqwlhushmg` como produção e não confirma staging. Não use essa URL para desenvolvimento/testes; confirme um projeto separado antes de conectar. O arquivo `app/.env.local` não deve ser commitado. Após mudar qualquer `VITE_*`, é necessário executar um novo build/deploy.
 
 4. Para testar as Edge Functions localmente, copie `supabase/functions/.env.example` para `supabase/functions/.env` e preencha os valores reais. Esse arquivo local é ignorado pelo Git.
 
@@ -92,14 +92,16 @@ Registre apenas os nomes abaixo na documentação. Os valores devem ser recupera
 | `VITE_SUPABASE_URL` | URL pública do projeto Supabase. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável/default do Supabase; protegida por RLS. |
 
-### Supabase Edge Functions
+### Supabase Edge Functions — configuração global remota histórica
+
+Os nomes abaixo descrevem o fluxo remoto legado, visto em snapshot de 2026-10-19; valores de Secrets não foram consultados. Não os substitua pela configuração local por clínica sem aplicar e validar a migration correspondente.
 
 | Nome | Obrigatório para | Origem |
 | --- | --- | --- |
 | `WHATSAPP_ACCESS_TOKEN` | Envio e consultas Meta | Token de System User da Meta. |
 | `WHATSAPP_PHONE_NUMBER_ID` | Número remetente | WhatsApp Manager/Meta. |
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | Consulta de templates e validação do WABA | WhatsApp Manager/Meta. |
-| `WHATSAPP_GRAPH_VERSION` | Versão da Graph API | Usar `v23.0` até revisão planejada. |
+| `WHATSAPP_GRAPH_VERSION` | Versão da Graph API | Valor remoto não foi lido; confirme no Supabase e na Meta antes de mudar. |
 | `WHATSAPP_CRON_SECRET` | Processamento automático da fila | Segredo aleatório compartilhado com o scheduler. |
 | `META_APP_SECRET` | Assinatura `X-Hub-Signature-256` | App Secret do app Meta. |
 | `META_WEBHOOK_VERIFY_TOKEN` | Verificação inicial do callback | Token escolhido pela equipe e repetido no cadastro da Meta. |
@@ -133,11 +135,26 @@ Não troque `GOOGLE_TOKEN_ENCRYPTION_KEY` sem aceitar a necessidade de reconecta
 
 ## Configuração Meta necessária
 
-Antes de publicar a versão direta, confirme no Meta for Developers/WhatsApp Manager:
+O usuário informou em 2026-10-22 que o app `1369639224651650` (“Thaís Schneider Estética Whats”) foi excluído. O único app retornado pela consulta atual do Meta MCP e o único que o usuário informa estar disponível é `1637078911202031` (“API Estética Schneider Auto”); use-o como referência para a análise atual. A ausência do app 136 na lista do MCP não prova exclusão por si só, pois o MCP só lista apps concedidos, mas o usuário pediu que ele deixe de ser tratado como opção.
+
+Snapshot Meta MCP de 2026-10-22: app 163 em `dev_mode` (`is_live=false`), papel `admin`, caso de uso WhatsApp; categoria `BUSINESS`, ícone e URL de privacidade presentes; contato não verificado e URLs de termos/exclusão apontam para `facebook.com`. A lista de negócios veio vazia, com `owning_business_id=null` e `owning_business_granted=false`; isso indica falta de visibilidade do portfólio nesta autorização MCP, não prova de ausência de propriedade empresarial. O vínculo app–WABA–telefone real continua sem confirmação.
+
+O estado de revisão retornado pelo MCP é contraditório: `status` diz `UNSUBMITTED` e `is_approved=true`; `history` não lista envios; `requirements` bloqueia novo envio dizendo que há outro em análise e marca etapas incompletas; `privileges` marca as duas permissões WhatsApp como `REJECTED` e `in_current_submission=true`. Não assumir aprovação, rejeição definitiva ou análise pendente; conferir a tela do App Review antes de enviar.
+
+O usuário confirmou em 2026-10-22 que o envio pelo Sandbox chegou ao destinatário. O teste usa ativos de teste vinculados ao fluxo do app 163 e não comprova que o número real esteja vinculado a esse app nem que a coexistência esteja validada.
+
+Dados informados pelo usuário/telas, não confirmados pelo MCP:
+
+- Portfólio: `958284598092300`;
+- WABA real: `5523215167904668`;
+- número real: `+55 51 8591-0322`;
+- Phone Number ID real consolidado pelo usuário em 2026-10-24: `1813419303167468` (substitui o ID anterior `1287807847751041` neste registro; não confirmado pelo MCP).
+
+Antes de publicar ou trocar credenciais, confirme no Meta for Developers/WhatsApp Manager:
 
 - App da Meta com o produto WhatsApp habilitado.
 - WABA e número remetente pertencentes ou autorizados pela Estética Schneider.
-- `WHATSAPP_BUSINESS_ACCOUNT_ID` e `WHATSAPP_PHONE_NUMBER_ID` correspondentes ao mesmo ativo.
+- App ID, WABA, Phone Number ID, token e template pertencentes à mesma integração.
 - System User com token válido e as permissões `whatsapp_business_messaging` e, para administrar/consultar modelos, `whatsapp_business_management`.
 - Templates `confirmacao_agendamento_v1` e `lembrete_agendamento_v1` em `pt_BR` com status `APPROVED`.
 - Callback da Meta:
@@ -146,7 +163,7 @@ Antes de publicar a versão direta, confirme no Meta for Developers/WhatsApp Man
 https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook
 ```
 
-No cadastro do callback, use o mesmo `META_WEBHOOK_VERIFY_TOKEN` configurado no Supabase e assine o campo `messages`. Para produção, use um número controlado pela clínica; o número pessoal pode ser usado apenas como destinatário permitido de homologação.
+O webhook remoto continua usando o Secret global `META_WEBHOOK_VERIFY_TOKEN`; as RPCs por clínica e o Vault já foram publicados para o fluxo novo, mas o webhook v19 não foi substituído nesta etapa. Não altere a configuração do callback remoto sem revisão específica.
 
 O contrato de envio usado pelo projeto é `POST /{PHONE_NUMBER_ID}/messages` na Graph API da Meta, com template e parâmetros de corpo. Consulte a [coleção oficial da Meta para WhatsApp Business Platform](https://www.postman.com/meta/whatsapp-business-platform/folder/o48mro7/messages) quando precisar confirmar o formato vigente.
 
@@ -156,13 +173,17 @@ Arquivos relevantes:
 
 | Arquivo | Função |
 | --- | --- |
-| `supabase/functions/whatsapp-messages/index.ts` | Status, validação de template, envio de teste e processamento da fila pela Meta. |
-| `supabase/functions/meta-whatsapp-webhook/index.ts` | Desafio GET, validação HMAC do POST e atualização dos estados Meta. |
+| `supabase/functions/whatsapp-messages/index.ts` | Código publicado v41: retry limitado de leituras PostgREST, credenciais por clínica, verificação de cancelamento e reconciliação terminal. |
+| `supabase/functions/meta-whatsapp-webhook/index.ts` | Código local não publicado nesta etapa; remoto continua v19. |
+| `supabase/functions/whatsapp-onboarding/index.ts` | Código publicado v1: troca server-side do Embedded Signup, validação WABA/Phone Number ID e gravação no Vault. |
+| `supabase/functions/whatsapp-review-test/index.ts` | Código implantado v4: confirmação de app/token/permissões/WABA/remetente/template/parâmetros/estrutura suportada, destinatário fixo e auditoria antes/depois; ainda sem Secrets confirmados. |
 | `supabase/config.toml` | Mantém `verify_jwt = false` no webhook público; a função faz autenticação própria por token/assinatura. |
 | `supabase/migrations/20260912090000_meta_whatsapp_cloud_direct.sql` | Colunas, tabelas, índices e RPC de idempotência dos eventos Meta. |
+| `supabase/migrations/20261117001906_meta_clinic_integrations_and_reconciliation.sql` | Configuração por clínica no schema `private`, RPCs de Secrets Vault e estado `reconciliacao`; aplicada remotamente com o mesmo registro. |
+| `supabase/migrations/20261117001916_meta_whatsapp_embedded_signup.sql` | RPCs e colunas do Embedded Signup; aplicada remotamente com o mesmo registro. |
 | `supabase/functions/.env.example` | Lista local dos nomes de configuração sem valores secretos. |
 
-A migration cria ou ajusta, entre outros, `public.whatsapp_testes`, `public.whatsapp_webhook_events` e `public.record_meta_webhook_event`. As tabelas permanecem com RLS habilitado e a RPC de webhook é restrita ao papel de serviço.
+A migration de 202609 cria ou ajusta `public.whatsapp_testes`, `public.whatsapp_webhook_events` e `public.record_meta_webhook_event`. As migrations de 202611 foram aplicadas ao remoto. O Preview compartilha o Supabase de produção; o Sandbox grava uma auditoria ali.
 
 ## Estado e próximos passos da Meta direta
 
@@ -183,7 +204,7 @@ supabase functions --help
 6. Confirme que `whatsapp_function_url` ainda aponta para `whatsapp-messages` e que o job do Vault permanece ativo.
 7. Revalide o callback no Meta for Developers se o App ID, URL ou token tiverem mudado.
 8. Faça a homologação abaixo com um número autorizado.
-9. Conclua o App Review do app `1637078911202031`; consulte o [guia Meta](./meta-whatsapp-app-review.md).
+9. Use `1637078911202031` como único app disponível para a análise atual. Antes de associar credenciais de produção ou afirmar coexistência, confirme na Meta se ele está vinculado ao WABA real `5523215167904668` e ao Phone Number ID `1813419303167468`. Consulte o [guia Meta](./meta-whatsapp-app-review.md).
 10. Só depois de uma janela estável remova YCloud, seus Secrets e seus arquivos legados.
 
 Ao usar uma versão diferente da CLI, consulte o `--help` dessa instalação; a sintaxe e as opções podem mudar.
@@ -242,11 +263,12 @@ Após a rotação de Secrets das Edge Functions não é necessário rebuild da V
 
 ## Pendências conhecidas
 
-- O App Review do app Meta ainda está `UNSUBMITTED`; `whatsapp_business_messaging` e `whatsapp_business_management` ainda não estão live.
-- O screencast de mensagens e as etapas de API precheck/Data Use Checkup ainda precisam ser concluídos antes do envio da análise.
+- App 136 (`Thaís Schneider Estética Whats`): o usuário informa que foi excluído; não usar. O Meta MCP atual só lista o app 163.
+- O estado de revisão do app 163 está inconsistente entre operações do MCP. Confirmar a tela App Review; não declarar aprovação nem envio pendente com base apenas no MCP.
+- O usuário confirmou o envio e recebimento pelo Sandbox em 2026-10-22. Gravar o screencast e conferir as etapas de API precheck/Data Use Checkup na tela Meta antes de enviar a análise.
 - `whatsapp_business_management` só deve permanecer na solicitação se o sistema realmente demonstrar gerenciamento de modelos/ativos via API.
 - Templates e ativos Meta de produção devem ser confirmados individualmente antes de mensagens automáticas reais.
-- O desenho atual usa credenciais globais de uma única clínica; ainda não é multi-tenant para várias WABAs.
+- A integração Meta por clínica e os RPCs do Embedded Signup foram aplicados remotamente; os Secrets globais permanecem inalterados e os Secrets Meta necessários ainda precisam ser confirmados sem expor valores.
 - Não há, neste fluxo, importação de mensagens recebidas/histórico de conversas nem integração de Instagram/Facebook Ads.
 - Advisors Supabase ainda apontam avisos de segurança/performance preexistentes; revisar em tarefa própria antes de ampliar o escopo.
 

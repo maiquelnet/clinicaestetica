@@ -12,6 +12,9 @@ function resolveAppEnvironment(): AppEnvironment {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const metaAppId = String(import.meta.env.VITE_META_APP_ID || '').trim()
+const metaEmbeddedSignupConfigId = String(import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID || '').trim()
+const metaGraphVersion = String(import.meta.env.VITE_META_GRAPH_VERSION || 'v23.0').trim()
 const environment = resolveAppEnvironment()
 
 if (!supabaseUrl || !supabasePublishableKey) {
@@ -28,4 +31,7 @@ export const appEnv = {
   mode: import.meta.env.MODE,
   supabasePublishableKey,
   supabaseUrl,
+  metaAppId,
+  metaEmbeddedSignupConfigId,
+  metaGraphVersion,
 } as const

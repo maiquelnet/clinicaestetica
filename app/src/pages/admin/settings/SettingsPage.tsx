@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, MessageCircle, RefreshCw, Save, Send } from 'lucide-react'
+import { CalendarDays, Link2, MessageCircle, RefreshCw, Save, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/PageHeader'
 import { useClinic } from '../../../contexts/useClinic'
 import { supabase } from '../../../lib/supabase'
+import { appEnv } from '../../../lib/env'
 import { connectGoogleCalendar, getGoogleCalendarStatus, requestGoogleCalendarSync } from '../../../lib/google-calendar'
 import { getWhatsAppStatus, sendWhatsAppTest } from '../../../lib/whatsapp'
+import { getWhatsAppReviewStatus, sendWhatsAppReviewTest } from '../../../lib/whatsapp-review'
+import { completeWhatsAppCoexistenceSignup, getWhatsAppOnboardingStatus, launchWhatsAppCoexistenceSignup, preloadWhatsAppCoexistenceSignup } from '../../../lib/whatsapp-onboarding'
 import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
@@ -26,13 +29,44 @@ export function SettingsPage() {
   })
   const whatsappStatus = useQuery({
     queryKey: ['whatsapp-status', activeClinicId],
-    enabled: Boolean(activeClinicId),
+    enabled: Boolean(activeClinicId) && appEnv.isProduction,
     queryFn: () => getWhatsAppStatus(activeClinicId!),
     refetchInterval: 60_000,
   })
   const [whatsappTestRecipient, setWhatsAppTestRecipient] = useState('')
   const testWhatsApp = useMutation({
     mutationFn: () => sendWhatsAppTest(activeClinicId!, whatsappTestRecipient),
+  })
+  const whatsappOnboardingStatus = useQuery({
+    queryKey: ['whatsapp-onboarding-status', activeClinicId],
+    enabled: Boolean(activeClinicId) && appEnv.isProduction,
+    queryFn: () => getWhatsAppOnboardingStatus(activeClinicId!),
+    refetchInterval: 60_000,
+  })
+  const connectWhatsApp = useMutation({
+    mutationFn: async () => {
+      const signup = await launchWhatsAppCoexistenceSignup()
+      return completeWhatsAppCoexistenceSignup(activeClinicId!, signup)
+    },
+    onSuccess: () => {
+      void whatsappOnboardingStatus.refetch()
+      void whatsappStatus.refetch()
+    },
+  })
+  useEffect(() => {
+    if (!appEnv.isProduction || !appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId) return
+    void preloadWhatsAppCoexistenceSignup().catch(() => undefined)
+  }, [])
+  const reviewStatus = useQuery({
+    queryKey: ['whatsapp-review-status', activeClinicId],
+    enabled: Boolean(activeClinicId) && appEnv.isPreview,
+    queryFn: () => getWhatsAppReviewStatus(activeClinicId!),
+    refetchInterval: 300_000,
+  })
+  const reviewTestRecipient = '+55 51 98660-3385'
+  const reviewTest = useMutation({
+    mutationFn: () => sendWhatsAppReviewTest(activeClinicId!, reviewTestRecipient),
+    onSuccess: () => reviewStatus.refetch(),
   })
   const [draft, setDraft] = useState(() => ({
     nome: activeClinic?.nome || '',
@@ -113,7 +147,7 @@ export function SettingsPage() {
         </div>
         {connectCalendar.error || syncCalendar.error || calendarStatus.error ? <div className="form-alert">{(connectCalendar.error || syncCalendar.error || calendarStatus.error)?.message}</div> : null}
       </section>
-      <section className="panel form-panel">
+      {appEnv.isProduction ? <section className="panel form-panel">
         <PageHeader
           eyebrow="Integracao"
           title="WhatsApp Cloud API"
@@ -172,7 +206,7 @@ export function SettingsPage() {
           <button
             className="primary-button"
             type="button"
-            disabled={!activeClinicId || !whatsappStatus.data?.sendReady || !whatsappTestRecipient.trim() || testWhatsApp.isPending}
+            disabled={!appEnv.isProduction || !activeClinicId || !whatsappStatus.data?.sendReady || !whatsappTestRecipient.trim() || testWhatsApp.isPending}
             onClick={() => testWhatsApp.mutate()}
           >
             {testWhatsApp.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
@@ -200,7 +234,131 @@ export function SettingsPage() {
             ))}
           </div>
         ) : null}
-      </section>
+      </section> : null}
+      {appEnv.isProduction ? <section className="panel form-panel">
+        <PageHeader
+          eyebrow="Integração"
+          title="Coexistência com o WhatsApp Business"
+          description="Conecte o mesmo número usado no app WhatsApp Business à Cloud API, mantendo o uso no celular."
+        />
+        <div className="form-alert">
+          O fluxo só deve ser concluído pelo proprietário ou administrador da clínica. A Meta precisa mostrar a opção de conectar um número já usado no WhatsApp Business; não escolha o fluxo de migração de um número novo.
+        </div>
+        {whatsappOnboardingStatus.isLoading ? <p>Verificando conexão de coexistência...</p> : null}
+        {whatsappOnboardingStatus.data ? (
+          <div className="record-meta">
+            <span className={`badge ${whatsappOnboardingStatus.data.configured && whatsappOnboardingStatus.data.integration?.coexistenceEnabled ? 'success' : 'warning'}`}>
+              {whatsappOnboardingStatus.data.configured && whatsappOnboardingStatus.data.integration?.coexistenceEnabled ? 'Conectado em coexistência' : 'Ainda não conectado'}
+            </span>
+            {whatsappOnboardingStatus.data.integration ? <>
+              <span>Número: {whatsappOnboardingStatus.data.integration.displayPhoneNumber || whatsappOnboardingStatus.data.integration.phoneNumberId}</span>
+              <span>WABA: {whatsappOnboardingStatus.data.integration.wabaId}</span>
+              <span>App: {whatsappOnboardingStatus.data.integration.appId}</span>
+              {whatsappOnboardingStatus.data.integration.accessTokenExpiresAt ? <span>Token válido até {new Date(whatsappOnboardingStatus.data.integration.accessTokenExpiresAt).toLocaleString('pt-BR')}</span> : null}
+            </> : null}
+          </div>
+        ) : null}
+        {!appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId ? (
+          <div className="form-alert">
+            Configure as variáveis públicas VITE_META_APP_ID e VITE_META_EMBEDDED_SIGNUP_CONFIG_ID no build do site antes de iniciar o fluxo.
+          </div>
+        ) : null}
+        {whatsappOnboardingStatus.data?.missingServerSecrets.length ? (
+          <div className="form-alert">
+            O backend ainda precisa dos Secrets: {whatsappOnboardingStatus.data.missingServerSecrets.join(', ')}. Os valores não devem ser colocados no site.
+          </div>
+        ) : null}
+        <div className="form-actions">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={!activeClinicId || !appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId || !whatsappOnboardingStatus.data?.serverConfigured || connectWhatsApp.isPending}
+            onClick={() => connectWhatsApp.mutate()}
+          >
+            {connectWhatsApp.isPending ? <RefreshCw size={16} /> : <Link2 size={16} />}
+            {connectWhatsApp.isPending ? 'Conectando...' : whatsappOnboardingStatus.data?.configured ? 'Reconectar coexistência' : 'Conectar WhatsApp Business'}
+          </button>
+          <button className="ghost-button" type="button" onClick={() => void whatsappOnboardingStatus.refetch()}>
+            <MessageCircle size={16} /> Atualizar conexão
+          </button>
+        </div>
+        <small>
+          Depois do vínculo, mantenha o app WhatsApp Business atualizado e confirme o webhook no WhatsApp Manager. Grupos, chamadas e alguns recursos do app não são sincronizados pela Cloud API; desconectar deve ser feito pelo próprio app WhatsApp Business.
+        </small>
+        {connectWhatsApp.isSuccess ? <div className="form-success">Número conectado. Antes de ativar automações, confirme um evento recebido no webhook e valide um modelo aprovado pela Meta.</div> : null}
+        {connectWhatsApp.error || whatsappOnboardingStatus.error ? <div className="form-alert">{(connectWhatsApp.error || whatsappOnboardingStatus.error)?.message}</div> : null}
+      </section> : null}
+      {appEnv.isPreview ? (
+        <section className="panel form-panel">
+          <PageHeader
+            eyebrow="Homologacao Meta"
+            title="Sandbox do App Review"
+            description="O Preview usa credenciais dedicadas ao teste e confirma app, permissões, WABA, remetente, modelo, idioma e parâmetros com a Meta antes do envio."
+          />
+          <div className="form-alert">
+            O Preview ainda usa o projeto Supabase compartilhado. O envio fica restrito ao remetente de teste verificado e ao destinatário +55 51 98660-3385; nunca use aqui o número real da clínica.
+          </div>
+          {reviewStatus.isLoading ? <p>Verificando as credenciais de homologação...</p> : null}
+          {reviewStatus.data ? (
+            <div className="record-meta">
+              <span className={`badge ${reviewStatus.data.sendReady ? 'success' : 'warning'}`}>
+                {reviewStatus.data.sendReady ? 'Vínculo verificado e pronto' : 'Verificação/configuração pendente'}
+              </span>
+              <span>App informado: {reviewStatus.data.integration.appId || 'pendente'}</span>
+              <span>WABA de teste: {reviewStatus.data.integration.wabaId || 'pendente'}</span>
+              <span>Remetente: {reviewStatus.data.integration.senderPhoneNumber || reviewStatus.data.integration.phoneNumberId || 'pendente'}</span>
+              <span>Modelo: {reviewStatus.data.integration.templateName || 'pendente'} ({reviewStatus.data.integration.templateLanguage || 'idioma pendente'})</span>
+              <span>Modelo na Meta: {reviewStatus.data.integration.templateVerified ? `aprovado; ${reviewStatus.data.integration.expectedBodyParameterCount} parâmetro(s)` : reviewStatus.data.integration.templateStatus || 'não confirmado'}</span>
+            </div>
+          ) : null}
+          {reviewStatus.data?.missingSecrets.length ? (
+            <div className="form-alert">
+              Cadastre no Supabase: {reviewStatus.data.missingSecrets.join(', ')}. Nunca informe esses valores no frontend.
+            </div>
+          ) : null}
+          {reviewStatus.data?.integration.verificationIssues.length ? (
+            <div className="form-alert" role="status">
+              A Meta ainda não confirmou a configuração: {reviewStatus.data.integration.verificationIssues.join(' ')}
+            </div>
+          ) : null}
+          {reviewStatus.data?.manualCheckRequired ? (
+            <div className="form-alert" role="alert">
+              O último teste pode ter sido aceito sem confirmação completa. Não reenvie. Confira o WhatsApp e o registro {reviewStatus.data.lastTest?.id || ''} antes de liberar outra tentativa.
+            </div>
+          ) : null}
+          <label>
+            Destinatário autorizado para o App Review
+            <input
+              type="tel"
+              value={reviewTestRecipient}
+              readOnly
+            />
+            <small>Este número já recebeu o teste direto da Meta. O backend rejeita qualquer outro destinatário.</small>
+          </label>
+          <div className="form-actions">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={!activeClinicId || !reviewStatus.data?.sendReady || reviewStatus.data.manualCheckRequired || reviewTest.isPending}
+              onClick={() => reviewTest.mutate()}
+            >
+              {reviewTest.isPending ? <RefreshCw size={16} /> : <Send size={16} />}
+              {reviewTest.isPending ? 'Enviando...' : 'Enviar teste da Meta'}
+            </button>
+            <button className="ghost-button" type="button" onClick={() => void reviewStatus.refetch()}>
+              <MessageCircle size={16} /> Atualizar sandbox
+            </button>
+          </div>
+          {reviewTest.isSuccess ? (
+            <div className={reviewTest.data.outcome === 'accepted' && reviewTest.data.auditPersisted && reviewTest.data.messageId ? 'form-success' : 'form-alert'} role="status">
+              {reviewTest.data.outcome === 'accepted' && reviewTest.data.auditPersisted && reviewTest.data.messageId
+                ? `A Meta aceitou a mensagem e a auditoria foi gravada. WAMID: ${reviewTest.data.messageId}. Isso não confirma a entrega.`
+                : `${reviewTest.data.detail} Resultado: ${reviewTest.data.outcome}; auditoria ${reviewTest.data.auditPersisted ? 'gravada' : 'não confirmada'}. Não tente novamente até reconciliar o teste.`}
+            </div>
+          ) : null}
+          {reviewTest.error || reviewStatus.error ? <div className="form-alert">{(reviewTest.error || reviewStatus.error)?.message}</div> : null}
+        </section>
+      ) : null}
     </main>
   )
 }

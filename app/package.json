@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node --test src/lib/treatment-schedule.test.ts src/lib/landing.test.ts src/lib/schedule-blocks.test.ts src/lib/availability.test.ts src/lib/capacity.test.ts src/lib/opportunities.test.ts src/lib/secretaria.test.ts",
+    "test": "node --test src/lib/treatment-schedule.test.ts src/lib/landing.test.ts src/lib/schedule-blocks.test.ts src/lib/availability.test.ts src/lib/capacity.test.ts src/lib/opportunities.test.ts src/lib/secretaria.test.ts ../supabase/functions/_shared/meta-safety.test.ts ../supabase/functions/_shared/pgrst-future-jwt-retry.test.ts",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview"

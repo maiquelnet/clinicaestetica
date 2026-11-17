@@ -1,14 +1,14 @@
 # Guia de Instalação e Desenvolvimento
 
-Atualizado em: 2026-08-11.
+Atualizado em: 2026-10-17.
 
 ## Pré-requisitos
 
 - Git;
 - Node.js compatível com Vite 8 e npm;
 - acesso ao repositório GitHub `maiquelnet/clinicaestetica`;
-- acesso ao projeto Supabase `xucttzuthznqwlhushmg`;
-- acesso à equipe/projeto Vercel para publicar;
+- acesso a um projeto Supabase de desenvolvimento/homologação, se a tarefa precisar de backend;
+- acesso à equipe/projeto Vercel somente quando a tarefa envolver publicação;
 - Deno ou Supabase CLI para validar Edge Functions;
 - acesso Google Cloud/Meta apenas quando a tarefa envolver essas integrações.
 
@@ -24,11 +24,11 @@ Crie `app/.env.local` a partir de `app/.env.example`:
 
 ```text
 VITE_APP_ENV=development
-VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
+VITE_SUPABASE_URL=<URL_DO_SUPABASE_DE_DESENVOLVIMENTO>
 VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
 ```
 
-A publishable key é encontrada em Supabase > Settings > API Keys. Ela pode estar no frontend porque o acesso efetivo é protegido por Auth/RLS. Nunca use secret key ou service role nesse arquivo.
+A documentação deste checkout identifica `xucttzuthznqwlhushmg` como produção e não confirma um projeto separado de staging. **Não copie a URL de produção para desenvolvimento/testes.** Confirme um backend de desenvolvimento autorizado antes de conectar a aplicação; sem ele, limite-se a verificações que não façam chamadas nem gravações remotas. A publishable key é encontrada em Supabase > Settings > API Keys. Ela pode estar no frontend porque o acesso efetivo é protegido por Auth/RLS. Nunca use secret key ou service role nesse arquivo.
 
 Executar:
 
@@ -41,6 +41,7 @@ Validação obrigatória antes de commit:
 ```bash
 npm run typecheck
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -48,8 +49,8 @@ npm run build
 
 | Ambiente | `VITE_APP_ENV` | Observação |
 | --- | --- | --- |
-| Local | `development` | Normalmente usa `app/.env.local`. |
-| Vercel Preview | `preview` | Idealmente deve apontar para staging. |
+| Local | `development` | Use backend dedicado de desenvolvimento; não use produção para testes. |
+| Vercel Preview | `preview` | Só é isolado se suas variáveis e Edge Functions apontarem para um backend de homologação. Isso ainda precisa ser confirmado. |
 | Vercel Production | `production` | Usa o Supabase de produção documentado. |
 
 Todos os nomes iniciados por `VITE_` são incorporados ao bundle e devem ser considerados públicos.
@@ -66,10 +67,10 @@ Output: app/dist
 
 Passos:
 
-1. Confirme que o projeto Vercel está ligado ao repositório e que `main` é a Production Branch.
-2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes corretos.
-3. Faça push da branch para obter Preview.
-4. Depois de revisar, integre à `main` para gerar Production.
+1. Confirme que o projeto Vercel está ligado ao repositório, usa a raiz do repositório como Root Directory e que `main` é a Production Branch.
+2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_META_APP_ID`, `VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` e `VITE_META_GRAPH_VERSION` nos ambientes corretos. O build falha se `VITE_APP_ENV` não corresponder ao ambiente Vercel.
+3. Neste checkout, Preview e Production usam o mesmo Supabase de produção; não trate Preview como staging. Ative Deployment Protection e faça Preview apenas para o Sandbox do App Review até existir um backend isolado.
+4. Faça push da branch de homologação para obter Preview, valide o check/URL da Vercel e só promova depois dos checks de qualidade e da publicação coordenada das migrations/Edge Functions necessárias.
 5. Teste `https://www.esteticaschneider.com.br`, `/login`, `/dashboard` e `/cadastro-cliente`.
 
 Se usar CLI:
@@ -119,6 +120,7 @@ Funções de produção:
 google-calendar-sync
 google-reviews
 whatsapp-messages
+whatsapp-onboarding
 ```
 
 Implantação:
@@ -127,6 +129,7 @@ Implantação:
 supabase functions deploy google-calendar-sync --no-verify-jwt
 supabase functions deploy google-reviews --no-verify-jwt
 supabase functions deploy whatsapp-messages --no-verify-jwt
+supabase functions deploy whatsapp-onboarding --no-verify-jwt
 ```
 
 O uso de `--no-verify-jwt` é intencional apenas porque cada função possui seu próprio modelo de acesso. Revise o código antes de qualquer redeploy.
@@ -163,6 +166,7 @@ As instruções específicas estão em:
 
 - [Google Agenda](./google-calendar.md)
 - [WhatsApp Cloud API](./whatsapp-cloud.md)
+- [WhatsApp coexistência](./whatsapp-coexistencia.md)
 - [Operação e plataformas](./operacao-plataformas.md)
 
 ## Docker

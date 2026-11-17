@@ -245,6 +245,30 @@ Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates pe
 - o processamento lê no máximo 500 agendamentos e 2.000 logs/dispensas por execução;
 - mensagens recebidas agora são persistidas em `whatsapp_conversas` e `whatsapp_mensagens`; mídia é registrada como tipo e payload, sem download do arquivo nesta fase.
 
+## Edge Function `whatsapp-onboarding`
+
+URL do projeto Supabase:
+
+```text
+https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-onboarding
+```
+
+Exige JWT e papel `proprietario`/`administrador` da clínica. O action `status` retorna apenas IDs e estado não sensível. O action `complete` recebe o código temporário do Embedded Signup e os dados de sessão, troca o código com a Meta, confirma que o Phone Number ID pertence à WABA, assina o app aos webhooks e grava o token no Vault por RPC. A função não registra/desregistra o número por uma chamada genérica, para preservar o fluxo de coexistência.
+
+```json
+{
+  "action": "complete",
+  "clinicId": "<uuid>",
+  "code": "<codigo_temporario>",
+  "wabaId": "<waba_id>",
+  "phoneNumberId": "<phone_number_id>",
+  "sessionInfo": { "waba_id": "<waba_id>", "phone_number_id": "<phone_number_id>" },
+  "sessionEvent": "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+}
+```
+
+O frontend nunca envia App Secret ou token de acesso. `META_APP_ID`, `META_APP_SECRET` e `META_WEBHOOK_VERIFY_TOKEN` são Secrets da Edge Function; `VITE_META_APP_ID` e `VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` são apenas identificadores públicos do build.
+
 ## OpenAPI
 
 O Supabase expõe o contrato OpenAPI do Data API, mas não há snapshot `openapi.json` versionado. Futuramente, exporte-o depois de estabilizar grants/RLS para auxiliar geração de tipos e revisão de endpoints.

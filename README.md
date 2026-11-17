@@ -1,75 +1,49 @@
 # Estética Schneider
 
-Sistema web de atendimento e gestão para a Estética Schneider.
+Sistema web de atendimento e gestão da Estética Schneider, com site público e área administrativa.
 
-Produção: https://www.esteticaschneider.com.br
+Produção: <https://www.esteticaschneider.com.br>
 
-Backend: Supabase `xucttzuthznqwlhushmg` (`sa-east-1`)
+## Stack e estrutura
 
-Deploy web: Vercel, branch `main`
+- `app/`: SPA em Vite, React e TypeScript.
+- `supabase/`: fonte canônica de migrations e Edge Functions.
+- `doc/`: documentação técnica, operacional e funcional.
+- Vercel: build e hospedagem do frontend.
+- Supabase: Auth, PostgreSQL, RLS, RPCs e Edge Functions.
 
-## Tecnologia
+Os módulos e limites do produto estão em [PRODUCT.md](./PRODUCT.md); o mapa técnico está em [doc/arquitetura.md](./doc/arquitetura.md).
 
-- Vite 8, React 19 e TypeScript 6;
-- React Router, TanStack React Query, React Hook Form e Zod;
-- Supabase Auth, PostgreSQL 17, PostgREST, RLS, RPCs e Edge Functions Deno;
-- Google Calendar API, Google Places API e Meta WhatsApp Cloud API;
-- Vercel para build e hospedagem da SPA.
+## Desenvolvimento local
 
-## Estrutura
-
-- `app/`: frontend moderno e fontes usadas em deploys recentes;
-- `supabase/`: única fonte canônica de migrations e Edge Functions;
-- `doc/`: documentação técnica, operacional e funcional;
-- `vercel.json`: build e rewrite de rotas da Vercel.
-
-## Desenvolvimento
-
-```bash
+```powershell
 cd app
 npm ci
 npm run dev
 ```
 
-Crie `app/.env.local`:
+Configure `app/.env.local` com URL e chave publicável de um ambiente autorizado. Não há um Supabase de staging confirmado. A Preview da Vercel usa o projeto Supabase de produção e não isola dados/Secrets/Functions; durante a validação Meta, use somente o painel isolado `Sandbox do App Review`, que tem destinatário e remetente de teste restritos. Não use os fluxos comuns de envio em Preview ou desenvolvimento. Valores `VITE_*` vão para o navegador: nunca coloque neles `service_role`, secret keys ou tokens de integração.
 
-```text
-VITE_APP_ENV=development
-VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
-```
+## Verificações
 
-Nunca use secret key, service role ou tokens de integrações em variáveis `VITE_*`.
-
-## Validação
-
-```bash
+```powershell
 cd app
 npm run typecheck
 npm run lint
+npm run test
 npm run build
 ```
 
-## Vercel
+O que cada comando cobre e quais validações ainda são manuais está em [doc/testes.md](./doc/testes.md).
 
-`vercel.json` executa:
+## Documentação e trabalho assistido
 
-- Install: `cd app && npm ci`
-- Build: `cd app && npm run build`
-- Output: `app/dist`
+- [Instruções do projeto para agentes](./AGENTS.md)
+- [Preparação local e ambientes](./doc/instalacao.md)
+- [Arquitetura](./doc/arquitetura.md)
+- [Design e acessibilidade](./doc/design.md)
+- [Operação das plataformas](./doc/operacao-plataformas.md)
+- [Setup de ferramentas e evidências](./doc/setup.md)
+- [Índice da documentação](./doc/README.md)
 
-Variáveis de produção:
-
-```text
-VITE_APP_ENV=production
-VITE_SUPABASE_URL=https://xucttzuthznqwlhushmg.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<CHAVE_PUBLISHABLE_DEFAULT>
-```
-
-## Documentação
-
-Comece em [doc/README.md](./doc/README.md) e consulte principalmente [operação, acessos e plataformas](./doc/operacao-plataformas.md).
-
-Para reiniciar o projeto ou transferir a manutenção, siga primeiro o [runbook de retomada](./doc/retomada-projeto.md). Ele registra o estado publicado da Meta, os segredos, IDs, migrations e validações necessários.
-
-O runbook registra as URLs, os nomes exatos dos Secrets, as Edge Functions implantadas, as pendências de segurança e o estado real do agendador WhatsApp sem versionar credenciais.
+Antes de qualquer operação remota, publicação ou migration, confira [doc/retomada-projeto.md](./doc/retomada-projeto.md) e o estado real do checkout. As instruções do projeto não substituem autorização para acessar ou alterar produção.

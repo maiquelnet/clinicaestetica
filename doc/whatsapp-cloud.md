@@ -1,20 +1,23 @@
 # WhatsApp Cloud API — Meta
 
-Atualizado em: 2026-10-08.
+Atualizado em: 2026-10-22. Abaixo, o registro histórico consultado em 2026-10-08, complementado pelo snapshot Meta MCP de 2026-10-22.
 
-> Esta é a implementação publicada da WhatsApp Cloud API oficial da Meta. A função YCloud mantida no checkout é legado/contingência e não deve ser confundida com o fluxo Meta atual.
+> **Histórico, não estado atual:** as descrições de implantação e associação de ativos abaixo refletem o registro de 2026-10-08 e não foram confirmadas como vigentes. O snapshot Meta MCP de 2026-10-22 listou somente o app 163, mas não teve acesso ao portfólio nem confirmou a relação app–WABA–telefone. O código de integração por clínica, roteamento estrito, reconciliação e proteção contra cancelamento está somente local; consulte [Meta WhatsApp App Review](./meta-whatsapp-app-review.md) e [Operação de plataformas](./operacao-plataformas.md) antes de qualquer mudança remota.
+
+O onboarding de coexistência foi preparado localmente em [WhatsApp coexistência](./whatsapp-coexistencia.md). A função remota existente não foi substituída e não há confirmação de publicação deste fluxo.
 
 ## Ativos oficiais da integração
 
 | Ativo | ID | Uso atual |
 | --- | --- | --- |
-| Portfólio empresarial `Thaís Schneider` | `958284598092300` | Proprietário dos ativos da clínica |
-| App `API Estética Schneider Auto` | `1637078911202031` | App Meta usado pela integração |
-| WABA `Thaís Schneider` | `5523215167904668` | Conta WhatsApp Business correta |
-| Phone Number ID | `1287807847751041` | Número remetente configurado na Meta |
-| System User `sistemaesteticawhatsapp` | `61594998936645` | Token server-side da integração |
+| Portfólio empresarial `Thaís Schneider` | `958284598092300` | ID informado pelo usuário; Meta MCP retornou `businesses: []` nesta autorização e não confirmou ativos |
+| App `API Estética Schneider Auto` | `1637078911202031` | Único app retornado pelo Meta MCP em 2026-10-22 e único app que o usuário informa estar disponível; teste direto e Sandbox usam este app; vínculo ao telefone real não confirmado |
+| App `Thaís Schneider Estética Whats` | `1369639224651650` | Usuário informa que foi excluído; não apareceu na lista atual do MCP. Não usar; exclusão não confirmada administrativamente |
+| WABA informado pelo usuário | `5523215167904668` | Associado pelo usuário ao portfólio `958284598092300`; relação com app/telefone não confirmada pelo MCP |
+| Phone Number ID real consolidado pelo usuário | `1813419303167468` | Associado pelo usuário em 2026-10-24 ao número `+55 51 8591-0322` e WABA `5523215167904668`; substitui o ID anterior `1287807847751041` neste registro. Não usar no teste de App Review |
+| System User `sistemaesteticawhatsapp` | `61594998936645` | ID informado pelo usuário; permissão/token atuais não confirmados nesta revisão |
 
-O app `Thaís Schneider Estética Whats` (`1369639224651650`) não é usado pelo backend atual. Não misture o WABA, templates, Phone Number ID ou token desse app com os ativos acima.
+Não concluir que o app 163 esteja ligado ao número real sem evidência explícita da Meta. O MCP não recebeu acesso ao portfólio nem expôs o vínculo app–WABA–telefone. O remetente de teste observado (`1255191607683337`) pertence ao fluxo de teste direto da Meta, não é o Phone Number ID real. Em 2026-10-22, o usuário confirmou que o teste enviado pelo Sandbox chegou ao WhatsApp autorizado; isso valida o teste com os ativos configurados, não a coexistência do número real.
 
 ## Escopo da primeira versão
 
@@ -29,6 +32,7 @@ Pós-atendimento, aniversários, retorno e campanhas permanecem no fluxo manual.
 
 - Edge Function `whatsapp-messages` para envio e consulta de templates;
 - Edge Function `meta-whatsapp-webhook` para verificação do callback e estados de entrega;
+- Edge Function local `whatsapp-onboarding` para troca server-side do Embedded Signup e assinatura da WABA;
 - `verify_jwt=false`, com autorização própria para admin/cron;
 - templates/regras configuráveis no painel;
 - consentimento de WhatsApp por cliente;
@@ -43,9 +47,9 @@ Pós-atendimento, aniversários, retorno e campanhas permanecem no fluxo manual.
 
 O envio usa `POST /{PHONE_NUMBER_ID}/messages`; o webhook registra os estados assíncronos da Meta sem importar mensagens recebidas ou histórico de conversas.
 
-## Estado Meta verificado em 2026-10-08
+## Registro histórico de estado Meta de 2026-10-08 (não confirmado atualmente)
 
-- O app correto é `API Estética Schneider Auto` (`1637078911202031`), propriedade do portfólio da Thaís.
+- O registro anterior tratava `API Estética Schneider Auto` (`1637078911202031`) como app de integração. Essa associação não foi confirmada no snapshot MCP de 2026-10-19.
 - A função Meta direta de envio está publicada no Supabase e o envio de teste foi validado.
 - O webhook está ativo para o tópico `whatsapp_business_account`, com os campos `messages` e `account_update`.
 - A política de privacidade, o ícone, a categoria `Business` e a verificação da empresa estão configurados.
@@ -71,7 +75,7 @@ Olá, {{1}}! Seu horário na Estética Thais Schneider está confirmado para {{2
 Olá, {{1}}! Passando para lembrar do seu horário na Estética Thais Schneider: {{2}} às {{3}}, para {{4}}. Te espero!
 ```
 
-O template `confirmacao_agendamento_v1` foi confirmado como `APPROVED` na WABA correta. O estado de `lembrete_agendamento_v1` deve ser conferido separadamente antes de ativar uma regra que o utilize. Não recrie um template em outro WABA para corrigir erro de integração: primeiro confirme WABA, nome e idioma.
+O registro de 2026-10-08 dizia que `confirmacao_agendamento_v1` estava `APPROVED` em uma WABA então tratada como correta; o vínculo app–WABA atual não está confirmado. O estado de cada tradução deve ser consultado no WABA efetivamente selecionado antes de ativar uma regra. Não recrie um template em outro WABA para corrigir erro de integração: primeiro confirme WABA, nome e idioma.
 
 A implementação atual monta parâmetros conforme os placeholders nomeados existentes em `modelos_mensagens.texto`, como `{nome}`, `{data}`, `{hora}`, `{servico}` e `{link_avaliacao_google}`, e também aceita placeholders numéricos `{{1}}` a `{{5}}`. O texto cadastrado no sistema e o template Meta precisam ter a mesma ordem de parâmetros.
 
@@ -86,9 +90,11 @@ WHATSAPP_CRON_SECRET
 WHATSAPP_FUNCTION_URL=https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
 META_APP_SECRET
 META_WEBHOOK_VERIFY_TOKEN
+META_APP_ID
+META_GRAPH_VERSION=v23.0
 ```
 
-Os três primeiros são necessários para status pronto/envio. `WHATSAPP_CRON_SECRET` e `WHATSAPP_FUNCTION_URL` são necessários ao processamento periódico/status do agendador. `META_APP_SECRET` e `META_WEBHOOK_VERIFY_TOKEN` são necessários somente para o webhook público.
+Os três primeiros são necessários para status pronto/envio. `WHATSAPP_CRON_SECRET` e `WHATSAPP_FUNCTION_URL` são necessários ao processamento periódico/status do agendador. `META_APP_SECRET` e `META_WEBHOOK_VERIFY_TOKEN` são necessários para o webhook público; `META_APP_ID` e `META_GRAPH_VERSION` também são usados pelo onboarding local. Consulte o runbook de coexistência para os nomes de secrets por clínica no Vault.
 
 Para desenvolvimento local, copie `supabase/functions/.env.example` para `supabase/functions/.env` e preencha os valores reais. Esse arquivo é ignorado pelo Git; não use tokens em `VITE_*`.
 

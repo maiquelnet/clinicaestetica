@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { resolveClinicIntegration, type ClinicMetaIntegration } from '../_shared/meta-safety.ts'
 
 const headers = { 'Content-Type': 'application/json' }
 
@@ -53,6 +54,30 @@ type MetaIncomingMessage = {
 }
 type MetaChangeValue = { metadata?: { phone_number_id?: string }; contacts?: MetaContact[]; statuses?: MetaStatus[]; messages?: MetaIncomingMessage[] }
 type MetaWebhook = { object?: string; entry?: Array<{ id?: string; changes?: Array<{ field?: string; value?: MetaChangeValue }> }> }
+type IntegrationRow = ClinicMetaIntegration & {
+  clinic_id: string
+  app_id: string
+  waba_id: string
+  phone_number_id: string
+  access_token: string | null
+  app_secret: string | null
+  verify_token: string | null
+}
+
+async function getIntegrations(admin: SupabaseClient): Promise<IntegrationRow[]> {
+  const { data, error } = await admin.rpc('get_meta_whatsapp_integrations')
+  if (error) throw new Error(`Não foi possível carregar as integrações Meta: ${error.message}`)
+  return ((data || []) as IntegrationRow[]).map((row) => ({
+    ...row,
+    clinicId: row.clinic_id,
+    appId: row.app_id,
+    wabaId: row.waba_id,
+    phoneNumberId: row.phone_number_id,
+    accessToken: row.access_token,
+    appSecret: row.app_secret,
+    verifyToken: row.verify_token,
+  }))
+}
 
 function incomingMessageText(message: MetaIncomingMessage) {
   const text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title
@@ -73,118 +98,143 @@ function contactName(value: MetaChangeValue, from: string) {
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers })
 
+  const supabaseUrl = env('SUPABASE_URL')
+  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceRoleKey) return json({ error: 'Configuração do webhook Meta ausente no servidor.' }, 503)
+  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
+
   if (request.method === 'GET') {
     const url = new URL(request.url)
     const mode = url.searchParams.get('hub.mode')
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
-    if (mode !== 'subscribe' || !token || token !== env('META_WEBHOOK_VERIFY_TOKEN') || !challenge) return new Response('Forbidden', { status: 403, headers })
-    return new Response(challenge, { headers: { ...headers, 'Content-Type': 'text/plain' } })
+    if (mode !== 'subscribe' || !token || !challenge) return new Response('Forbidden', { status: 403, headers })
+    try {
+      const integrations = await getIntegrations(admin)
+      const authorized = integrations.some((integration) =>
+        Boolean(integration.verifyToken) && constantTimeEqual(token, integration.verifyToken || '')
+      )
+      if (!authorized) return new Response('Forbidden', { status: 403, headers })
+      return new Response(challenge, { headers: { ...headers, 'Content-Type': 'text/plain' } })
+    } catch (error) {
+      console.error('meta-whatsapp-webhook verification configuration error', error instanceof Error ? error.message : error)
+      return json({ error: 'Não foi possível verificar a configuração Meta por clínica.' }, 503)
+    }
   }
 
   if (request.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405)
 
-  const appSecret = env('META_APP_SECRET')
-  const supabaseUrl = env('SUPABASE_URL')
-  const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY')
-  if (!appSecret || !supabaseUrl || !serviceRoleKey) return json({ error: 'Configuracao do webhook Meta ausente no servidor.' }, 503)
-
   const rawBody = await request.text()
-  if (!(await verifySignature(rawBody, request.headers.get('X-Hub-Signature-256'), appSecret))) return json({ error: 'Assinatura Meta invalida.' }, 401)
-
-  const body = JSON.parse(rawBody) as MetaWebhook
+  let body: MetaWebhook
+  try {
+    body = JSON.parse(rawBody) as MetaWebhook
+  } catch {
+    return json({ error: 'Payload JSON inválido.' }, 400)
+  }
   if (body.object !== 'whatsapp_business_account') return json({ received: true, ignored: true })
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
-  let processed = 0
-  let ignored = 0
+  let integrations: IntegrationRow[]
+  try {
+    integrations = await getIntegrations(admin)
+  } catch (error) {
+    console.error('meta-whatsapp-webhook integration lookup error', error instanceof Error ? error.message : error)
+    return json({ error: 'Não foi possível carregar o roteamento Meta por clínica.' }, 503)
+  }
 
-  for (const entry of body.entry || []) {
-    if (entry.id && env('WHATSAPP_BUSINESS_ACCOUNT_ID') && entry.id !== env('WHATSAPP_BUSINESS_ACCOUNT_ID')) {
-      ignored += entry.changes?.reduce((count, change) => count + (change.value?.statuses?.length || 0), 0) || 0
-      continue
+  const candidateSecrets = [...new Set(integrations.map((integration) => integration.appSecret).filter((secret): secret is string => Boolean(secret)))]
+  const matchingSecrets: string[] = []
+  for (const secret of candidateSecrets) {
+    if (await verifySignature(rawBody, request.headers.get('X-Hub-Signature-256'), secret)) matchingSecrets.push(secret)
+  }
+  if (matchingSecrets.length !== 1) return json({ error: 'Assinatura Meta inválida ou ambígua.' }, 401)
+  const signedAppSecret = matchingSecrets[0]
+
+  const routedChanges: Array<{ clinicId: string; entryId: string; change: NonNullable<NonNullable<MetaWebhook['entry']>[number]['changes']>[number] }> = []
+  let ignored = 0
+  try {
+    for (const entry of body.entry || []) {
+      for (const change of entry.changes || []) {
+        if (change.field !== 'messages') {
+          ignored++
+          continue
+        }
+        const hasEvents = Boolean(change.value?.messages?.length || change.value?.statuses?.length)
+        if (!hasEvents) {
+          ignored++
+          continue
+        }
+        const integration = resolveClinicIntegration(integrations, {
+          phoneNumberId: change.value?.metadata?.phone_number_id,
+          wabaId: entry.id,
+        })
+        if (integration.appSecret !== signedAppSecret) throw new Error('A assinatura não pertence ao app responsável pelo Phone Number ID recebido.')
+        routedChanges.push({ clinicId: integration.clinicId, entryId: entry.id || 'unknown', change })
+      }
     }
-    for (const change of entry.changes || []) {
-      if (change.field !== 'messages') {
+  } catch (error) {
+    console.error('meta-whatsapp-webhook routing rejected', error instanceof Error ? error.message : error)
+    return json({ error: error instanceof Error ? error.message : 'Roteamento Meta ambíguo ou desconhecido.' }, 409)
+  }
+
+  let processed = 0
+  for (const routed of routedChanges) {
+    const { change } = routed
+    const phoneNumberId = change.value?.metadata?.phone_number_id
+    const contacts = change.value?.contacts || []
+    for (const message of change.value?.messages || []) {
+      const messageId = message.id?.trim()
+      const from = message.from?.trim()
+      if (!messageId || !from) {
+        ignored++
+        continue
+      }
+      const eventId = `meta:${routed.entryId}:${messageId}:inbound`
+      const { error } = await admin.rpc('record_meta_whatsapp_inbound', {
+        p_event_id: eventId,
+        p_clinica_id: routed.clinicId,
+        p_phone_number_id: phoneNumberId || null,
+        p_from: from,
+        p_wa_id: contacts.find((contact) => contact.wa_id === from)?.wa_id || from,
+        p_contact_name: contactName(change.value || {}, from),
+        p_message_id: messageId,
+        p_message_type: message.type || 'unknown',
+        p_message_text: incomingMessageText(message),
+        p_payload: message,
+        p_event_time: eventTime(message.timestamp),
+      })
+      if (error) {
+        console.error('meta-whatsapp-webhook inbound processing error', error.message)
+        return json({ error: 'Nao foi possivel registrar a mensagem recebida.' }, 500)
+      }
+      processed++
+    }
+
+    for (const status of change.value?.statuses || []) {
+      const statusName = (status.status || '').toLowerCase()
+      const messageId = status.id?.trim()
+      if (!messageId || !['sent', 'delivered', 'read', 'failed'].includes(statusName)) {
         ignored++
         continue
       }
 
-      const phoneNumberId = change.value?.metadata?.phone_number_id
-      if (phoneNumberId && env('WHATSAPP_PHONE_NUMBER_ID') && phoneNumberId !== env('WHATSAPP_PHONE_NUMBER_ID')) {
-        ignored += (change.value?.statuses?.length || 0) + (change.value?.messages?.length || 0)
-        continue
+      const firstError = status.errors?.[0]
+      const errorCode = firstError?.code == null ? null : String(firstError.code)
+      const errorMessage = firstError?.message || firstError?.title || firstError?.error_data?.details || null
+      const eventId = `meta:${routed.entryId}:${messageId}:${statusName}:${status.timestamp || 'none'}:${errorCode || ''}`
+      const { error } = await admin.rpc('record_meta_webhook_event', {
+        p_event_id: eventId,
+        p_event_type: `messages.status.${statusName}`,
+        p_meta_message_id: messageId,
+        p_provider_status: statusName,
+        p_error_code: errorCode,
+        p_error_message: errorMessage,
+        p_event_time: eventTime(status.timestamp),
+      })
+      if (error) {
+        console.error('meta-whatsapp-webhook processing error', error.message)
+        return json({ error: 'Nao foi possivel registrar o evento Meta.' }, 500)
       }
-
-      const { data: clinic, error: clinicError } = await admin
-        .from('clinicas')
-        .select('id')
-        .eq('ativo', true)
-        .is('arquivado_em', null)
-        .order('criado_em', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      if (clinicError || !clinic?.id) {
-        console.error('meta-whatsapp-webhook clinic resolution error', clinicError?.message || 'Clinica ativa nao encontrada.')
-        return json({ error: 'Nao foi possivel identificar a clinica do WhatsApp.' }, 500)
-      }
-
-      const contacts = change.value?.contacts || []
-      for (const message of change.value?.messages || []) {
-        const messageId = message.id?.trim()
-        const from = message.from?.trim()
-        if (!messageId || !from) {
-          ignored++
-          continue
-        }
-        const eventId = `meta:${entry.id || 'unknown'}:${messageId}:inbound`
-        const { error } = await admin.rpc('record_meta_whatsapp_inbound', {
-          p_event_id: eventId,
-          p_clinica_id: clinic.id,
-          p_phone_number_id: phoneNumberId || null,
-          p_from: from,
-          p_wa_id: contacts.find((contact) => contact.wa_id === from)?.wa_id || from,
-          p_contact_name: contactName(change.value || {}, from),
-          p_message_id: messageId,
-          p_message_type: message.type || 'unknown',
-          p_message_text: incomingMessageText(message),
-          p_payload: message,
-          p_event_time: eventTime(message.timestamp),
-        })
-        if (error) {
-          console.error('meta-whatsapp-webhook inbound processing error', error.message)
-          return json({ error: 'Nao foi possivel registrar a mensagem recebida.' }, 500)
-        }
-        processed++
-      }
-
-      for (const status of change.value?.statuses || []) {
-        const statusName = (status.status || '').toLowerCase()
-        const messageId = status.id?.trim()
-        if (!messageId || !['sent', 'delivered', 'read', 'failed'].includes(statusName)) {
-          ignored++
-          continue
-        }
-
-        const firstError = status.errors?.[0]
-        const errorCode = firstError?.code == null ? null : String(firstError.code)
-        const errorMessage = firstError?.message || firstError?.title || firstError?.error_data?.details || null
-        const eventId = `meta:${entry.id || 'unknown'}:${messageId}:${statusName}:${status.timestamp || 'none'}:${errorCode || ''}`
-        const { error } = await admin.rpc('record_meta_webhook_event', {
-          p_event_id: eventId,
-          p_event_type: `messages.status.${statusName}`,
-          p_meta_message_id: messageId,
-          p_provider_status: statusName,
-          p_error_code: errorCode,
-          p_error_message: errorMessage,
-          p_event_time: eventTime(status.timestamp),
-        })
-        if (error) {
-          console.error('meta-whatsapp-webhook processing error', error.message)
-          return json({ error: 'Nao foi possivel registrar o evento Meta.' }, 500)
-        }
-        processed++
-      }
+      processed++
     }
   }
 

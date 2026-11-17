@@ -1,196 +1,127 @@
-# Guia Meta: WhatsApp Cloud API e análise do app
+# Meta WhatsApp: ativos, homologação e App Review
 
-Atualizado em: 2026-10-08.
+Atualizado em: 2026-11-17. Este documento separa dados fornecidos pelo usuário, observações do MCP e estado local do repositório. Valores de Secrets não foram lidos.
 
-Este guia descreve a configuração da integração atual da Estética Schneider. Ele é específico para o aplicativo Meta da Thaís e não deve ser usado para trocar IDs, WABA, telefone ou Secrets por valores de outro portfólio.
+## 1. App disponível e ativos: não misturar teste com número real
 
-## 1. Ativos corretos
+Em 2026-10-22, o usuário informou que o app `Thaís Schneider Estética Whats` (`1369639224651650`) foi excluído. A consulta atual do Meta MCP retornou somente `API Estética Schneider Auto` (`1637078911202031`), o único app disponível nesta sessão e a referência para as próximas etapas de App Review. A ausência do app 136 na lista do MCP, isoladamente, não prova exclusão — o MCP lista apenas apps concedidos à integração —, mas ele deve ser tratado como excluído/indisponível conforme a informação do usuário e não deve ser usado.
 
-| Ativo | Identificação | Estado/uso |
+| Ativo | Identificação | Estado e fonte |
 | --- | --- | --- |
-| Portfólio empresarial | `958284598092300` | `Thaís Schneider` |
-| App Meta | `1637078911202031` | `API Estética Schneider Auto` |
-| WABA | `5523215167904668` | `Thaís Schneider` |
-| Phone Number ID | `1287807847751041` | Número remetente configurado na Meta |
-| System User | `61594998936645` | `sistemaesteticawhatsapp` |
+| App `API Estética Schneider Auto` | `1637078911202031` | Meta MCP em 2026-10-22: papel `admin`, `dev_mode`, `is_live=false`, caso de uso WhatsApp. É o único app disponível nesta sessão e o contexto do teste direto da Meta. O status de App Review está contraditório; não chamar a solicitação de pendente ou aprovada sem confirmar na tela. |
+| App `Thaís Schneider Estética Whats` | `1369639224651650` | Usuário informa que foi excluído; não apareceu na lista atual do MCP. Não usar. A exclusão não foi confirmada por uma consulta administrativa à Meta. |
+| Portfólio empresarial consolidado pelo usuário | `958284598092300` | “Thaís Schneider”. A consulta atual do MCP retornou `businesses: []`; esta autorização do MCP não incluiu acesso de negócios. `owning_business_id=null`/`owning_business_granted=false` não prova ausência de proprietário empresarial. |
+| WABA real consolidado pelo usuário | `5523215167904668` | Conta “Thaís Schneider”. A relação atual com o app 163 não foi exposta pelo MCP. |
+| Número real e Phone Number ID consolidados pelo usuário | `+55 51 8591-0322`; `1813419303167468` | Confirmados pelo usuário em 2026-10-24 como pertencentes ao WABA acima. O ID anterior `1287807847751041` fica substituído neste registro; a Meta não confirmou a troca via MCP. Não usar o número real no Sandbox de App Review. |
+| Usuário do sistema informado | `sistemaesteticawhatsapp` (`61594998936645`) | Atribuições e token atuais não foram verificados nesta consulta. |
 
-O aplicativo `Thaís Schneider Estética Whats` (`1369639224651650`) não é o app usado pela integração atual. Não misture seus templates, tokens ou Phone Number ID com os ativos desse aplicativo.
+**O vínculo do app 163 ao WABA e ao telefone reais continua não confirmado.** A tela anterior do usuário mostrava o app como propriedade de “Thaís Schneider”, mas isso não demonstra que o WABA/número real esteja conectado ao caso de uso do app. O MCP atual não lista portfólios nem expõe ativos WhatsApp. A confirmação exige consultar o app 163 e o WABA/telefone na interface Meta com a conta e o portfólio corretos.
 
-## 2. O que já está concluído
+### Ativos do teste direto da Meta
 
-- App Meta criado no portfólio da Thaís.
-- Política de privacidade configurada em `https://www.esteticaschneider.com.br/politica-de-privacidade`.
-- Categoria do app definida como `Business` e ícone configurado.
-- Verificação da empresa aprovada.
-- System User com acesso total ao app e à WABA correta.
-- Versão Meta de `whatsapp-messages` publicada no Supabase.
-- Webhook Meta publicado e ativo.
-- Assinatura Meta ativa para `messages` e `account_update`.
-- Envio de teste validado pela Cloud API.
-- O template `confirmacao_agendamento_v1`, idioma `pt_BR`, foi validado como aprovado na WABA correta.
+No payload de teste fornecido pelo usuário em 2026-10-13, a Meta mostrou:
 
-O App Meta continua em `dev_mode`. As permissões avançadas `whatsapp_business_messaging` e `whatsapp_business_management` ainda não estão live; portanto, a análise do app continua sendo uma etapa pendente para produção aberta.
+- app no contexto do evento: `1637078911202031`;
+- WABA de teste: `4544814659084494`;
+- Phone Number ID de teste: `1255191607683337`;
+- destinatário que recebeu: `+55 51 98660-3385`;
+- estados retornados: `sent` e `delivered`.
 
-## 3. Configuração no Meta for Developers
+Isso comprova que aquele teste do painel Meta foi aceito e entregue pelo fluxo do app 163. Não é o WABA, o remetente ou o Phone Number ID real da Thaís, e não comprova a coexistência nem o vínculo do app 163 ao número real.
 
-### 3.1 Selecionar o app correto
+## 2. Snapshot Meta MCP — 2026-10-22
 
-1. Abra o Meta for Developers.
-2. Selecione `API Estética Schneider Auto`.
-3. Confirme o App ID `1637078911202031`.
-4. Em Casos de uso, mantenha `Conectar no WhatsApp`.
-5. Use `Integrar com API`, pois este app opera o número próprio da clínica.
-6. Não use `Torne-se um parceiro` neste app da Thaís.
+- A lista de apps concedidos ao MCP contém somente `1637078911202031`, como `admin`, com permissões MCP de leitura e gestão. A lista de portfólios está vazia. O MCP não tem, nesta autorização, visibilidade suficiente para confirmar o proprietário empresarial nem os ativos WhatsApp.
+- O app 163 está em `dev_mode` (`is_live=false`) e tem o caso de uso “Conectar-se com clientes pelo WhatsApp”, cujas permissões requeridas são `whatsapp_business_messaging`, `whatsapp_business_management` e `public_profile`.
+- Configurações básicas: categoria `BUSINESS`, ícone e política de privacidade configurados; contato `maiquelnet@gmail.com` não verificado; URL dos termos e URL de exclusão de dados apontam para `https://www.facebook.com/`. Nos requisitos, a Meta retornou `business_verification_passes=true` e `has_privacy_policy=true`.
+- O estado de App Review é inconclusivo e contraditório entre operações do MCP: `status` retornou `UNSUBMITTED`, `is_approved=true` e submission ID `1643837040526218`; `history` retornou lista vazia e `has_been_previously_reviewed=false`; `requirements` diz que não pode enviar porque um envio anterior estaria em análise e marca as etapas de ambas as permissões como incompletas; `privileges` retornou `REJECTED` para `whatsapp_business_messaging` e `whatsapp_business_management`, ambas com `in_current_submission=true`. Não concluir que as permissões foram aprovadas, rejeitadas definitivamente ou que exista análise pendente sem conferir a tela Meta.
+- O usuário confirmou em 2026-10-22 que uma mensagem enviada pelo Sandbox chegou ao WhatsApp destinatário. Isso é evidência de sucesso do teste configurado, não confirmação do vínculo do número real nem da coexistência.
+- Nenhuma operação de escrita foi feita na Meta nesta verificação.
 
-### 3.2 Registrar o número e a cobrança
+Para confirmar o vínculo, reautorize o Meta MCP incluindo o portfólio `958284598092300` na concessão `business_management` e consulte os ativos WhatsApp, ou verifique manualmente no Business Settings/WhatsApp Manager. A sessão de navegador disponível nesta tarefa não apresentou uma sessão Meta para essa consulta. Até lá, mantenha a relação app–WABA–telefone como “não confirmada pela Meta”.
 
-1. Entre em Configuração básica > Etapa 2. Configuração de produção.
-2. Confirme que o número já aparece como registrado.
-3. Não clique em “Adicionar novo número” se estiver configurando o número já existente na WABA `5523215167904668`.
-4. A forma de pagamento pertence à WABA, não ao App ID. Confira o cartão em Billing Hub selecionando `Thaís Schneider` e o ID `5523215167904668`.
-5. Não use o WABA de teste `4544814659084494`.
+Correção manual ainda necessária nas configurações básicas do app 163: substituir as URLs genéricas `https://www.facebook.com/` dos Termos de Serviço e da exclusão de dados por páginas públicas apropriadas, e concluir a verificação do e-mail de contato. O MCP disponível só lê essas configurações; não ofereceu operação para editá-las.
 
-### 3.3 Configurar o webhook
+## 3. Modelo de integração no sistema
 
-Use exatamente:
+O desenho local passa a ser **um app Meta e uma WABA por clínica**, com IDs e nomes dos segredos associados à clínica. Tokens, App Secrets e tokens de verificação ficam no Supabase Vault; não entram no bundle Vite, GitHub, Vercel ou respostas do frontend.
+
+As migrations remotas `20261117001906` e `20261117001916` criam `private.meta_whatsapp_integrations` e RPCs de backend com `EXECUTE` restrito a `service_role`. `whatsapp-messages` v41 e `whatsapp-onboarding` v1 estão publicados; o vínculo real ainda depende da configuração dos Secrets Meta e da elegibilidade/App Review.
+
+Convenção futura para nomes dos segredos no Vault:
 
 ```text
-URL de callback:
-https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook
-
-Token de verificação:
-o mesmo valor do Secret META_WEBHOOK_VERIFY_TOKEN
+meta:<clinic_id>:access_token
+meta:<clinic_id>:app_secret
+meta:<clinic_id>:verify_token
 ```
 
-Depois de verificar e salvar:
+A tabela de integração guarda os nomes desses segredos, nunca seus valores. A RPC descriptografada é chamada apenas pelo backend usando `service_role`. Acesso à view `vault.decrypted_secrets` deve continuar restrito; consulte [Supabase Vault](https://supabase.com/docs/guides/database/vault).
 
-1. Assine o campo `messages`.
-2. Mantenha `account_update` se ele continuar ativo no painel.
-3. Confirme que a assinatura aponta para o callback acima.
-4. Não cole o token de verificação no GitHub, na Vercel ou no frontend.
+## 4. Teste de App Review no Preview
 
-O webhook valida o desafio inicial com `META_WEBHOOK_VERIFY_TOKEN` e valida os POSTs com `META_APP_SECRET`/`X-Hub-Signature-256`.
+O painel **Sandbox do App Review** só é renderizado quando `VITE_APP_ENV=preview`. Ele chama `whatsapp-review-test`, não a fila automática de produção, e usa exclusivamente `WHATSAPP_REVIEW_*`. O teste está limitado no frontend e no backend ao destinatário `+55 51 98660-3385`.
 
-### 3.4 Gerar o token correto
-
-1. Em Configurações do negócio > Usuários do sistema, selecione `sistemaesteticawhatsapp`.
-2. Confirme acesso total ao app `API Estética Schneider Auto`.
-3. Confirme acesso total à WABA `Thaís Schneider`.
-4. Gere um token para o App ID `1637078911202031`.
-5. Use as permissões necessárias para a integração:
-   - `whatsapp_business_messaging`;
-   - `whatsapp_business_management`, somente para consultar/administrar ativos e templates.
-6. Atualize o Secret `WHATSAPP_ACCESS_TOKEN` no Supabase.
-
-O token temporário do botão “Gerar token” da tela de teste da Meta serve apenas para o experimento do painel. Ele não deve substituir o token permanente do System User no Supabase.
-
-## 4. Templates de mensagem
-
-O sistema não cria templates via API. Ele consulta e envia templates que já existem e foram aprovados na WABA.
-
-Para criar um template:
-
-1. Abra o Gerenciador do WhatsApp.
-2. Selecione a conta `Thaís Schneider` com ID `5523215167904668`.
-3. Crie o modelo na categoria adequada, normalmente `Utility` para confirmação e lembrete.
-4. Use o idioma exato `pt_BR`.
-5. Aguarde o status `Approved`.
-6. Cadastre no sistema o nome Meta exatamente igual ao nome aprovado.
-7. Execute `validate-template` antes de ativar a regra automática.
-
-O nome, idioma e WABA precisam corresponder. O erro `(#132001) Template name does not exist in the translation` normalmente indica nome/idioma no WABA errado, nome digitado diferente ou template ainda não aprovado.
-
-## 5. Secrets do Supabase
-
-Cadastre os nomes abaixo em Supabase > Edge Functions > Secrets. Os valores não devem ser documentados:
+Antes de habilitar o envio, a função exige estes Secrets no Supabase Edge Functions:
 
 ```text
-WHATSAPP_ACCESS_TOKEN
-WHATSAPP_PHONE_NUMBER_ID
-WHATSAPP_BUSINESS_ACCOUNT_ID
-WHATSAPP_GRAPH_VERSION=v23.0
-WHATSAPP_CRON_SECRET
-META_APP_SECRET
-META_WEBHOOK_VERIFY_TOKEN
+WHATSAPP_REVIEW_ACCESS_TOKEN
+WHATSAPP_REVIEW_APP_ID
+WHATSAPP_REVIEW_APP_SECRET
+WHATSAPP_REVIEW_WABA_ID
+WHATSAPP_REVIEW_PHONE_NUMBER_ID
+WHATSAPP_REVIEW_GRAPH_VERSION
+WHATSAPP_REVIEW_TEMPLATE_NAME
+WHATSAPP_REVIEW_TEMPLATE_LANGUAGE
+WHATSAPP_REVIEW_TEMPLATE_PARAMETERS_JSON
 ```
 
-Valores públicos de referência:
+A função consulta a Meta antes de enviar: confirma se o token é válido, se o `app_id` retornado corresponde ao `WHATSAPP_REVIEW_APP_ID`, se o token tem `whatsapp_business_messaging` e `whatsapp_business_management`, se o Phone Number ID consta no WABA e se existe nele um modelo `APPROVED` com nome e idioma exatos. Também compara o maior placeholder do corpo (por exemplo, `{{3}}` exige três valores) com o array JSON `WHATSAPP_REVIEW_TEMPLATE_PARAMETERS_JSON`, enviado como parâmetros do corpo. Para modelo sem variáveis, configure `[]`. Este teste suporta somente texto no corpo e cabeçalho textual estático; bloqueia cabeçalho de mídia/variável e botão com URL dinâmica para evitar envios incompletos. O endpoint rejeita os IDs conhecidos do WABA e do telefone reais; use somente o remetente de teste. Esses valores ainda precisam ser cadastrados/confirmados no painel Supabase; nenhum token ou segredo é documentado aqui. A versão Graph, nome e idioma do modelo devem vir do painel do app/WABA que realmente será analisado, sem usar valores presumidos.
 
-```text
-WHATSAPP_PHONE_NUMBER_ID=1287807847751041
-WHATSAPP_BUSINESS_ACCOUNT_ID=5523215167904668
-WHATSAPP_GRAPH_VERSION=v23.0
-```
+Se a auditoria não puder ser criada antes da chamada, nada é enviado. Depois da chamada, “aceita pela Meta” fica separado de “auditoria persistida”. Resposta incerta, aceite sem WAMID ou falha da atualização de auditoria exige reconciliação manual e bloqueia novo envio até conferência. A aceitação HTTP não prova entrega; confirme o recebimento no WhatsApp e o evento de status.
 
-O `WHATSAPP_FUNCTION_URL` é usado pelo scheduler/Vault:
+### Estado remoto do teste
 
-```text
-https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages
-```
+Em 2026-10-19, o MCP Supabase confirmou `whatsapp-review-test` v1 e publicou as versões endurecidas v2, v3 e v4. A v4 exige corpo textual e só aceita cabeçalho textual estático, botão URL estático ou botão de telefone; bloqueia mídia, cabeçalho dinâmico, resposta rápida e componentes desconhecidos. Em 2026-10-22, o usuário confirmou que o Sandbox enviou e entregou uma mensagem. A presença/validade atual dos Secrets não é visível pelo MCP, e a consulta Meta retornou estado contraditório de App Review; portanto, a entrega relatada não confirma o vínculo do número real nem substitui o screencast e a validação da tela de análise.
 
-Nunca coloque `WHATSAPP_ACCESS_TOKEN`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `service_role` ou secret key em variáveis `VITE_*`.
+## 5. Correções locais da fila e do webhook
 
-## 6. Teste completo
+O código local agora:
 
-### Teste manual no sistema
+- resolve cada webhook pela dupla WABA + `phone_number_id` da integração ativa; associação desconhecida, ausente ou ambígua é rejeitada; não escolhe mais a primeira clínica;
+- verifica a assinatura com o App Secret da integração correspondente;
+- consulta o status atual do agendamento imediatamente antes do envio; cancelado ou não encontrado é bloqueado e marcado na fila;
+- trata uma recusa explícita da Meta como falha recuperável, mas trata timeout/resposta incerta ou falha de persistência após aceite como `reconciliacao`, um estado terminal que não entra no claim automático;
+- não converte falha da auditoria de App Review em envio “não realizado” se a Meta já aceitou a mensagem.
 
-1. Entre no sistema com usuário proprietário ou administrador.
-2. Abra Configurações > Parâmetros.
-3. Localize a seção WhatsApp Cloud API.
-4. Confirme o status `Configurado`.
-5. Informe um destinatário autorizado, diferente do número remetente.
-6. Clique em `Enviar mensagem de teste`.
-7. Confirme o WAMID retornado.
-8. Confira o recebimento no WhatsApp do destinatário.
+As alterações da fila foram publicadas em `whatsapp-messages` v41 após aplicar as migrations remotas. O webhook público continua na versão v19; não houve alteração dele nesta publicação.
 
-### Teste automático
+## 6. App Review: o que o sistema demonstra hoje
 
-1. Cadastre um cliente com telefone em formato internacional.
-2. Registre o consentimento WhatsApp como `aceito`.
-3. Crie um agendamento futuro.
-4. Ative uma regra com `canal_padrao=whatsapp_business`.
-5. Confirme que o template usado está aprovado.
-6. Aguarde o job `process-whatsapp-messages` a cada cinco minutos.
-7. Verifique a fila, o log e o WAMID.
-8. Confirme que o mesmo ciclo não foi enviado duas vezes.
+- `whatsapp_business_messaging`: o sistema usa a Cloud API para enviar um modelo existente. O fluxo de teste pode demonstrar o envio ao destinatário permitido, desde que o token e o remetente sejam do app submetido e a auditoria/entrega estejam verificadas.
+- `whatsapp_business_management`: o sistema ainda não cria modelos via API. Criar um modelo manualmente no WhatsApp Manager não demonstra uso dessa permissão. Não alegar essa capacidade no vídeo atual.
+- `public_profile`: não é requisito do fluxo de envio descrito aqui.
 
-Aceite HTTP da Meta significa que a chamada foi aceita, não que a mensagem foi lida. Entrega e leitura dependem dos eventos recebidos pelo webhook.
+O vídeo só deve ser gravado depois de o painel Preview mostrar o App ID/WABA/remetente confirmados pela função, o envio ser aceito, a auditoria ser gravada e a mensagem chegar ao destinatário. Grave o painel e o WhatsApp recebendo a mesma mensagem; o WAMID, isoladamente, só prova aceitação.
 
-## 7. Análise do app
+## 7. Preview, Vercel e Supabase
 
-Na página de Envios de análise do app, as permissões devem ser solicitadas somente quando o sistema realmente usar cada uma:
+- O ambiente é definido pela variável pública de build `VITE_APP_ENV`; o build da Vercel exige que ela corresponda a `VERCEL_ENV` (`preview` em Preview e `production` em Production).
+- A Vercel Preview usa atualmente o mesmo projeto Supabase de produção `xucttzuthznqwlhushmg`; não existe staging Supabase isolado confirmado. A flag `preview` não isola banco, Auth, dados, Vault, Secrets, Edge Functions, cron ou webhooks.
+- A interface de Preview esconde o painel normal que poderia chamar o envio WhatsApp de produção e mostra somente o Sandbox do App Review.
+- Não conecte o onboarding real em Preview: a conexão deve ocorrer somente em Production, após revisão e publicação controladas da migration e das Edge Functions.
+- A integração GitHub–Vercel pode criar uma Preview após o push, mas não se considera deploy concluído sem verificar o check/URL da Vercel.
 
-- `whatsapp_business_messaging`: necessária para enviar mensagens.
-- `whatsapp_business_management`: necessária para administrar/consultar ativos e modelos; o sistema atual não cria modelos via API.
-- `public_profile`: não é necessária para o fluxo atual.
+## 8. Próximas ações seguras
 
-Para `whatsapp_business_messaging`, o screencast deve mostrar:
+1. Reautorizar o Meta MCP para o portfólio `958284598092300` e confirmar, com evidência da Meta, se o app 163 está ligado ao WABA `5523215167904668` e ao Phone Number ID real `1813419303167468`.
+2. Usar `API Estética Schneider Auto` (`1637078911202031`) como único app disponível para a revisão. Manter os IDs do WABA e número de teste separados dos ativos reais; nunca configurar o número real como remetente do Sandbox.
+3. Cadastrar no Supabase, sem expor no chat, os Secrets `WHATSAPP_REVIEW_*` listados acima para o app que será analisado e seu remetente de teste confirmado. Não reutilizar os IDs do número real.
+4. Confirmar no Preview que o status da Meta, as permissões, o template exato e a quantidade de parâmetros estão verificados; enviar uma única mensagem ao destinatário autorizado, confirmar auditoria e recebimento.
+5. Gravar e submeter o vídeo manualmente no App Review quando o app e o Configuration ID v4 estiverem confirmados. O site já possui o onboarding local de coexistência, mas ele só deve ser liberado após essa validação externa e a publicação controlada das migrations/funções.
 
-1. O sistema aberto e autenticado.
-2. Configurações > Parâmetros.
-3. O status Meta configurado e o modelo aprovado.
-4. O clique em `Enviar mensagem de teste`.
-5. O retorno de sucesso/WAMID.
-6. O mesmo texto recebido no WhatsApp do destinatário.
+## 9. Embedded Signup e coexistência
 
-Para `whatsapp_business_management`, só grave um vídeo se houver uma operação real de gerenciamento via API, como criação/consulta de modelo pela API. Criar o modelo manualmente no WhatsApp Manager não prova criação via API.
+O frontend local abre o Embedded Signup v4 com `featureType=whatsapp_business_app_onboarding`, recebe o código temporário e os dados de sessão, e chama `whatsapp-onboarding`. Essa Edge Function troca o código somente no servidor, valida que o `phone_number_id` pertence à WABA retornada, assina o app aos webhooks e grava o token no Vault por clínica. Ela não chama `/register` nem desregistra o número, para não converter o fluxo em Cloud API exclusiva.
 
-Antes de enviar a análise, conclua para cada permissão: descrição de uso, screencast, API precheck, Data Use Checkup, tratamento de dados e instruções para o analista.
-
-Estado verificado em 2026-10-08:
-
-- App Review: `UNSUBMITTED`.
-- Compliance: `compliant`, sem ações necessárias.
-- Política de privacidade e verificação da empresa: presentes/aprovadas.
-- Webhook: ativo.
-- Permissões WhatsApp avançadas: ainda não live.
-
-## 8. Limitações atuais e próximos passos
-
-- A integração atual atende uma única clínica e usa Secrets globais.
-- Ela não é multi-tenant para várias WABAs.
-- Não importa histórico completo de conversas recebidas.
-- A criação de modelos via API ainda não faz parte do sistema.
-- O próximo passo Meta é concluir corretamente a análise do app, sem declarar uma capacidade que o sistema não implementa.
-- Para novos clientes, mantenha WABA, número, cobrança, tokens e templates separados.
-
+Os identificadores públicos fornecidos para esta configuração são App ID `1637078911202031` e Configuration ID `1428537329377840`; a relação com o WABA/número real ainda precisa ser confirmada na Meta. Consulte [WhatsApp coexistência](./whatsapp-coexistencia.md) para a sequência, Secrets, migration e pendências.
