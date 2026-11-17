@@ -77,9 +77,10 @@ deno check supabase/functions/google-reviews/index.ts
 deno check supabase/functions/whatsapp-messages/index.ts
 deno check supabase/functions/meta-whatsapp-webhook/index.ts
 deno check supabase/functions/whatsapp-review-test/index.ts
+deno check supabase/functions/whatsapp-onboarding/index.ts
 ```
 
-Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A integração Meta está em `supabase/functions/whatsapp-messages` e `supabase/functions/meta-whatsapp-webhook`; o envio de teste e a assinatura do webhook já foram validados, enquanto o teste automático completo depende de cliente com opt-in, regra ativa e template aprovado.
+Google Calendar possui testes de OAuth, conexão, envio idempotente, importação e cancelamento bidirecional. A integração Meta está em `supabase/functions/whatsapp-messages`, `supabase/functions/meta-whatsapp-webhook` e, localmente, `supabase/functions/whatsapp-onboarding`; o envio de teste e a assinatura do webhook já foram validados, enquanto o onboarding real depende de credenciais, App Review, migration e autorização da Meta.
 
 Não há Vitest/Testing Library/Playwright instalados no frontend até esta revisão.
 

@@ -67,10 +67,10 @@ Output: app/dist
 
 Passos:
 
-1. Confirme que o projeto Vercel está ligado ao repositório e que `main` é a Production Branch.
-2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes corretos. Neste checkout, Preview e Production usam o mesmo Supabase de produção; não trate Preview como staging.
-3. Faça push da branch de homologação para obter Preview somente depois de validar a restrição do Sandbox App Review. O painel comum de envio fica oculto em Preview; a auditoria do Sandbox ainda escreve no banco de produção.
-4. Não integre esta configuração à `main` enquanto `vercel.json` fixar `VITE_APP_ENV=preview`. Antes da retomada de produção, reverta/ajuste o build e revalide os destinos.
+1. Confirme que o projeto Vercel está ligado ao repositório, usa a raiz do repositório como Root Directory e que `main` é a Production Branch.
+2. Configure `VITE_APP_ENV`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_META_APP_ID`, `VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` e `VITE_META_GRAPH_VERSION` nos ambientes corretos. O build falha se `VITE_APP_ENV` não corresponder ao ambiente Vercel.
+3. Neste checkout, Preview e Production usam o mesmo Supabase de produção; não trate Preview como staging. Ative Deployment Protection e faça Preview apenas para o Sandbox do App Review até existir um backend isolado.
+4. Faça push da branch de homologação para obter Preview, valide o check/URL da Vercel e só promova depois dos checks de qualidade e da publicação coordenada das migrations/Edge Functions necessárias.
 5. Teste `https://www.esteticaschneider.com.br`, `/login`, `/dashboard` e `/cadastro-cliente`.
 
 Se usar CLI:
@@ -120,6 +120,7 @@ Funções de produção:
 google-calendar-sync
 google-reviews
 whatsapp-messages
+whatsapp-onboarding
 ```
 
 Implantação:
@@ -128,6 +129,7 @@ Implantação:
 supabase functions deploy google-calendar-sync --no-verify-jwt
 supabase functions deploy google-reviews --no-verify-jwt
 supabase functions deploy whatsapp-messages --no-verify-jwt
+supabase functions deploy whatsapp-onboarding --no-verify-jwt
 ```
 
 O uso de `--no-verify-jwt` é intencional apenas porque cada função possui seu próprio modelo de acesso. Revise o código antes de qualquer redeploy.
@@ -164,6 +166,7 @@ As instruções específicas estão em:
 
 - [Google Agenda](./google-calendar.md)
 - [WhatsApp Cloud API](./whatsapp-cloud.md)
+- [WhatsApp coexistência](./whatsapp-coexistencia.md)
 - [Operação e plataformas](./operacao-plataformas.md)
 
 ## Docker

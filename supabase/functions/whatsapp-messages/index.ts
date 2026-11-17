@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { MetaRequestError, appointmentMaySend, queueFailureDisposition, type ClinicMetaIntegration } from '../_shared/meta-safety.ts'
+import { createFutureJwtRetryFetch } from '../_shared/pgrst-future-jwt-retry.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -359,7 +360,10 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405)
   const supabaseUrl = env('SUPABASE_URL'); const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY')
   if (!supabaseUrl || !serviceRoleKey) return json({ error: 'Configuracao do Supabase ausente no servidor.' }, 503)
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+    global: { fetch: createFutureJwtRetryFetch() },
+  })
   const body = await request.json().catch(() => ({})) as { action?: Action; clinicId?: string; recipient?: string; templateName?: string; language?: string }
   const action = body.action
   if (!action || !['status', 'send-test', 'validate-template', 'process'].includes(action)) return json({ error: 'Acao do WhatsApp invalida.' }, 400)

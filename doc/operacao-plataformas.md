@@ -73,12 +73,12 @@ O arquivo `vercel.json` da raiz é a fonte versionada:
 ```json
 {
   "installCommand": "cd app && npm ci",
-  "buildCommand": "cd app && VITE_APP_ENV=preview npm run build",
+  "buildCommand": "cd app && npm run build",
   "outputDirectory": "app/dist"
 }
 ```
 
-Esse comando Preview está versionado no branch de homologação. Se o mesmo `vercel.json` for mesclado em `main`, também forçará `preview` no build de produção; não mescle sem restaurar a configuração de produção.
+O comando não escolhe o ambiente. No projeto Vercel, configure `VITE_APP_ENV=production` no ambiente Production, `VITE_APP_ENV=preview` em Preview e `VITE_APP_ENV=development` apenas para desenvolvimento. O `vite.config.ts` rejeita builds Vercel sem esse valor ou quando ele não corresponde a `VERCEL_ENV`, evitando publicar uma Preview como produção.
 
 A rewrite envia todas as rotas para `app/dist/index.html`, permitindo que o React Router trate `/login`, `/dashboard` e as demais URLs da SPA.
 
@@ -89,8 +89,11 @@ Variáveis obrigatórias no ambiente Production:
 | `VITE_APP_ENV` | `production` | Pública no bundle. |
 | `VITE_SUPABASE_URL` | `https://xucttzuthznqwlhushmg.supabase.co` | Pública. |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave `default` em Supabase > Settings > API Keys | Pública, protegida por RLS. Não confundir com secret key. |
+| `VITE_META_APP_ID` | App ID do app Meta que hospeda o Embedded Signup | Público. Identificador, não segredo. |
+| `VITE_META_EMBEDDED_SIGNUP_CONFIG_ID` | Configuration ID v4 do Facebook Login for Business | Público. Não é token. |
+| `VITE_META_GRAPH_VERSION` | Versão Graph usada pela SDK; ex. `v23.0` | Pública; alinhar ao app Meta. |
 
-Para Preview use `VITE_APP_ENV=preview`; para desenvolvimento local, `VITE_APP_ENV=development`. Se Preview e Production apontarem para o mesmo Supabase, os testes de preview alterarão dados reais. O recomendado é criar um projeto/branch de staging antes de habilitar testes destrutivos.
+Para Preview use `VITE_APP_ENV=preview`; para desenvolvimento local, `VITE_APP_ENV=development`. Se Preview e Production apontarem para o mesmo Supabase, os testes de preview alterarão dados reais. O recomendado é criar um projeto/branch de staging antes de habilitar testes destrutivos; enquanto isso, mantenha Deployment Protection ativo e use somente o Sandbox de App Review autorizado.
 
 Depois de alterar variáveis `VITE_*`, gere um novo deploy: elas são incorporadas durante o build. Variáveis de Edge Functions do Supabase não exigem redeploy da Vercel.
 
@@ -116,11 +119,13 @@ Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
 | `ycloud-webhook` | 9 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
 | `meta-whatsapp-webhook` | 8 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
 | `whatsapp-review-test` | 4 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
+| `whatsapp-onboarding` | local nesta etapa | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-onboarding` |
 
 `verify_jwt=false` não significa acesso irrestrito por si só:
 
 - Google Calendar valida callback OAuth, webhook Google, secret de cron e JWT/papel para ações administrativas.
 - WhatsApp valida JWT/papel de administrador nas ações de configuração e `WHATSAPP_CRON_SECRET` no processamento automático.
+- `whatsapp-onboarding` valida JWT e papel de proprietário/administrador; o código Meta só é trocado server-side e os tokens são gravados no Vault.
 - Google Reviews é um GET público e retorna somente dados de avaliações públicas da clínica.
 
 Snapshot consultado por MCP em 2026-10-19: `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8 permanecem remotos e sem os fixes locais. `whatsapp-review-test` v2, v3 e v4 foram publicados nesta data; a v4 valida App ID/token/permissões/WABA/remetente/template/tradução/parâmetros e estrutura suportada, usa destinatário fixo e exige auditoria. Nenhum Secret foi alterado nem mensagem enviada; o fluxo permanece bloqueado até os Secrets de revisão corretos serem configurados e validados. `ycloud-webhook` permanece como legado. A migration remota mais recente listada foi `20260922074529_meta_whatsapp_cloud_direct`; a nova migration local por clínica ainda não aparece no banco.
@@ -170,6 +175,8 @@ A função atualmente implantada usa estes nomes exatos:
 | `WHATSAPP_FUNCTION_URL` | Para status do agendador | URL completa da Edge Function. |
 | `META_APP_SECRET` | Para webhook | App Secret usado para validar `X-Hub-Signature-256`. |
 | `META_WEBHOOK_VERIFY_TOKEN` | Para webhook | Token escolhido no cadastro do callback da Meta. |
+| `META_APP_ID` | Para Embedded Signup | App ID validado no servidor durante a troca do código. Não é o App Secret. |
+| `META_GRAPH_VERSION` | Para Embedded Signup | Versão Graph explícita; usa `WHATSAPP_GRAPH_VERSION`/`v23.0` apenas como fallback local. |
 
 ### Secrets temporários do Sandbox de App Review
 
@@ -187,9 +194,9 @@ A versão remota v4 de `whatsapp-review-test` usa apenas credenciais dedicadas. 
 | `WHATSAPP_REVIEW_TEMPLATE_LANGUAGE` | Sim | Código exato do idioma do template. |
 | `WHATSAPP_REVIEW_TEMPLATE_PARAMETERS_JSON` | Sim | Array JSON com parâmetros de texto do corpo na ordem dos placeholders (`[]` se não houver variáveis). |
 
-Esses Secrets nunca devem ser colocados em `VITE_*`. A função local confirma com a Meta o vínculo do token ao App ID, a permissão `whatsapp_business_messaging` e a presença do Phone Number ID no WABA antes de habilitar envio. O vínculo entre app real e WABA/número real ainda não foi confirmado pelo MCP. `vercel.json` nesta branch fixa `VITE_APP_ENV=preview`; mesclar esse arquivo em `main` também levaria `preview` ao build de produção. Rever esse comando antes de retomar produção.
+Esses Secrets nunca devem ser colocados em `VITE_*`. A função local confirma com a Meta o vínculo do token ao App ID, a permissão `whatsapp_business_messaging` e a presença do Phone Number ID no WABA antes de habilitar envio. O vínculo entre app real e WABA/número real ainda não foi confirmado pelo MCP. O build Vercel agora exige `VITE_APP_ENV` e valida sua correspondência com `VERCEL_ENV`; mantenha `preview` apenas no ambiente Preview.
 
-O único destinatário de teste permitido no código local é `+55 51 98660-3385`, que recebeu o teste direto da Meta. O remetente de teste e o app que serão analisados precisam ser confirmados juntos; não usar o Phone Number ID real `1287807847751041` como remetente do sandbox. Consulte a distinção entre os apps no [guia Meta](./meta-whatsapp-app-review.md).
+O único destinatário de teste permitido no código local é `+55 51 98660-3385`, que recebeu o teste direto da Meta. O remetente de teste e o app que serão analisados precisam ser confirmados juntos; não usar o Phone Number ID real `1813419303167468` como remetente do sandbox. Consulte a distinção entre os apps no [guia Meta](./meta-whatsapp-app-review.md).
 
 ### Estado do agendador WhatsApp
 
@@ -210,7 +217,11 @@ x-whatsapp-cron-secret: <WHATSAPP_CRON_SECRET>
 
 O job retornou HTTP `200` no teste e o painel exibiu `Agendador ativo`. A fila `public.fila_mensagens` e as RPCs de claim/complete/fail estão no banco. O envio de teste pela Meta foi validado; o automático depende de consentimento, regra ativa e template individualmente aprovado.
 
-Para monitorar, consulte o histórico em Integrations > Cron > Jobs, os logs de `whatsapp-messages` e, quando necessário, `net._http_response`. Foram observados erros transitórios `JWT issued at future`, seguidos de execução normal sem alteração de configuração.
+Para monitorar, consulte o histórico em Integrations > Cron > Jobs, os logs de `whatsapp-messages` e, quando necessário, `net._http_response`.
+
+Em 2026-10-24, os logs remotos ainda mostravam falhas intermitentes `401` / `PGRST303` / `JWT issued at future` nas leituras REST feitas pela própria Edge Function com a chave secreta do Supabase. A mesma credencial também obtinha `200`, logo não se trata de um token de usuário expirado nem de uma chave permanentemente inválida. A grande maioria das falhas estava associada ao gateway versão 1. O PostgREST publicou correção para falhas esporádicas desse tipo nas versões 14.18 e 16.3; confirmar com o suporte do Supabase a versão efetivamente implantada e solicitar correção do serviço gerenciado. Exemplo de `request_id` para investigação: `01a16b7e-4a6c-7646-bf8c-e233db244c9f`.
+
+O código local de `whatsapp-messages` possui mitigação limitada: até três novas tentativas, com esperas de 1, 2 e 4 segundos, somente para leituras da Data API que retornem exatamente esse erro. Escritas e chamadas à Meta não são repetidas, para evitar duplicidade. Essa mitigação não corrige o serviço Supabase e ainda **não está publicada**: a função remota diverge do código local e a migration por clínica pendente precisa ser revisada antes de qualquer deploy. O job usa timeout de 30 segundos; observar esse limite ao avaliar a mitigação.
 
 ## Banco de dados: fotografia verificada
 

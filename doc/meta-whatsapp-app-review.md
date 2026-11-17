@@ -1,17 +1,21 @@
 # Meta WhatsApp: ativos, homologação e App Review
 
-Atualizado em: 2026-10-19. Este documento separa dados fornecidos pelo usuário, observações do MCP e estado local do repositório. Um snapshot não comprova que a configuração remota permaneça igual.
+Atualizado em: 2026-11-11. Este documento separa dados fornecidos pelo usuário, observações do MCP e estado local do repositório. Um snapshot não comprova que a configuração remota permaneça igual.
 
-## 1. Apps e números: não misturar os ativos
+## 1. App disponível e ativos: não misturar teste com número real
 
-Há dois apps Meta com nomes parecidos no portfólio empresarial `958284598092300` (“Thaís Schneider”):
+Em 2026-10-22, o usuário informou que o app `Thaís Schneider Estética Whats` (`1369639224651650`) foi excluído. A consulta atual do Meta MCP retornou somente `API Estética Schneider Auto` (`1637078911202031`), o único app disponível nesta sessão e a referência para as próximas etapas de App Review. A ausência do app 136 na lista do MCP, isoladamente, não prova exclusão — o MCP lista apenas apps concedidos à integração —, mas ele deve ser tratado como excluído/indisponível conforme a informação do usuário e não deve ser usado.
 
-| App | App ID | O que está confirmado neste registro |
+| Ativo | Identificação | Estado e fonte |
 | --- | --- | --- |
-| API Estética Schneider Auto | `1637078911202031` | O MCP lista o app como `dev_mode`, com caso de uso WhatsApp, categoria `BUSINESS`, ícone e política `https://www.esteticaschneider.com.br/politica-de-privacidade`. O contato aparece não verificado; termos e exclusão de dados estão como `facebook.com`. Um payload do teste direto da Meta registrou este `app_id`. O estado de revisão é contraditório (`UNSUBMITTED` junto de `is_approved=true`); não tratar como aprovado. |
-| Thaís Schneider Estética Whats | `1369639224651650` | O usuário identifica este como o app pretendido para o número real. O MCP lista o app como `dev_mode` e com caso de uso WhatsApp, mas sem URL de privacidade, categoria ou ícone e com `NO_SUBMISSION`. O MCP não confirmou a relação app–WABA–telefone. |
+| App `API Estética Schneider Auto` | `1637078911202031` | Meta MCP em 2026-10-22: papel `admin`, `dev_mode`, `is_live=false`, caso de uso WhatsApp. É o único app disponível nesta sessão e o contexto do teste direto da Meta. O status de App Review está contraditório; não chamar a solicitação de pendente ou aprovada sem confirmar na tela. |
+| App `Thaís Schneider Estética Whats` | `1369639224651650` | Usuário informa que foi excluído; não apareceu na lista atual do MCP. Não usar. A exclusão não foi confirmada por uma consulta administrativa à Meta. |
+| Portfólio empresarial consolidado pelo usuário | `958284598092300` | “Thaís Schneider”. A consulta atual do MCP retornou `businesses: []`; esta autorização do MCP não incluiu acesso de negócios. `owning_business_id=null`/`owning_business_granted=false` não prova ausência de proprietário empresarial. |
+| WABA real consolidado pelo usuário | `5523215167904668` | Conta “Thaís Schneider”. A relação atual com o app 163 não foi exposta pelo MCP. |
+| Número real e Phone Number ID consolidados pelo usuário | `+55 51 8591-0322`; `1813419303167468` | Confirmados pelo usuário em 2026-10-24 como pertencentes ao WABA acima. O ID anterior `1287807847751041` fica substituído neste registro; a Meta não confirmou a troca via MCP. Não usar o número real no Sandbox de App Review. |
+| Usuário do sistema informado | `sistemaesteticawhatsapp` (`61594998936645`) | Atribuições e token atuais não foram verificados nesta consulta. |
 
-O usuário informou que o número real `+55 51 8591-0322` está no WABA `5523215167904668`, no portfólio `958284598092300`; a tela também mostrou Phone Number ID `1287807847751041`. O usuário afirmou que o app `1369639224651650` é o correto para esse número. **Essa associação continua não verificada pela Meta/MCP.** O acesso MCP disponível listou apps, mas não expôs a relação entre app, WABA e número. Não usar os IDs do teste como prova dessa relação.
+**O vínculo do app 163 ao WABA e ao telefone reais continua não confirmado.** A tela anterior do usuário mostrava o app como propriedade de “Thaís Schneider”, mas isso não demonstra que o WABA/número real esteja conectado ao caso de uso do app. O MCP atual não lista portfólios nem expõe ativos WhatsApp. A confirmação exige consultar o app 163 e o WABA/telefone na interface Meta com a conta e o portfólio corretos.
 
 ### Ativos do teste direto da Meta
 
@@ -23,17 +27,20 @@ No payload de teste fornecido pelo usuário em 2026-10-13, a Meta mostrou:
 - destinatário que recebeu: `+55 51 98660-3385`;
 - estados retornados: `sent` e `delivered`.
 
-Isso comprova que aquele teste do painel Meta foi aceito e entregue. Não é o WABA, o remetente ou o Phone Number ID real da Thaís, e não comprova que o app 136 esteja ligado ao número real.
+Isso comprova que aquele teste do painel Meta foi aceito e entregue pelo fluxo do app 163. Não é o WABA, o remetente ou o Phone Number ID real da Thaís, e não comprova a coexistência nem o vínculo do app 163 ao número real.
 
-## 2. Snapshot Meta MCP — 2026-10-19
+## 2. Snapshot Meta MCP — 2026-10-22
 
-- Portfólios retornados pelo MCP: nenhum (`businesses: []`). A lista de apps mostra `owning_business_id: null`; portanto, o MCP não confirmou acesso/vínculo a um portfólio nem aos ativos WhatsApp.
-- Ambos os apps estão em `dev_mode` e têm o caso de uso “Conectar-se com clientes pelo WhatsApp”, com permissões requeridas `whatsapp_business_messaging`, `whatsapp_business_management` e `public_profile`.
-- `1637078911202031`: categoria `BUSINESS`, ícone e política de privacidade configurados; contato `maiquelnet@gmail.com` não verificado e URLs de termos/exclusão apontam para `facebook.com`. Revisão retornou `UNSUBMITTED` e `is_approved=true` ao mesmo tempo, estado contraditório e **não confirmado**.
-- `1369639224651650`: sem URL de privacidade, categoria ou ícone; App Review `NO_SUBMISSION`.
-- Nenhuma operação de escrita foi feita na Meta nesta etapa.
+- A lista de apps concedidos ao MCP contém somente `1637078911202031`, como `admin`, com permissões MCP de leitura e gestão. A lista de portfólios está vazia. O MCP não tem, nesta autorização, visibilidade suficiente para confirmar o proprietário empresarial nem os ativos WhatsApp.
+- O app 163 está em `dev_mode` (`is_live=false`) e tem o caso de uso “Conectar-se com clientes pelo WhatsApp”, cujas permissões requeridas são `whatsapp_business_messaging`, `whatsapp_business_management` e `public_profile`.
+- Configurações básicas: categoria `BUSINESS`, ícone e política de privacidade configurados; contato `maiquelnet@gmail.com` não verificado; URL dos termos e URL de exclusão de dados apontam para `https://www.facebook.com/`. Nos requisitos, a Meta retornou `business_verification_passes=true` e `has_privacy_policy=true`.
+- O estado de App Review é inconclusivo e contraditório entre operações do MCP: `status` retornou `UNSUBMITTED`, `is_approved=true` e submission ID `1643837040526218`; `history` retornou lista vazia e `has_been_previously_reviewed=false`; `requirements` diz que não pode enviar porque um envio anterior estaria em análise e marca as etapas de ambas as permissões como incompletas; `privileges` retornou `REJECTED` para `whatsapp_business_messaging` e `whatsapp_business_management`, ambas com `in_current_submission=true`. Não concluir que as permissões foram aprovadas, rejeitadas definitivamente ou que exista análise pendente sem conferir a tela Meta.
+- O usuário confirmou em 2026-10-22 que uma mensagem enviada pelo Sandbox chegou ao WhatsApp destinatário. Isso é evidência de sucesso do teste configurado, não confirmação do vínculo do número real nem da coexistência.
+- Nenhuma operação de escrita foi feita na Meta nesta verificação.
 
-Para confirmar qual app pertence ao número real, é necessário reautorizar o Meta MCP com acesso ao portfólio `958284598092300` e consultar os ativos WhatsApp do portfólio, ou verificar manualmente no Business Settings/WhatsApp Manager. Até lá, mantenha a relação registrada como “informada pelo usuário, não confirmada pela Meta”.
+Para confirmar o vínculo, reautorize o Meta MCP incluindo o portfólio `958284598092300` na concessão `business_management` e consulte os ativos WhatsApp, ou verifique manualmente no Business Settings/WhatsApp Manager. A sessão de navegador disponível nesta tarefa não apresentou uma sessão Meta para essa consulta. Até lá, mantenha a relação app–WABA–telefone como “não confirmada pela Meta”.
+
+Correção manual ainda necessária nas configurações básicas do app 163: substituir as URLs genéricas `https://www.facebook.com/` dos Termos de Serviço e da exclusão de dados por páginas públicas apropriadas, e concluir a verificação do e-mail de contato. O MCP disponível só lê essas configurações; não ofereceu operação para editá-las.
 
 ## 3. Modelo de integração no sistema
 
@@ -75,7 +82,7 @@ Se a auditoria não puder ser criada antes da chamada, nada é enviado. Depois d
 
 ### Estado remoto do teste
 
-Em 2026-10-19, o MCP Supabase confirmou `whatsapp-review-test` v1 e publicou as versões endurecidas v2, v3 e v4. A v4 exige corpo textual e só aceita cabeçalho textual estático, botão URL estático ou botão de telefone; bloqueia mídia, cabeçalho dinâmico, resposta rápida e componentes desconhecidos. O MCP não permite ler os valores nem confirmar a presença dos Secrets `WHATSAPP_REVIEW_*`; ainda não foi confirmado qual app/token/remetente eles representam. A função falha fechada e não libera envio até a Meta confirmar o app, permissões, remetente, template, idioma, parâmetros e estrutura suportada. O envio pelo sistema e a gravação do vídeo ainda não foram validados.
+Em 2026-10-19, o MCP Supabase confirmou `whatsapp-review-test` v1 e publicou as versões endurecidas v2, v3 e v4. A v4 exige corpo textual e só aceita cabeçalho textual estático, botão URL estático ou botão de telefone; bloqueia mídia, cabeçalho dinâmico, resposta rápida e componentes desconhecidos. Em 2026-10-22, o usuário confirmou que o Sandbox enviou e entregou uma mensagem. A presença/validade atual dos Secrets não é visível pelo MCP, e a consulta Meta retornou estado contraditório de App Review; portanto, a entrega relatada não confirma o vínculo do número real nem substitui o screencast e a validação da tela de análise.
 
 ## 5. Correções locais da fila e do webhook
 
@@ -99,16 +106,22 @@ O vídeo só deve ser gravado depois de o painel Preview mostrar o App ID/WABA/r
 
 ## 7. Preview, Vercel e Supabase
 
-- `vercel.json` neste branch fixa `VITE_APP_ENV=preview`.
+- O ambiente é definido pela variável pública de build `VITE_APP_ENV`; o build da Vercel exige que ela corresponda a `VERCEL_ENV` (`preview` em Preview e `production` em Production).
 - A Vercel Preview usa atualmente o mesmo projeto Supabase de produção `xucttzuthznqwlhushmg`; não existe staging Supabase isolado confirmado. A flag `preview` não isola banco, Auth, dados, Vault, Secrets, Edge Functions, cron ou webhooks.
 - A interface de Preview esconde o painel normal que poderia chamar o envio WhatsApp de produção e mostra somente o Sandbox do App Review.
-- Não mescle essa configuração em `main`: o `buildCommand` versionado também aplica `preview` ao build iniciado por esse arquivo. A configuração deve ser separada/revertida antes da retomada de produção.
+- Não conecte o onboarding real em Preview: a conexão deve ocorrer somente em Production, após revisão e publicação controladas da migration e das Edge Functions.
 - A integração GitHub–Vercel pode criar uma Preview após o push, mas não se considera deploy concluído sem verificar o check/URL da Vercel.
 
 ## 8. Próximas ações seguras
 
-1. Reautorizar o Meta MCP para o portfólio `958284598092300` e confirmar, com evidência da Meta, qual app está ligado ao WABA `5523215167904668` e ao Phone Number ID real `1287807847751041`.
-2. No Supabase, cadastrar os Secrets `WHATSAPP_REVIEW_*` correspondentes ao app que será revisado. Não reutilizar o teste `1255191607683337` como número real nem como remetente do app 136 sem comprovação.
+1. Reautorizar o Meta MCP para o portfólio `958284598092300` e confirmar, com evidência da Meta, se o app 163 está ligado ao WABA `5523215167904668` e ao Phone Number ID real `1813419303167468`.
+2. Usar `API Estética Schneider Auto` (`1637078911202031`) como único app disponível para a revisão. Manter os IDs do WABA e número de teste separados dos ativos reais; nunca configurar o número real como remetente do Sandbox.
 3. Cadastrar no Supabase, sem expor no chat, os Secrets `WHATSAPP_REVIEW_*` listados acima para o app que será analisado e seu remetente de teste confirmado. Não reutilizar os IDs do número real.
 4. Confirmar no Preview que o status da Meta, as permissões, o template exato e a quantidade de parâmetros estão verificados; enviar uma única mensagem ao destinatário autorizado, confirmar auditoria e recebimento.
-5. Gravar e submeter o vídeo manualmente no App Review. A coexistência e a retomada da produção permanecem para depois dessa validação.
+5. Gravar e submeter o vídeo manualmente no App Review quando o app e o Configuration ID v4 estiverem confirmados. O site já possui o onboarding local de coexistência, mas ele só deve ser liberado após essa validação externa e a publicação controlada das migrations/funções.
+
+## 9. Embedded Signup e coexistência
+
+O frontend local abre o Embedded Signup v4 com `featureType=whatsapp_business_app_onboarding`, recebe o código temporário e os dados de sessão, e chama `whatsapp-onboarding`. Essa Edge Function troca o código somente no servidor, valida que o `phone_number_id` pertence à WABA retornada, assina o app aos webhooks e grava o token no Vault por clínica. Ela não chama `/register` nem desregistra o número, para não converter o fluxo em Cloud API exclusiva.
+
+Os identificadores públicos fornecidos para esta configuração são App ID `1637078911202031` e Configuration ID `1428537329377840`; a relação com o WABA/número real ainda precisa ser confirmada na Meta. Consulte [WhatsApp coexistência](./whatsapp-coexistencia.md) para a sequência, Secrets, migration e pendências.

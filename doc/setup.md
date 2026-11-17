@@ -79,11 +79,12 @@ As correções locais não foram publicadas no webhook/fila e a migration não f
 2. Em uma nova sessão Codex confiável, verificar o carregamento de `AGENTS.md` e Context7 e executar uma consulta pública de documentação.
 3. Resolver o bloqueio do instalador oficial de skills Vercel; instalar somente o conjunto web aprovado e registrar versões/lockfile.
 4. Reexecutar o lint e diagnosticar seu tempo de execução antes de usá-lo como gate.
-5. Antes de produção, revisar e publicar separadamente a migration, a fila e o webhook; a branch atual não deve ser mesclada em `main` com `VITE_APP_ENV=preview`.
+5. Antes de produção, revisar e publicar separadamente a migration, a fila e o webhook; configure `VITE_APP_ENV` por ambiente na Vercel e só promova após os checks de qualidade.
 
 ## Implementação de homologação — 2026-10-19
 
-- Meta MCP consultado em leitura: `business_list` permaneceu vazio. O MCP lista os apps 136 e 163, mas não prova relação app–WABA–telefone. O usuário indica app 136 para o número real; vínculo não confirmado.
+- Snapshot histórico de Meta MCP em 2026-10-19: `business_list` vazio e ambos os apps listados; não provava relação app–WABA–telefone.
+- Atualização Meta MCP em 2026-10-22: somente `API Estética Schneider Auto` (`1637078911202031`) foi retornado. O usuário informa que `Thaís Schneider Estética Whats` (`1369639224651650`) foi excluído; a ausência na lista MCP é compatível, mas não confirma a exclusão administrativamente. A lista de portfólios continua vazia e o vínculo app–WABA–telefone real permanece não confirmado. O Sandbox foi confirmado pelo usuário como envio/entrega bem-sucedidos, usando ativos de teste.
 - Supabase MCP consultado: projeto principal ativo; `whatsapp-messages` v29, `meta-whatsapp-webhook` v8 e `whatsapp-review-test` v4 (publicado em 2026-10-19). Secrets não são acessíveis pelo MCP.
 - Código local: integração por clínica via Vault/RPC, roteamento webhook por WABA + Phone Number ID, verificação de cancelamento imediatamente antes do envio, estado de reconciliação sem retry automático e auditoria explícita do teste.
 - Preview: fluxo comum de envio oculto; painel de revisão exige validação de App ID/token/WABA/remetente via Meta e só aceita `+55 51 98660-3385`.

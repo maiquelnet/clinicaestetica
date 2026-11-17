@@ -144,6 +144,8 @@ Operações multi-registro usam RPCs transacionais, como salvar agendamento, ser
 5. A Meta recebe o template aprovado; o WAMID e os status posteriores vão para fila/logs.
 6. O Supabase Cron aciona o processamento a cada cinco minutos usando `pg_net` e Secrets do Vault.
 
+O onboarding da clínica usa a Edge Function `whatsapp-onboarding`: o browser abre o Embedded Signup v4 em modo de coexistência, mas somente o backend troca o código e grava o token no Vault. A função valida WABA + Phone Number ID e assina o app aos webhooks antes de ativar a integração. O detalhe operacional está em [WhatsApp coexistência](./whatsapp-coexistencia.md).
+
 ### Disponibilidade comercial semanal
 
 `/configuracoes/horarios` permite que cada profissional configure seus períodos semanais usando `perfis.id` como `profissional_id`. A interface trabalha com intervalos reais, aceita múltiplos períodos por dia e exibe uma sugestão inicial sem persistí-la automaticamente. A gravação completa da semana ocorre pela RPC transacional `salvar_disponibilidade_semanal`, com validação de horários, sobreposição, vínculo à clínica e permissão do usuário.

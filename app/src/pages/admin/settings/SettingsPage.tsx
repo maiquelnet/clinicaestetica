@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, MessageCircle, RefreshCw, Save, Send } from 'lucide-react'
+import { CalendarDays, Link2, MessageCircle, RefreshCw, Save, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/PageHeader'
@@ -9,6 +9,7 @@ import { appEnv } from '../../../lib/env'
 import { connectGoogleCalendar, getGoogleCalendarStatus, requestGoogleCalendarSync } from '../../../lib/google-calendar'
 import { getWhatsAppStatus, sendWhatsAppTest } from '../../../lib/whatsapp'
 import { getWhatsAppReviewStatus, sendWhatsAppReviewTest } from '../../../lib/whatsapp-review'
+import { completeWhatsAppCoexistenceSignup, getWhatsAppOnboardingStatus, launchWhatsAppCoexistenceSignup, preloadWhatsAppCoexistenceSignup } from '../../../lib/whatsapp-onboarding'
 import { clean } from '../shared/utils'
 export function SettingsPage() {
   const { activeClinic, activeClinicId } = useClinic()
@@ -36,6 +37,26 @@ export function SettingsPage() {
   const testWhatsApp = useMutation({
     mutationFn: () => sendWhatsAppTest(activeClinicId!, whatsappTestRecipient),
   })
+  const whatsappOnboardingStatus = useQuery({
+    queryKey: ['whatsapp-onboarding-status', activeClinicId],
+    enabled: Boolean(activeClinicId) && appEnv.isProduction,
+    queryFn: () => getWhatsAppOnboardingStatus(activeClinicId!),
+    refetchInterval: 60_000,
+  })
+  const connectWhatsApp = useMutation({
+    mutationFn: async () => {
+      const signup = await launchWhatsAppCoexistenceSignup()
+      return completeWhatsAppCoexistenceSignup(activeClinicId!, signup)
+    },
+    onSuccess: () => {
+      void whatsappOnboardingStatus.refetch()
+      void whatsappStatus.refetch()
+    },
+  })
+  useEffect(() => {
+    if (!appEnv.isProduction || !appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId) return
+    void preloadWhatsAppCoexistenceSignup().catch(() => undefined)
+  }, [])
   const reviewStatus = useQuery({
     queryKey: ['whatsapp-review-status', activeClinicId],
     enabled: Boolean(activeClinicId) && appEnv.isPreview,
@@ -213,6 +234,59 @@ export function SettingsPage() {
             ))}
           </div>
         ) : null}
+      </section> : null}
+      {appEnv.isProduction ? <section className="panel form-panel">
+        <PageHeader
+          eyebrow="Integração"
+          title="Coexistência com o WhatsApp Business"
+          description="Conecte o mesmo número usado no app WhatsApp Business à Cloud API, mantendo o uso no celular."
+        />
+        <div className="form-alert">
+          O fluxo só deve ser concluído pelo proprietário ou administrador da clínica. A Meta precisa mostrar a opção de conectar um número já usado no WhatsApp Business; não escolha o fluxo de migração de um número novo.
+        </div>
+        {whatsappOnboardingStatus.isLoading ? <p>Verificando conexão de coexistência...</p> : null}
+        {whatsappOnboardingStatus.data ? (
+          <div className="record-meta">
+            <span className={`badge ${whatsappOnboardingStatus.data.configured && whatsappOnboardingStatus.data.integration?.coexistenceEnabled ? 'success' : 'warning'}`}>
+              {whatsappOnboardingStatus.data.configured && whatsappOnboardingStatus.data.integration?.coexistenceEnabled ? 'Conectado em coexistência' : 'Ainda não conectado'}
+            </span>
+            {whatsappOnboardingStatus.data.integration ? <>
+              <span>Número: {whatsappOnboardingStatus.data.integration.displayPhoneNumber || whatsappOnboardingStatus.data.integration.phoneNumberId}</span>
+              <span>WABA: {whatsappOnboardingStatus.data.integration.wabaId}</span>
+              <span>App: {whatsappOnboardingStatus.data.integration.appId}</span>
+              {whatsappOnboardingStatus.data.integration.accessTokenExpiresAt ? <span>Token válido até {new Date(whatsappOnboardingStatus.data.integration.accessTokenExpiresAt).toLocaleString('pt-BR')}</span> : null}
+            </> : null}
+          </div>
+        ) : null}
+        {!appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId ? (
+          <div className="form-alert">
+            Configure as variáveis públicas VITE_META_APP_ID e VITE_META_EMBEDDED_SIGNUP_CONFIG_ID no build do site antes de iniciar o fluxo.
+          </div>
+        ) : null}
+        {whatsappOnboardingStatus.data?.missingServerSecrets.length ? (
+          <div className="form-alert">
+            O backend ainda precisa dos Secrets: {whatsappOnboardingStatus.data.missingServerSecrets.join(', ')}. Os valores não devem ser colocados no site.
+          </div>
+        ) : null}
+        <div className="form-actions">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={!activeClinicId || !appEnv.metaAppId || !appEnv.metaEmbeddedSignupConfigId || !whatsappOnboardingStatus.data?.serverConfigured || connectWhatsApp.isPending}
+            onClick={() => connectWhatsApp.mutate()}
+          >
+            {connectWhatsApp.isPending ? <RefreshCw size={16} /> : <Link2 size={16} />}
+            {connectWhatsApp.isPending ? 'Conectando...' : whatsappOnboardingStatus.data?.configured ? 'Reconectar coexistência' : 'Conectar WhatsApp Business'}
+          </button>
+          <button className="ghost-button" type="button" onClick={() => void whatsappOnboardingStatus.refetch()}>
+            <MessageCircle size={16} /> Atualizar conexão
+          </button>
+        </div>
+        <small>
+          Depois do vínculo, mantenha o app WhatsApp Business atualizado e confirme o webhook no WhatsApp Manager. Grupos, chamadas e alguns recursos do app não são sincronizados pela Cloud API; desconectar deve ser feito pelo próprio app WhatsApp Business.
+        </small>
+        {connectWhatsApp.isSuccess ? <div className="form-success">Número conectado. Antes de ativar automações, confirme um evento recebido no webhook e valide um modelo aprovado pela Meta.</div> : null}
+        {connectWhatsApp.error || whatsappOnboardingStatus.error ? <div className="form-alert">{(connectWhatsApp.error || whatsappOnboardingStatus.error)?.message}</div> : null}
       </section> : null}
       {appEnv.isPreview ? (
         <section className="panel form-panel">

@@ -8,6 +8,7 @@ Fonte canônica única do backend Supabase da Estética Schneider.
 - `functions/google-reviews`: consulta pública de avaliações;
 - `functions/whatsapp-messages`: versão implantada do WhatsApp baseada em fila;
 - `functions/meta-whatsapp-webhook`: callback público da Meta para verificação, mensagens recebidas e estados de entrega;
+- `functions/whatsapp-onboarding`: troca server-side do Embedded Signup e ativação controlada da coexistência;
 - `migrations/`: histórico SQL versionado;
 - `seed.sql`: dados iniciais de desenvolvimento;
 - `config.toml`: configuração local do Supabase.
