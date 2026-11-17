@@ -2,7 +2,7 @@
 
 Projeto: Estética Schneider
 
-Última revisão do índice e do estado resumido: 2026-10-19. Os fatos remotos têm data e fonte em cada seção; nem todo serviço foi revalidado.
+Última revisão do índice e do estado resumido: 2026-11-17. O estado remoto foi revalidado por MCP; valores de Secrets não foram consultados.
 
 Esta pasta documenta a aplicação React em produção, o backend Supabase, a implantação Vercel e as integrações Google e WhatsApp. Atualize-a junto com qualquer mudança de arquitetura, banco, variáveis, Edge Functions ou fluxo de usuário.
 
@@ -40,7 +40,7 @@ Esta pasta documenta a aplicação React em produção, o backend Supabase, a im
 - Planos de tratamento com cronograma recorrente e campanhas segmentadas por interesses em serviços.
 - Google Agenda bidirecional conectado por OAuth e Edge Function.
 - Avaliações públicas do Google Places carregadas por Edge Function.
-- Há correções locais para roteamento Meta por clínica, cancelamento de agendamento e reconciliação; webhook e fila remotos não foram substituídos. `whatsapp-review-test` v4 foi publicado em 2026-10-19 com validação estrita do vínculo, do template, do destinatário e da auditoria. Secrets de revisão não foram alterados nem validados, então o envio ainda está bloqueado.
+- A fila Meta está publicada como `whatsapp-messages` v41, o onboarding de coexistência como `whatsapp-onboarding` v1 e o webhook público permanece em v19. As migrations de integração por clínica foram aplicadas com os registros remotos `20261117001906` e `20261117001916`. `whatsapp-review-test` v15 continua separado e depende de Secrets próprios; nenhum Secret foi lido nesta revisão.
 - Código legado de Google Apps Script permanece apenas como referência histórica e não é a aplicação administrativa principal.
 
 O único projeto confirmado neste checkout é o Supabase de produção `xucttzuthznqwlhushmg`; não há staging isolado confirmado. A Preview usa o projeto compartilhado e os testes de App Review gravam auditoria no banco de produção, ainda que usem credenciais/número de teste. Não grave nem envie por outros fluxos em Preview.

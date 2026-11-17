@@ -1,5 +1,5 @@
 -- Finalização server-side do Embedded Signup e armazenamento seguro do token
--- trocado. Depende de 20261019153000_meta_clinic_integrations_and_reconciliation.sql.
+-- trocado. Depende de 20261117001906_meta_clinic_integrations_and_reconciliation.sql.
 -- Não aplicar remotamente sem revisar a migration anterior e os Secrets Meta.
 
 alter table private.meta_whatsapp_integrations

@@ -1,6 +1,6 @@
 # WhatsApp Business: coexistência do mesmo número
 
-Atualizado em: 2026-11-11. Este documento descreve o que o código local prepara e o que ainda depende da Meta/Supabase. Nenhuma migration ou Edge Function desta etapa foi publicada.
+Atualizado em: 2026-11-17. O código e o backend do onboarding foram publicados no Supabase de produção; o vínculo real ainda depende dos Secrets Meta e da aprovação/elegibilidade do app.
 
 ## Resultado esperado
 
@@ -60,7 +60,7 @@ Depois de configurar a Meta, o frontend chama `whatsapp-onboarding`. O código t
 
 1. Confirmar no painel Meta que o app `1637078911202031` e o Configuration ID `1428537329377840` estão no portfólio correto e elegíveis para coexistência.
 2. Configurar os Secrets acima no projeto Supabase autorizado, sem expô-los no chat ou no frontend.
-3. Aplicar a migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` e depois `20261111220000_meta_whatsapp_embedded_signup.sql`, após comparar as migrations remotas.
-4. Publicar `whatsapp-onboarding`, `whatsapp-messages` e `meta-whatsapp-webhook` como um conjunto revisado.
+3. As migrations `20261117001906_meta_clinic_integrations_and_reconciliation.sql` e `20261117001916_meta_whatsapp_embedded_signup.sql` já foram aplicadas no projeto remoto; mantenha os nomes alinhados ao histórico retornado pelo Supabase MCP.
+4. `whatsapp-onboarding` v1 e `whatsapp-messages` v41 já estão publicados; `meta-whatsapp-webhook` permanece na versão remota anterior até haver alteração específica revisada.
 5. Configurar/confirmar o webhook da Meta e testar uma mensagem recebida e um status de entrega.
 

@@ -1,6 +1,6 @@
 # Operação, acessos e plataformas
 
-Atualizado em: 2026-10-19. Os snapshots de estado remoto abaixo mantêm as datas de consulta registradas; não foram consultados novamente nesta revisão.
+Atualizado em: 2026-11-17. O estado remoto foi revalidado por MCP; valores de Secrets não foram consultados.
 
 Este documento é o runbook de operação da aplicação Estética Schneider. Ele registra os identificadores que podem ser versionados, as variáveis necessárias e onde recuperar credenciais. Valores secretos não devem ser gravados no Git, em chamados ou em mensagens.
 
@@ -109,17 +109,17 @@ O Supabase recomenda publishable keys (`sb_publishable_...`) no navegador e secr
 
 ### Edge Functions implantadas
 
-Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
+Estado remoto revalidado por MCP em 2026-11-17:
 
 | Função | Versão remota | `verify_jwt` | URL |
 | --- | ---: | --- | --- |
-| `google-calendar-sync` | 48 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
-| `google-reviews` | 18 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
-| `whatsapp-messages` | 29 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
-| `ycloud-webhook` | 9 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
-| `meta-whatsapp-webhook` | 8 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
-| `whatsapp-review-test` | 4 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
-| `whatsapp-onboarding` | local nesta etapa | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-onboarding` |
+| `google-calendar-sync` | 59 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-calendar-sync` |
+| `google-reviews` | 29 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/google-reviews` |
+| `whatsapp-messages` | 41 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-messages` |
+| `ycloud-webhook` | 20 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/ycloud-webhook` |
+| `meta-whatsapp-webhook` | 19 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/meta-whatsapp-webhook` |
+| `whatsapp-review-test` | 15 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-review-test` |
+| `whatsapp-onboarding` | 1 | `false` | `https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-onboarding` |
 
 `verify_jwt=false` não significa acesso irrestrito por si só:
 
@@ -128,7 +128,7 @@ Snapshot remoto consultado por MCP somente leitura em 2026-10-19:
 - `whatsapp-onboarding` valida JWT e papel de proprietário/administrador; o código Meta só é trocado server-side e os tokens são gravados no Vault.
 - Google Reviews é um GET público e retorna somente dados de avaliações públicas da clínica.
 
-Snapshot consultado por MCP em 2026-10-19: `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8 permanecem remotos e sem os fixes locais. `whatsapp-review-test` v2, v3 e v4 foram publicados nesta data; a v4 valida App ID/token/permissões/WABA/remetente/template/tradução/parâmetros e estrutura suportada, usa destinatário fixo e exige auditoria. Nenhum Secret foi alterado nem mensagem enviada; o fluxo permanece bloqueado até os Secrets de revisão corretos serem configurados e validados. `ycloud-webhook` permanece como legado. A migration remota mais recente listada foi `20260922074529_meta_whatsapp_cloud_direct`; a nova migration local por clínica ainda não aparece no banco.
+`whatsapp-messages` v41 inclui o retry limitado para leituras PostgREST com `PGRST303`; `whatsapp-onboarding` v1 troca o código do Embedded Signup server-side e persiste tokens no Vault. `whatsapp-review-test` v15 continua separado do fluxo real e exige seus próprios Secrets. Nenhum Secret foi lido/alterado nem mensagem foi enviada nesta publicação. As migrations remotas registradas para a integração por clínica são `20261117001906_meta_clinic_integrations_and_reconciliation` e `20261117001916_meta_whatsapp_embedded_signup`; `ycloud-webhook` permanece como legado.
 
 ### Secrets do Google Calendar
 
@@ -221,7 +221,7 @@ Para monitorar, consulte o histórico em Integrations > Cron > Jobs, os logs de 
 
 Em 2026-10-24, os logs remotos ainda mostravam falhas intermitentes `401` / `PGRST303` / `JWT issued at future` nas leituras REST feitas pela própria Edge Function com a chave secreta do Supabase. A mesma credencial também obtinha `200`, logo não se trata de um token de usuário expirado nem de uma chave permanentemente inválida. A grande maioria das falhas estava associada ao gateway versão 1. O PostgREST publicou correção para falhas esporádicas desse tipo nas versões 14.18 e 16.3; confirmar com o suporte do Supabase a versão efetivamente implantada e solicitar correção do serviço gerenciado. Exemplo de `request_id` para investigação: `01a16b7e-4a6c-7646-bf8c-e233db244c9f`.
 
-O código local de `whatsapp-messages` possui mitigação limitada: até três novas tentativas, com esperas de 1, 2 e 4 segundos, somente para leituras da Data API que retornem exatamente esse erro. Escritas e chamadas à Meta não são repetidas, para evitar duplicidade. Essa mitigação não corrige o serviço Supabase e ainda **não está publicada**: a função remota diverge do código local e a migration por clínica pendente precisa ser revisada antes de qualquer deploy. O job usa timeout de 30 segundos; observar esse limite ao avaliar a mitigação.
+O código publicado de `whatsapp-messages` possui mitigação limitada: até três novas tentativas, com esperas de 1, 2 e 4 segundos, somente para leituras da Data API que retornem exatamente esse erro. Escritas e chamadas à Meta não são repetidas, para evitar duplicidade. Essa mitigação não corrige o serviço Supabase; observar o timeout de 30 segundos do job ao avaliar o comportamento.
 
 ## Banco de dados: fotografia verificada
 
@@ -240,6 +240,8 @@ As migrations remotas relacionadas ao WhatsApp incluem:
 ```text
 20260907202917_ycloud_coexistence_outbound_status
 20260907203731_ycloud_worker_status
+20261117001906_meta_clinic_integrations_and_reconciliation
+20261117001916_meta_whatsapp_embedded_signup
 ```
 
 As migrations anteriores continuam no histórico remoto; estas são as últimas relacionadas ao fluxo YCloud verificadas. A migration local `20260912090000_meta_whatsapp_cloud_direct` foi aplicada remotamente em 2026-09-22 e recebeu o registro `20260922074529_meta_whatsapp_cloud_direct`. Algumas migrations foram aplicadas por ferramentas remotas e receberam timestamps diferentes dos arquivos locais. Antes de usar `supabase db push`, compare `supabase migration list --local` e `--linked`; não aplique a pasta inteira às cegas.

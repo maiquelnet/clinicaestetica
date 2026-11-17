@@ -1,6 +1,6 @@
 # Arquitetura do Sistema
 
-Atualizado em: 2026-10-17. Estado de serviços remotos não foi revalidado nesta data.
+Atualizado em: 2026-11-17. Estado remoto revalidado por MCP; valores de Secrets não foram lidos.
 
 ## Visão geral
 
@@ -62,9 +62,9 @@ As versões instaladas no frontend vêm do lockfile; o manifesto mantém faixas 
 └── README.md                    visão rápida do projeto
 ```
 
-Desde 2026-08-13, `supabase/` é a fonte local canônica. O snapshot remoto consultado em 2026-10-19 reportou `whatsapp-messages` v29 e `meta-whatsapp-webhook` v8; o código local está divergindo após esta tarefa e ainda não substitui as versões remotas. Não publicar a pasta inteira sem revisar migration, Secrets e versões.
+Desde 2026-08-13, `supabase/` é a fonte local canônica. Em 2026-11-17, o projeto remoto reportou `whatsapp-messages` v41, `whatsapp-onboarding` v1 e `meta-whatsapp-webhook` v19. As migrations de integração por clínica foram aplicadas com os registros remotos `20261117001906` e `20261117001916`; compare sempre o histórico antes de novos pushes.
 
-Para WhatsApp, o modelo local é um app Meta e uma WABA por clínica. A migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` mantém IDs/nomes de secrets em schema privado e libera valores do Vault somente por RPC `service_role`. Ela ainda não foi aplicada remotamente. O Preview do frontend continua ligado ao projeto Supabase de produção; ele não representa staging isolado.
+Para WhatsApp, o modelo local é um app Meta e uma WABA por clínica. A migration `20261117001906_meta_clinic_integrations_and_reconciliation.sql` mantém IDs/nomes de secrets em schema privado e libera valores do Vault somente por RPC `service_role`. O Preview do frontend continua ligado ao projeto Supabase de produção; ele não representa staging isolado.
 
 O frontend mantém interesses de serviços em relação normalizada, sem remover o array legado de `clientes`. Campanhas podem usar esse relacionamento para prever e gerar públicos segmentados.
 

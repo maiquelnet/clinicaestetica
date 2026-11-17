@@ -1,6 +1,6 @@
 # Meta WhatsApp: ativos, homologação e App Review
 
-Atualizado em: 2026-11-11. Este documento separa dados fornecidos pelo usuário, observações do MCP e estado local do repositório. Um snapshot não comprova que a configuração remota permaneça igual.
+Atualizado em: 2026-11-17. Este documento separa dados fornecidos pelo usuário, observações do MCP e estado local do repositório. Valores de Secrets não foram lidos.
 
 ## 1. App disponível e ativos: não misturar teste com número real
 
@@ -46,7 +46,7 @@ Correção manual ainda necessária nas configurações básicas do app 163: sub
 
 O desenho local passa a ser **um app Meta e uma WABA por clínica**, com IDs e nomes dos segredos associados à clínica. Tokens, App Secrets e tokens de verificação ficam no Supabase Vault; não entram no bundle Vite, GitHub, Vercel ou respostas do frontend.
 
-Uma migration local cria `private.meta_whatsapp_integrations` e RPCs de backend com `EXECUTE` restrito a `service_role`. A função de saída recebe apenas o token necessário; a função de webhook recebe apenas App Secret e token de verificação. A migration está **somente no repositório** e não foi aplicada ao Supabase remoto. Portanto, as Edge Functions locais dependentes dela ainda não estão prontas para substituir as funções publicadas.
+As migrations remotas `20261117001906` e `20261117001916` criam `private.meta_whatsapp_integrations` e RPCs de backend com `EXECUTE` restrito a `service_role`. `whatsapp-messages` v41 e `whatsapp-onboarding` v1 estão publicados; o vínculo real ainda depende da configuração dos Secrets Meta e da elegibilidade/App Review.
 
 Convenção futura para nomes dos segredos no Vault:
 
@@ -94,7 +94,7 @@ O código local agora:
 - trata uma recusa explícita da Meta como falha recuperável, mas trata timeout/resposta incerta ou falha de persistência após aceite como `reconciliacao`, um estado terminal que não entra no claim automático;
 - não converte falha da auditoria de App Review em envio “não realizado” se a Meta já aceitou a mensagem.
 
-Essas alterações no webhook e na fila são **locais**. Não foram publicadas e a migration de estado `reconciliacao` não foi aplicada. O projeto remoto continua no estado anterior até uma publicação separada, autorizada e revisada.
+As alterações da fila foram publicadas em `whatsapp-messages` v41 após aplicar as migrations remotas. O webhook público continua na versão v19; não houve alteração dele nesta publicação.
 
 ## 6. App Review: o que o sistema demonstra hoje
 

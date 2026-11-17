@@ -1,6 +1,6 @@
 # Setup de ferramentas e evidências
 
-Revisão em: 2026-10-17. Toolkit `soumatheusgomes/vibe-coding-toolkit`, commit `f13bb354363dafef8ce8d8f605856cc9e1cc52cc`, prompt `12-existing-project-setup.md`. Ambiente principal: Codex; Windows; Node `v24.15.0`, npm `11.12.1`, Codex CLI `0.156.1`. Nenhum serviço remoto foi consultado ou alterado nesta revisão.
+Revisão em: 2026-11-17. Toolkit `soumatheusgomes/vibe-coding-toolkit`, commit `f13bb354363dafef8ce8d8f605856cc9e1cc52cc`, prompt `12-existing-project-setup.md`. Ambiente principal: Codex; Windows; Node `v24.15.0`, npm `11.12.1`, Codex CLI `0.156.1`. O estado remoto foi revalidado e a publicação autorizada foi executada sem leitura de Secrets.
 
 ## Objetivo e decisões
 
@@ -53,7 +53,7 @@ O índice `doc/README.md`, o runbook `doc/retomada-projeto.md` e `doc/operacao-p
 | Oxlint | Pendente | CLI respondeu a `--version` (`1.72.0`), mas a execução sem argumentos ficou sem saída por mais de 30s e foi interrompida. Não contar como lint aprovado. |
 | Context7 | Configurado sem execução | Arquivo de projeto criado; reinício/confiança e consulta real ainda necessários. |
 | Skills Vercel | Pendente | CLI oficial não respondeu no tempo observado; skills não foram instaladas. |
-| Supabase, Meta e Vercel remotos | Não executado | Sem login/consulta remota, migration, alteração de Secrets, mensagem, push ou deploy. |
+| Supabase, Meta e Vercel remotos | Revalidado/publicado em 2026-11-17 | MCPs consultados; migrations e funções necessárias publicadas no Supabase, Preview Vercel READY e nenhum Secret foi lido. |
 | Revisão visual/teclado | Não executada | Apenas inspeção estática de componentes/CSS; sem declaração de conformidade WCAG. |
 
 ## Achados do setup de 2026-10-17
@@ -85,8 +85,8 @@ As correções locais não foram publicadas no webhook/fila e a migration não f
 
 - Snapshot histórico de Meta MCP em 2026-10-19: `business_list` vazio e ambos os apps listados; não provava relação app–WABA–telefone.
 - Atualização Meta MCP em 2026-10-22: somente `API Estética Schneider Auto` (`1637078911202031`) foi retornado. O usuário informa que `Thaís Schneider Estética Whats` (`1369639224651650`) foi excluído; a ausência na lista MCP é compatível, mas não confirma a exclusão administrativamente. A lista de portfólios continua vazia e o vínculo app–WABA–telefone real permanece não confirmado. O Sandbox foi confirmado pelo usuário como envio/entrega bem-sucedidos, usando ativos de teste.
-- Supabase MCP consultado: projeto principal ativo; `whatsapp-messages` v29, `meta-whatsapp-webhook` v8 e `whatsapp-review-test` v4 (publicado em 2026-10-19). Secrets não são acessíveis pelo MCP.
+- Supabase MCP consultado: organização no plano Free, projeto principal ativo; `whatsapp-messages` v41, `whatsapp-onboarding` v1, `meta-whatsapp-webhook` v19 e `whatsapp-review-test` v15. Secrets não foram lidos.
 - Código local: integração por clínica via Vault/RPC, roteamento webhook por WABA + Phone Number ID, verificação de cancelamento imediatamente antes do envio, estado de reconciliação sem retry automático e auditoria explícita do teste.
 - Preview: fluxo comum de envio oculto; painel de revisão exige validação de App ID/token/WABA/remetente via Meta e só aceita `+55 51 98660-3385`.
-- Migration `20261019153000_meta_clinic_integrations_and_reconciliation.sql` apenas local; não aplicada. `whatsapp-messages` e `meta-whatsapp-webhook` não foram publicados. `whatsapp-review-test` v4 foi publicado; nenhum Secret foi lido/alterado e nenhuma mensagem foi enviada nesta tarefa.
+- As migrations `20261117001906_meta_clinic_integrations_and_reconciliation.sql` e `20261117001916_meta_whatsapp_embedded_signup.sql` foram aplicadas e registradas remotamente. `whatsapp-onboarding` v1 e `whatsapp-messages` v41 foram publicados; nenhum Secret foi lido/alterado e nenhuma mensagem foi enviada nesta tarefa.
 - `npm test` incluiu os testes puros novos. Typecheck/build/lint e validação Deno são registrados após execução. A CLI Supabase não está instalada; tentativa `npx supabase@latest --version` ficou sem saída e foi cancelada, então o arquivo migration foi criado diretamente no repositório e não aplicado.

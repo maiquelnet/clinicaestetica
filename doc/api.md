@@ -247,7 +247,7 @@ Gera itens idempotentes em `fila_mensagens`, reserva até 25, envia templates pe
 
 ## Edge Function `whatsapp-onboarding`
 
-URL local prevista:
+URL do projeto Supabase:
 
 ```text
 https://xucttzuthznqwlhushmg.supabase.co/functions/v1/whatsapp-onboarding
